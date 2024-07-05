@@ -1,0 +1,1030 @@
+@import url('https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Poetsen+One&family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap');
+
+:root {
+    /*Font-size*/
+    --biggest-font-size: 2rem;
+    --h1-font-size: 1.5rem;
+    --h2-font-size: 1.25rem;
+    --h3-font-size: 1rem;
+    --normal-font-size: .938rem;
+    --small-font-size: .813rem;
+    --smaller-font-size: .75rem;
+    /*Color*/
+    --white-color: rgb(255,255,255);
+    --black-color: rgb(0,0,0);
+    --gray-color: rgba(114,114,115,1);
+    --background-color: rgba(27,27,28,1);
+    --nav-color: rgba(46,46,48,1);
+    --focus-color: rgb(109,151,255);
+    --text-frame: rgb(153,153,153);
+    --nav-frame: rgb(128,129,133);
+    --effect-frame: rgb(105,105,105);
+    --thumb-color: #222222;
+    --edit-frame: rgba(36,36,37,1);
+    /*Z-index*/
+    --z-fixed: 100;
+    /*Font-style*/
+    --head-font: "Poetsen One", sans-serif;
+    --text-font: "Merriweather", serif;
+    --body-font: "Lato", sans-serif;
+    /*Font-weight*/
+    --font-weight-nomal: 400;
+    --font-weight-medium: 500;
+    --font-weight-big: 600;
+}
+
+* {
+    margin: 0px;
+    padding: 0px;
+    box-sizing: border-box; }
+
+body {
+    margin: 0px;
+    padding: 0px;
+    overflow: hidden;
+    font-size: var(--normal-font-size);
+    position: relative;
+    user-select: none;
+}
+
+li{
+    list-style: none;
+}
+
+.body-wrapper{
+    width: 100%;
+    height: 100vh;
+    background-color: var(--black-color);
+}
+
+/*------------------------LOGO------------------------*/
+
+.logo-wrapper{
+    position: relative;
+    display: inline-flex;
+    width: 99%;
+    margin: 0 .5%;
+    height: 5%;
+}
+
+.logo-wrapper .logo-wrap{
+    display: flex;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    margin-top: .5rem;
+    align-items: center;
+    color: var(--white-color);
+    font-size: var(--small-font-size);
+}
+
+.logo-wrapper .logo-wrap img{
+    width: 1.5%;
+    height: 70%;
+    object-fit: cover;
+    margin-right: .5%;
+}
+
+.logo-wrapper .export-btn {
+    display: flex;
+    position: relative;
+    width: 10%;
+    height: 100%;
+    margin-top: .5rem;
+    align-items: center;
+}
+
+.logo-wrapper .export-btn .export{
+    position: relative;
+    border-radius: 8px;
+    width: 100%;
+    border: none;
+    background-color: #4ac1f7;
+    padding: 5px;
+    color: var(--white-color);
+    font-size: var(--small-font-size);
+}
+
+.adjustment-effect-wrapper{
+    position: relative;
+    display: inline-flex;
+    width: 99%;
+    margin: 0 .5%;
+    height: 50%;
+}
+
+/*------------------------EFFECT------------------------*/
+
+.effect-wrapper{
+    width: 44%;
+    height: 96%;
+    margin-top: .5%;
+    border-radius: 10px;
+    background-color: var(--background-color);
+}
+
+.effect-wrapper .effect-nav{
+    width: 100%;
+    height: 12%;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    background-color: var(--nav-color);
+}
+
+.effect-wrapper .effect-nav .effect-nav-type{
+    display: inline-flex;
+    width: 100%;
+    height: 100%;
+    border-bottom: .5px solid var(--white-color);
+}
+
+.effect-wrapper .effect-list-option-wrapper{
+    display: inline-flex;
+    width: 100%;
+    height: 100%;
+}
+
+.effect-wrapper .effect-list-option{
+    display: inline-flex;
+    width: 20%;
+    height: 88%;
+    border-right: .5px solid var(--black-color);
+    background-color: var(--edit-frame);
+}
+
+.effect-wrapper .effect-list-option .effect-type-option{
+    width: 100%;
+    text-align: center;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--nav-frame) var(--thumb-color);
+}
+
+.effect-wrapper .effect-list-option .dropdown{
+    height: 100%;
+}
+
+.effect-wrapper .effect-list-option .btn-dropdown{
+    border: none;
+    width: 80%;
+    padding: 5px;
+    color: var(--white-color);
+    font-size: var(--small-font-size);
+    text-overflow: ellipsis;
+    overflow: hidden;
+    text-align: start;
+    white-space: nowrap;
+    margin-top: .5rem;
+    background-color: var(--effect-frame);
+    border-radius: 5px;
+}
+
+.effect-wrapper .effect-list-option .btn-dropdown svg{
+    width: 10%;
+    height: 10%;
+    transition: transform 0.3s;
+}
+
+.effect-wrapper .effect-list-option .dropdown-content{
+    display: none;
+    width: 90%;
+    margin-left: 5%;
+}
+
+.effect-wrapper .effect-list-option .dropdown-show{
+    display: flex;
+    flex-direction: column;
+}
+
+.effect-wrapper .effect-list-option .dropdown-show a{
+    text-decoration: none;
+    color: var(--white-color);
+    font-size: var(--small-font-size);
+    padding: .7rem;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    text-align: start;
+    white-space: nowrap;
+}
+
+.btn-dropdown.open svg {
+    transform: rotate(90deg);
+}
+
+.effect-wrapper .effect-list-type{
+    display: inline-flex;
+    width: 80%;
+    height: 88%;
+    flex-direction: column;
+    border-bottom-right-radius: 5px;
+}
+
+.effect-wrapper .effect-list-type .search-effect{
+    display: inline-flex;
+    width: 90%;
+    height: 8%;
+    margin-left: 5%;
+    background-color: var(--black-color);
+    border-radius: 3px;
+    margin-top: .5rem;
+    align-items: center;
+}
+
+.effect-wrapper .effect-list-type .search-effect svg{
+    height: 60%;
+    color: var(--text-frame);
+    margin-left: 1%;
+}
+
+.effect-wrapper .effect-list-type .search-effect .search-input{
+    width: 91%;
+    height: 100%;
+    background-color: transparent;
+    border: none;
+    color: var(--text-frame);
+}
+
+.effect-wrapper .effect-list-type .search-effect .search-input:focus{
+    outline: none;
+}
+
+.effect-wrapper .effect-list-type .import-sort-video{
+    display: inline-flex;
+    width: 90%;
+    height: 8%;
+    margin-left: 5%;
+    margin-top: 2%;
+}
+
+.effect-wrapper .effect-list-type .import-sort-video .import-video{
+    display: inline-flex;
+    background-color: transparent;
+    width: 20%;
+    padding: 6px;
+    color: var(--white-color);
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    border: 1px dotted var(--text-frame);
+    border-radius: 3px;
+    font-size: var(--small-font-size);
+}
+
+.effect-wrapper .effect-list-type .import-sort-video .import-video svg{
+    height: 100%;
+    margin-right: 6%;
+    color: #3875d7;
+}
+
+.effect-wrapper .effect-list-type .import-sort-video .import-video:hover{
+    background-color: var(--effect-frame);
+}
+
+.effect-wrapper .effect-list-type .import-sort-video .sort-video{
+    display: inline-flex;
+    margin-left: auto;
+    width: 45%;
+    height: 100%;
+    color: var(--white-color);
+    border-radius: 3px;
+    font-size: var(--smaller-font-size);
+}
+
+.effect-wrapper .effect-list-type .import-sort-video .sort-video .sort-icon{
+    display: inline-flex;
+    width: 30%;
+    height: 100%;
+    margin-right: 5%;
+    border: 1px solid var(--text-frame);
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    border-radius: 2px;
+    background-color: var(--effect-frame);
+}
+
+.effect-wrapper .effect-list-type .import-sort-video .sort-video .sort-icon svg{
+    width: 40%;
+}
+
+.effect-wrapper .effect-list-type .effect-option{
+    display: inline-flex;
+    width: 90%;
+    height: 73%;
+    margin-left: 5%;
+    margin-top: 2%;
+    flex-direction: column;
+}
+
+.effect-wrapper .effect-list-type .effect-option h3{
+    display: flex;
+    width: 100%;
+    height: 10%;
+    color: var(--white-color);
+    font-size: var(--normal-font-size);
+    text-transform: capitalize;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-import-file-wrapper{
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    max-height: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: var(--nav-frame) var(--thumb-color);
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-import-file-wrapper .list-import-file{
+    display: grid;
+    width: 100%;
+    height: 50%;
+    gap: 5%;
+    grid-template-columns: 30% 30% 30%;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-import-file-wrapper .list-import-file .import-file{
+    width: 100%;
+    height: 80%;
+    flex-direction: column;
+}
+
+
+.effect-wrapper .effect-list-type .effect-option .list-import-file-wrapper .list-import-file .import-file .file{
+    width: 100%;
+    height: 90%;
+    border-radius: 4px;
+    position: relative;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-import-file-wrapper .list-import-file .import-file .file img{
+    border-radius: 4px;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-import-file-wrapper .list-import-file .import-file .file .file-time,
+.effect-wrapper .effect-list-type .effect-option .list-import-file-wrapper .list-import-file .import-file .file .file-add {
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-import-file-wrapper .list-import-file .import-file .file .file-time{
+    top: 5px;
+    right: 5px;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-import-file-wrapper .list-import-file .import-file .file .file-add{
+    top: 5px;
+    left: 5px;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-import-file-wrapper .list-import-file .import-file .file-name{
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    color: var(--white-color);
+    font-size: var(--small-font-size);
+}
+
+.body-wrapper .effect-wrap{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    margin: 5px 10px;
+    color: var(--white-color);
+    flex-direction: column;
+}
+
+.body-wrapper .effect-wrap .effect-icon svg{
+    width: 80%;
+}
+
+.body-wrapper .effect-wrap .effect-btn{
+    display: flex;
+    border: none;
+    background-color: transparent;
+    color: var(--white-color);
+    font-size: var(--small-font-size);
+}
+
+
+/*------------------------Audio Effect------------------------*/
+
+.effect-wrapper .effect-list-type .effect-option .list-audio-file-wrapper{
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    max-height: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: var(--nav-frame) var(--thumb-color);
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-audio-file-wrapper .list-audio-file{
+    width: 100%;
+    height: 100%;
+    flex-direction: column;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-audio-file-wrapper .list-audio-file .audio-file{
+    display: inline-flex;
+    width: 100%;
+    height: 16%;
+    margin-bottom: 3%;
+    border-radius: 5px;
+    background-color: var(--black-color);
+    flex-direction: column;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-audio-file-wrapper .list-audio-file .audio-file .file{
+    display: grid;
+    width: 100%;
+    height: 100%;
+    grid-template-columns: 8% 70% 20%;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-audio-file-wrapper .list-audio-file .audio-file .file .file-image img{
+    width: 100%;
+    object-fit: cover;
+    padding: 5px;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-audio-file-wrapper .list-audio-file .audio-file .file .file-information{
+    display: inline-flex;
+    width: 80%;
+    height: 100%;
+    padding: 3px;
+    flex-wrap: wrap;
+    font-size: var(--smaller-font-size);
+    color: var(--text-frame);
+    justify-content: center;
+    align-items: center;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-audio-file-wrapper .list-audio-file .audio-file .file .file-information .file-name{
+    display: flex;
+    font-size: var(--normal-font-size);
+    color: RGBA( 220, 220, 220, 1 );
+    width: 100%;
+    height: 50%;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-audio-file-wrapper .list-audio-file .audio-file .file .file-information .file-artist{
+    display: flex;
+    width: 20%;
+    height: 50%;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-audio-file-wrapper .list-audio-file .audio-file .file .file-information .file-time{
+    display: flex;
+    width: 80%;
+    height: 50%;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-audio-file-wrapper .list-audio-file .audio-file .file .favorite-file{
+    display: flex;
+    width: 100%;
+    height: 90%;
+    color: var(--white-color);
+    align-items: center;
+    justify-content: end;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-audio-file-wrapper .list-audio-file .audio-file .file .favorite-file label{
+    display: flex;
+    background-color: var(--text-frame);
+    width: 18%;
+    height: 40%;
+    border-radius: 1rem;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10%;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-audio-file-wrapper .list-audio-file .audio-file .file .favorite-file label svg{
+    width: 70%;
+    height: 100%;
+}
+
+/*------------------------Text Effect------------------------*/
+
+.effect-wrapper .effect-list-type .effect-option .list-text-file-wrapper{
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    max-height: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: var(--nav-frame) var(--thumb-color);
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-text-file-wrapper .list-text-file{
+    display: grid;
+    width: 100%;
+    height: 100%;
+    gap: 5%;
+    grid-template-columns: 30% 30% 30%;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-text-file-wrapper .list-text-file .text-file{
+    display: inline-flex;
+    position: relative;
+    background-color: var(--black-color);
+    color: var(--white-color);
+    width: 100%;
+    height: 100px;
+    border-radius: 10px;
+    align-items: center;
+    justify-content: center;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-text-file-wrapper .list-text-file .text-file .file{
+    display: flex;
+    position: relative;
+    color: var(--white-color);
+    width: 100%;
+    height: 100%;
+    border-radius: 10px;
+    align-items: center;
+    justify-content: center;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-text-file-wrapper .list-text-file .text-file .file svg{
+    position: absolute;
+    top: 75%;
+    left: 80%;
+    width: 15%;
+    height: 15%;
+    display: none;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-text-file-wrapper .list-text-file .text-file .file:hover svg {
+    display: inline-flex;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-text-file-wrapper .list-text-file .text-file .file img{
+    width: 80%;
+    height: 50%;
+    object-fit: cover;
+}
+
+/*------------------------Sticker Effect------------------------*/
+
+.effect-wrapper .effect-list-type .effect-option .list-sticker-file-wrapper{
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    max-height: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: var(--nav-frame) var(--thumb-color);
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-sticker-file-wrapper .list-sticker-file{
+    display: grid;
+    width: 100%;
+    height: 100%;
+    gap: 5%;
+    grid-template-columns: 21.25% 21.25% 21.25% 21.25%;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-sticker-file-wrapper .list-sticker-file .sticker-file{
+    width: 100%;
+    height: 80px;
+    border-radius: 5px;
+    background-color: var(--thumb-color);
+    flex-direction: column;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-sticker-file-wrapper .list-sticker-file .sticker-file .file{
+    display: flex;
+    position: relative;
+    color: var(--white-color);
+    width: 100%;
+    height: 100%;
+    border-radius: 10px;
+    align-items: center;
+    justify-content: center;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-sticker-file-wrapper .list-sticker-file .sticker-file .file svg{
+    position: absolute;
+    top: 75%;
+    left: 80%;
+    width: 15%;
+    height: 15%;
+    display: none;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-sticker-file-wrapper .list-sticker-file .sticker-file .file:hover svg {
+    display: inline-flex;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-sticker-file-wrapper .list-sticker-file .sticker-file .file img{
+    width: 80%;
+    height: 50%;
+    object-fit: cover;
+}
+
+/*------------------------Effect Effect------------------------*/
+
+.effect-wrapper .effect-list-type .effect-option .list-effect-file-wrapper{
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    max-height: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: var(--nav-frame) var(--thumb-color);
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-effect-file-wrapper .list-effect-file{
+    display: grid;
+    width: 100%;
+    height: 100%;
+    gap: 5%;
+    grid-template-columns: 21.25% 21.25% 21.25% 21.25%;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-effect-file-wrapper .list-effect-file .effect-file{
+    width: 100%;
+    height: 80px;
+    border-radius: 5px;
+    background-color: var(--thumb-color);
+    flex-direction: column;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-effect-file-wrapper .list-effect-file .effect-file .file{
+    display: flex;
+    position: relative;
+    color: var(--white-color);
+    width: 100%;
+    height: 100%;
+    border-radius: 10px;
+    align-items: center;
+    justify-content: center;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-effect-file-wrapper .list-effect-file .effect-file .file svg{
+    position: absolute;
+    top: 75%;
+    left: 80%;
+    width: 15%;
+    height: 15%;
+    display: none;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-effect-file-wrapper .list-effect-file .effect-file .file:hover svg {
+    display: inline-flex;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-effect-file-wrapper .list-effect-file .effect-file .file img{
+    width: 80%;
+    height: 50%;
+    object-fit: cover;
+}
+
+
+/*------------------------Filter Effect------------------------*/
+
+.effect-wrapper .effect-list-type .effect-option .list-filter-file-wrapper{
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    max-height: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: var(--nav-frame) var(--thumb-color);
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-filter-file-wrapper .list-filter-file{
+    display: grid;
+    width: 100%;
+    height: 100%;
+    gap: 5%;
+    grid-template-columns: 21.25% 21.25% 21.25% 21.25%;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-filter-file-wrapper .list-filter-file .filter-file{
+    width: 100%;
+    height: 80px;
+    border-radius: 5px;
+    background-color: var(--thumb-color);
+    flex-direction: column;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-filter-file-wrapper .list-filter-file .filter-file .file{
+    display: flex;
+    position: relative;
+    color: var(--white-color);
+    width: 100%;
+    height: 100%;
+    border-radius: 10px;
+    align-items: center;
+    justify-content: center;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-filter-file-wrapper .list-filter-file .filter-file .file svg{
+    position: absolute;
+    top: 75%;
+    left: 80%;
+    width: 15%;
+    height: 15%;
+    display: none;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-filter-file-wrapper .list-filter-file .filter-file .file:hover svg {
+    display: inline-flex;
+}
+
+.effect-wrapper .effect-list-type .effect-option .list-filter-file-wrapper .list-filter-file .filter-file .file img{
+    width: 80%;
+    height: 50%;
+    object-fit: cover;
+}
+
+/*------------------------Player------------------------*/
+
+.player-wrapper{
+    width: 30%;
+    height: 96%;
+    margin: .5% .5%;
+    border-radius: 10px;
+    background-color: var(--background-color);
+}
+
+.player-wrapper .player-nav{
+    display: inline-flex;
+    color: var(--white-color);
+    width: 100%;
+    height: 12%;
+    border-bottom: .5px solid var(--white-color);
+    align-items: center;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    background-color: var(--nav-color);
+}
+
+.player-wrapper .player-nav span{
+    display: flex;
+    margin-left: 2%;
+}
+
+.player-wrapper .player-wrap{
+    display: flex;
+    width: 100%;
+    height: 84.5%;
+    border-radius: 10px;
+    flex-wrap: wrap;
+}
+
+.player-wrapper .player-wrap .player-show{
+    width: 95%;
+    height: 80%;
+    margin-left: 2.5%;
+    margin-top: 3%;
+}
+
+.player-wrapper .player-wrap .player-actions{
+    display: inline-flex;
+    width: 95%;
+    margin-left: 2.5%;
+    margin-top: 5%;
+    height: 70%;
+}
+
+.player-wrapper .player-wrap .player-actions .time-play-player{
+    color: aqua;
+    margin-right: 2%;
+}
+
+.player-wrapper .player-wrap .player-actions .time-player{
+    color: var(--white-color);
+    margin-right: 2%;
+}
+
+.player-wrapper .player-wrap .player-actions .action-player{
+    margin-left: 10%;
+}
+
+.player-wrapper .player-wrap .player-actions .action-player button{
+    background-color: transparent;
+    border: none;
+    outline: none;
+    color: var(--white-color);
+    height: 8%;
+}
+
+.player-wrapper .player-wrap .player-actions .action-player button svg{
+    width: 100%;
+    height: 100%;
+}
+
+
+.player-wrapper .player-wrap .player-actions .zoom-player{
+    color: var(--white-color);
+    height: 8%;
+    margin-right: 2%;
+    margin-left: 39%;
+}
+
+.player-wrapper .player-wrap .player-actions .zoom-player svg{
+    color: var(--white-color);
+    width: 100%;
+    height: 100%;
+}
+
+.player-wrapper .player-wrap .player-actions .full-screen-player{
+    color: var(--white-color);
+    height: 8%;
+}
+
+.player-wrapper .player-wrap .player-actions .full-screen-player svg{
+    color: var(--white-color);
+    width: 100%;
+    height: 100%;
+}
+
+/*------------------------Detail------------------------*/
+
+.detail-wrapper{
+    width: 25%;
+    height: 96%;
+    margin-top: .5%;
+    border-radius: 10px;
+    background-color: var(--background-color);
+}
+
+.detail-wrapper .detail-nav{
+    width: 100%;
+    height: 12%;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    background-color: var(--nav-color);
+}
+
+.detail-wrapper .detail-nav .detail-nav-type{
+    width: 100%;
+    height: 100%;
+    border-bottom: .5px solid var(--white-color);
+}
+
+.detail-wrapper .detail-nav .detail-nav-type .detail-type{
+    display: inline-flex;
+    color: var(--white-color);
+    width: 95%;
+    height: 100%;
+    margin-left: 2.5%;
+    align-items: center;
+}
+
+.detail-wrapper .detail-nav .detail-nav-type .detail-type .detail-wrap{
+    display: inline-flex;
+    width: 20%;
+    height: 100%;
+    align-items: center;
+}
+
+.detail-wrapper .detail-nav .detail-nav-type .detail-type .detail-wrap button{
+    background-color: transparent;
+    border: none;
+    color: var(--white-color);
+}
+
+.detail-wrapper .detail-option{
+    width: 100%;
+    height: 12%;
+    border: 1px solid transparent;
+}
+
+.detail-wrapper .detail-option .detail-option-type{
+    width: 100%;
+    height: 100%;
+    margin-top: 2%;
+}
+
+.detail-wrapper .detail-option .detail-option-type .detail-option-wrap{
+    display: flex;
+    width: 95%;
+    margin-left: 2.5%;
+    height: 100%;
+    border-radius: 4px;
+    background-color: var(--nav-color);
+}
+
+.detail-wrapper .detail-option .detail-option-type .detail-option-wrap button{
+    flex: 1;
+    padding: 3px;
+    text-align: center;
+    border-radius: 4px;
+    background-color: transparent;
+    border: none;
+    color: var(--gray-color);
+}
+
+.detail-wrapper .detail-option .detail-option-type .detail-option-wrap button:active{
+    flex: 1;
+    padding: 3px;
+    text-align: center;
+    border-radius: 4px;
+    background-color: var(--background-color);
+    border: none;
+}
+
+.detail-wrapper .detail-option .detail-option-type .break-line{
+    width: 95%;
+    height: 6%;
+    margin: 2% 0 2.5% 2.5%;
+    background-color: var(--nav-color);
+}
+
+.detail-wrapper .detail-edit{
+    position: relative;
+    width: 95%;
+    height: 74%;
+    margin: 0 2.5%;
+    border-bottom-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
+
+.detail-wrapper .detail-edit .detail-edit-wrapper{
+    width: 100%;
+    height: 100%;
+}
+
+.detail-wrapper .detail-edit .detail-edit-wrapper .detail-edit-wrap{
+    width: 100%;
+    height: 100%;
+}
+
+.detail-wrapper .detail-edit .detail-edit-wrapper .detail-edit-wrap .detail-edit-video-basic-wrap{
+    width: 100%;
+    height: 100%;
+}
+
+.detail-wrapper .detail-edit .detail-edit-wrapper .detail-edit-wrap .detail-edit-video-basic-wrap li{
+    width: 100%;
+    margin: 3% 0;
+}
+
+.detail-wrapper .detail-edit .detail-edit-wrapper .detail-edit-wrap .detail-edit-video-basic-wrap .break-line{
+    width: 100%;
+    height: 1%;
+    background-color: var(--nav-color);
+}
+
+.detail-wrapper .detail-edit .detail-edit-wrapper .detail-edit-wrap .detail-edit-video-basic-wrap li .dropdown{
+    display: inline-flex;
+    width: 100%;
+    height: 100%;
+    align-items: center;
+}
+
+.detail-wrapper .detail-edit .detail-edit-wrapper .detail-edit-wrap .detail-edit-video-basic-wrap li button{
+    display: inline-flex;
+    width: 50%;
+    background-color: transparent;
+    border: none;
+    color: var(--white-color);
+    align-items: center;
+    text-align: start;
+    text-transform: capitalize;
+}
+
+.detail-wrapper .detail-edit .detail-edit-wrapper .detail-edit-wrap .detail-edit-video-basic-wrap li svg{
+    width: 7%;
+    transform: rotate(90deg);
+}
+
+.detail-wrapper .detail-edit .detail-edit-wrapper .detail-edit-wrap .detail-edit-video-basic-wrap li .detail-edit-video-basic-transform-reset-btn{
+    display: inline-flex;
+    justify-content: end;
+}
+
+.detail-wrapper .detail-edit .detail-edit-wrapper .detail-edit-wrap .detail-edit-video-basic-wrap li .detail-edit-video-basic-transform-reset-btn svg{
+    width: 8%;
+    transform: rotate(0);
+}
+
+/*------------------------Edit------------------------*/
+
+
+.edit-wrapper{
+    position: relative;
+    display: inline-flex;
+    width: 99%;
+    margin: 0 .5%;
+    height: 43%;
+    border-radius: 10px;
+    background-color: var(--background-color);
+}
+
+
+
+
