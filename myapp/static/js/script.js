@@ -1,10 +1,12 @@
-// Get all buttons with the class 'btn-dropdown'
+document.addEventListener("DOMContentLoaded", function() {
+    // Get all buttons with the class 'btn-dropdown'
     var dropdownButtons = document.getElementsByClassName("btn-dropdown");
 
     // Loop through each button and add the event listener
     for (var i = 0; i < dropdownButtons.length; i++) {
         dropdownButtons[i].addEventListener("click", function() {
             var dropdownContent = this.nextElementSibling;
+            console.log("Button clicked, toggling dropdown"); // Debugging line
             dropdownContent.classList.toggle("dropdown-show");
             this.classList.toggle("open");
         });
@@ -17,10 +19,9 @@
         }
 
         var buttons = document.getElementsByClassName("btn-dropdown");
-        for (var i = 0; i < buttons.length; i++) {
-            buttons[i].classList.remove("open");
+        for (var n = 0; n < buttons.length; n++) {
+            buttons[n].classList.remove("open");
         }
     }
-
-
+});
 

@@ -130,7 +130,7 @@
                                     </svg>
                                     Stock material
                                 </button>
-                                <div id="mydropdown" class="dropdown-content">
+                                <div id="dropdown-content" class="dropdown-content">
                                     <a class="trending-stock-material" id="trending-stock-material"
                                        href="#">Trending</a>
                                     <a class="christmas&NewYear-stock-material" id="christmas&NewYear-stock-material"
@@ -6856,19 +6856,19 @@
             <div class="detail-nav">
                 <nav class="detail-nav-type">
                     <div class="detail-video detail-type">
-                        <div class="detail-wrap">
+                        <div class="detail-wrap" id="video-video">
                             <button>Video</button>
                         </div>
-                        <div class="detail-wrap">
+                        <div class="detail-wrap" id="video-audio">
                             <button>Audio</button>
                         </div>
-                        <div class="detail-wrap">
+                        <div class="detail-wrap" id="video-speed">
                             <button>Speed</button>
                         </div>
-                        <div class="detail-wrap">
+                        <div class="detail-wrap" id="video-animation">
                             <button>Animation</button>
                         </div>
-                        <div class="detail-wrap">
+                        <div class="detail-wrap" id="video-adjustment">
                             <button>Adjustment</button>
                         </div>
                     </div>
@@ -6923,30 +6923,32 @@
             <div class="detail-option">
                 <div class="detail-option-type">
                     <div class="detail-option-video-type detail-option-wrapper">
-                        <div class="detail-option-video-video detail-option-wrap">
-                            <button>Basic</button>
-                            <button>Remove BG</button>
-                            <button>Mask</button>
-                            <button>Retouch</button>
+                        <div class="detail-option-video-video detail-option-wrap" id="detail-option-video-video">
+                            <button id="video-video-basic" class="edit-parameters-option active">Basic</button>
+                            <button id="video-video-removeBG" class="edit-parameters-option">Remove BG</button>
+                            <button id="video-video-mask" class="edit-parameters-option">Mask</button>
+                            <button id="video-video-retouch" class="edit-parameters-option">Retouch</button>
                         </div>
-                        <div class="detail-option-video-audio detail-option-wrap" style="display: none;">
-                            <button>Basic</button>
-                            <button>Voice Changer</button>
+                        <div class="detail-option-video-audio detail-option-wrap" id="detail-option-video-audio"
+                             style="display: none;">
+                            <button id="video-audio-basic" class="edit-parameters-option">Basic</button>
+                            <button id="video-audio-voiceChanger" class="edit-parameters-option">Voice Changer</button>
                         </div>
-                        <div class="detail-option-video-speed detail-option-wrap" style="display: none;">
-                            <button>Standard</button>
-                            <button>Curve</button>
+                        <div class="detail-option-video-speed detail-option-wrap" id="detail-option-video-speed"
+                             style="display: none;">
+                            <button id="video-speed-standard" class="edit-parameters-option">Standard</button>
+                            <button id="video-speed-curve" class="edit-parameters-option">Curve</button>
                         </div>
-                        <div class="detail-option-video-animation detail-option-wrap" style="display: none;">
-                            <button>In</button>
-                            <button>Out</button>
-                            <button>Combo</button>
+                        <div class="detail-option-video-animation detail-option-wrap" id="detail-option-video-animation"
+                             style="display: none;">
+                            <button id="video-animation-in" class="edit-parameters-option">In</button>
+                            <button id="video-animation-out" class="edit-parameters-option">Out</button>
+                            <button id="video-animation-combo" class="edit-parameters-option">Combo</button>
                         </div>
-                        <div class="detail-option-video-adjustment detail-option-wrap" style="display: none;">
-                            <button>Basic</button>
-                            <button>HSL</button>
-                            <button>Curves</button>
-                            <button>Color wheel</button>
+                        <div class="detail-option-video-adjustment detail-option-wrap"
+                             id="detail-option-video-adjustment" style="display: none;">
+                            <button id="video-adjustment-basic" class="edit-parameters-option">Basic</button>
+                            <button id="video-adjustment-hls" class="edit-parameters-option">HSL</button>
                         </div>
                     </div>
                     <div class="detail-option-text-type detail-option-wrapper" style="display: none;">
@@ -6974,8 +6976,8 @@
             </div>
             <div class="detail-edit">
                 <div class="detail-edit-video-type detail-edit-wrapper">
-                    <div class="detail-edit-video-video-basic detail-edit-wrap">
-                        <ul class="detail-edit-video-basic-wrap">
+                    <div class="detail-edit-video-video detail-edit-wrap">
+                        <ul class="detail-edit-video-basic-wrap edit-parameters-wrap" id="video-video-basic-option">
                             <li class="detail-edit-video-basic-transform">
                                 <div class="dropdown">
                                     <button id="btn-dropdown" class="btn-dropdown">
@@ -6987,16 +6989,183 @@
                                             <path d="m9 18 6-6-6-6"/>
                                         </svg>
                                     </button>
-                                    <button class="detail-edit-video-basic-transform-reset-btn">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                             stroke-linecap="round" stroke-linejoin="round"
-                                             class="lucide lucide-rotate-ccw">
-                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                                            <path d="M3 3v5h5"/>
-                                        </svg>
-                                    </button>
                                     <div id="dropdown-content" class="dropdown-content">
+                                        <div class="slider-container">
+                                            <label for="scale-slider">Scale</label>
+                                            <input type="range" id="scale-slider" class="slider" min="1" max="400"
+                                                   value="94" oninput="updateSliderValue(this.value)">
+                                            <input type="text" id="slider-value" class="slider-value"
+                                                   value="94%" oninput="updateSlider(this.value)">
+                                            <div class="slider-buttons">
+                                                <button class="slider-up" onclick="increaseSlider()">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                         viewBox="0 0 24 24"
+                                                         fill="none" stroke="currentColor" stroke-width="2"
+                                                         stroke-linecap="round"
+                                                         stroke-linejoin="round" class="lucide lucide-chevron-up">
+                                                        <path d="m18 15-6-6-6 6"/>
+                                                    </svg>
+                                                </button>
+                                                <button class="slider-down" onclick="decreaseSlider()">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                         viewBox="0 0 24 24"
+                                                         fill="none" stroke="currentColor" stroke-width="2"
+                                                         stroke-linecap="round"
+                                                         stroke-linejoin="round" class="lucide lucide-chevron-down">
+                                                        <path d="m6 9 6 6 6-6"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="slider-container slider-width-container" style="display: none">
+                                            <label for="scale-slider scale-width-slider">Scale width</label>
+                                            <input type="range" id="scale-width-slider" class="slider" min="1" max="400"
+                                                   value="94" oninput="updateSliderValue(this.value)">
+                                            <input type="text" id="slider-width-value" class="slider-value"
+                                                   value="94%" oninput="updateSlider(this.value)">
+                                            <div class="slider-buttons slider-width-buttons">
+                                                <button class="slider-up slider-width-up" onclick="increaseSlider()">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                         viewBox="0 0 24 24"
+                                                         fill="none" stroke="currentColor" stroke-width="2"
+                                                         stroke-linecap="round"
+                                                         stroke-linejoin="round" class="lucide lucide-chevron-up">
+                                                        <path d="m18 15-6-6-6 6"/>
+                                                    </svg>
+                                                </button>
+                                                <button class="slider-down slider-width-down"
+                                                        onclick="decreaseSlider()">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                         viewBox="0 0 24 24"
+                                                         fill="none" stroke="currentColor" stroke-width="2"
+                                                         stroke-linecap="round"
+                                                         stroke-linejoin="round" class="lucide lucide-chevron-down">
+                                                        <path d="m6 9 6 6 6-6"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="slider-container slider-height-container" style="display: none">
+                                            <label for="scale-slider scale-height-slide">Scale height</label>
+                                            <input type="range" id="scale-height-slider" class="slider" min="1"
+                                                   max="400"
+                                                   value="94" oninput="updateSliderValue(this.value)">
+                                            <input type="text" id="slider-height-value" class="slider-value"
+                                                   value="94%" oninput="updateSlider(this.value)">
+                                            <div class="slider-buttons slider-height-buttons">
+                                                <button class="slider-up slider-height-up" onclick="increaseSlider()">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                         viewBox="0 0 24 24"
+                                                         fill="none" stroke="currentColor" stroke-width="2"
+                                                         stroke-linecap="round"
+                                                         stroke-linejoin="round" class="lucide lucide-chevron-up">
+                                                        <path d="m18 15-6-6-6 6"/>
+                                                    </svg>
+                                                </button>
+                                                <button class="slider-down slider-height-down"
+                                                        onclick="decreaseSlider()">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                         viewBox="0 0 24 24"
+                                                         fill="none" stroke="currentColor" stroke-width="2"
+                                                         stroke-linecap="round"
+                                                         stroke-linejoin="round" class="lucide lucide-chevron-down">
+                                                        <path d="m6 9 6 6 6-6"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="uniform-slider">
+                                            <span>Uniform scale</span>
+                                            <label>
+                                                <input type="checkbox" class="uniform-slider-check"
+                                                       id="uniform-slider-check">
+                                                <div class="slider-check"></div>
+                                            </label>
+                                        </div>
+                                        <div class="position-video">
+                                            <span>position</span>
+                                            <div class="position-x">
+                                                <label for="position-x-value">X</label>
+                                                <input type="text" id="position-x-value" class="position-x-value"
+                                                       value="94%" oninput="updateSlider(this.value)">
+                                                <div class="position-x-buttons">
+                                                    <button class="position-x-up" onclick="increasePositionX()">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24"
+                                                             fill="none" stroke="currentColor" stroke-width="2"
+                                                             stroke-linecap="round"
+                                                             stroke-linejoin="round" class="lucide lucide-chevron-up">
+                                                            <path d="m18 15-6-6-6 6"/>
+                                                        </svg>
+                                                    </button>
+                                                    <button class="position-x-down" onclick="decreasePositionX()">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24"
+                                                             fill="none" stroke="currentColor" stroke-width="2"
+                                                             stroke-linecap="round"
+                                                             stroke-linejoin="round" class="lucide lucide-chevron-down">
+                                                            <path d="m6 9 6 6 6-6"/>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="position-y">
+                                                <label for="position-y-value">Y</label>
+                                                <input type="text" id="position-y-value" class="position-y-value"
+                                                       value="94" oninput="updateSlider(this.value)">
+                                                <div class="position-y-buttons">
+                                                    <button class="position-y-up" onclick="increasePositionY()">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                             height="24"
+                                                             viewBox="0 0 24 24"
+                                                             fill="none" stroke="currentColor" stroke-width="2"
+                                                             stroke-linecap="round"
+                                                             stroke-linejoin="round"
+                                                             class="lucide lucide-chevron-up">
+                                                            <path d="m18 15-6-6-6 6"/>
+                                                        </svg>
+                                                    </button>
+                                                    <button class="position-y-down" onclick="decreasePositionY()">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                             height="24"
+                                                             viewBox="0 0 24 24"
+                                                             fill="none" stroke="currentColor" stroke-width="2"
+                                                             stroke-linecap="round"
+                                                             stroke-linejoin="round"
+                                                             class="lucide lucide-chevron-down">
+                                                            <path d="m6 9 6 6 6-6"/>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="rotate-video">
+                                            <div class="rotate">
+                                                <label for="rotate-value">X</label>
+                                                <input type="text" id="position-x-value" class="rotate-value"
+                                                       value="94%" oninput="updateSlider(this.value)">
+                                                <div class="rotate-buttons">
+                                                    <button class="rotate-up" onclick="increaseRotate()">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24"
+                                                             fill="none" stroke="currentColor" stroke-width="2"
+                                                             stroke-linecap="round"
+                                                             stroke-linejoin="round" class="lucide lucide-chevron-up">
+                                                            <path d="m18 15-6-6-6 6"/>
+                                                        </svg>
+                                                    </button>
+                                                    <button class="rotate-down" onclick="decreaseRotate()">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24"
+                                                             fill="none" stroke="currentColor" stroke-width="2"
+                                                             stroke-linecap="round"
+                                                             stroke-linejoin="round" class="lucide lucide-chevron-down">
+                                                            <path d="m6 9 6 6 6-6"/>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </li>
@@ -7012,16 +7181,56 @@
                                             <path d="m9 18 6-6-6-6"/>
                                         </svg>
                                     </button>
-                                    <button class="detail-edit-video-basic-transform-reset-btn">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                             stroke-linecap="round" stroke-linejoin="round"
-                                             class="lucide lucide-rotate-ccw">
-                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                                            <path d="M3 3v5h5"/>
-                                        </svg>
-                                    </button>
+                                    {#                                    <button class="detail-edit-video-basic-transform-reset-btn">#}
+                                    {#                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"#}
+                                    {#                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"#}
+                                    {#                                             stroke-linecap="round" stroke-linejoin="round"#}
+                                    {#                                             class="lucide lucide-rotate-ccw">#}
+                                    {#                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>#}
+                                    {#                                            <path d="M3 3v5h5"/>#}
+                                    {#                                        </svg>#}
+                                    {#                                    </button>#}
                                     <div id="dropdown-content" class="dropdown-content">
+                                        <div class="mode-video-basic-blend video-basic-option-edit">
+                                            <span>Mode</span>
+                                            <select name="mode-video-type" id="mode-video-type">
+                                                <option value="default">Default</option>
+                                                <option value="brighten">Brighten</option>
+                                                <option value="screen">Screen</option>
+                                                <option value="darken">Darken</option>
+                                                <option value="overlay">Overlay</option>
+                                                <option value="hardLight">Hard light</option>
+                                                <option value="multiply">Multiply</option>
+                                            </select>
+                                        </div>
+                                        <div class="opacity-video-basic-blend video-basic-option-edit">
+                                            <span>Opacity</span>
+                                            <input type="range" id="opacity-slider" class="slider" min="0" max="100"
+                                                   value="94" oninput="updateSliderValue(this.value)">
+                                            <input type="text" id="opacity-value" class="slider-value"
+                                                   value="94%" oninput="updateOpacity(this.value)">
+                                            <div class="slider-buttons slider-opacity-buttons">
+                                                <button class="slider-up slider-up-opacity" onclick="increaseOpacity()">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                         viewBox="0 0 24 24"
+                                                         fill="none" stroke="currentColor" stroke-width="2"
+                                                         stroke-linecap="round"
+                                                         stroke-linejoin="round" class="lucide lucide-chevron-up">
+                                                        <path d="m18 15-6-6-6 6"/>
+                                                    </svg>
+                                                </button>
+                                                <button class="slider-down slider-down-opacity"
+                                                        onclick="decreaseOpacity()">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                         viewBox="0 0 24 24"
+                                                         fill="none" stroke="currentColor" stroke-width="2"
+                                                         stroke-linecap="round"
+                                                         stroke-linejoin="round" class="lucide lucide-chevron-down">
+                                                        <path d="m6 9 6 6 6-6"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </li>
@@ -7038,11 +7247,19 @@
                                         </svg>
                                     </button>
                                     <div id="dropdown-content" class="dropdown-content">
+                                        <div class="level-video-basic-stabilize video-basic-option-edit">
+                                            <span>Level</span>
+                                            <select name="stabilize-video-type" id="stabilize-video-type">
+                                                <option value="recommended">Recommended</option>
+                                                <option value="minimumCut">Minimum cut</option>
+                                                <option value="mostStable">Most stable</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
                             </li>
                             <div class="break-line"></div>
-                            <li class="detail-edit-video-basic-motion-blur">
+                            <li class="detail-edit-video-basic-motionBlur">
                                 <div class="dropdown">
                                     <button id="btn-dropdown" class="btn-dropdown">
                                         motion blur
@@ -7054,6 +7271,79 @@
                                         </svg>
                                     </button>
                                     <div id="dropdown-content" class="dropdown-content">
+                                        <div class="slider-container slider-blur-container">
+                                            <label for="scale-slider">Blur</label>
+                                            <input type="range" id="scale-slider scale-slider-blur" class="slider"
+                                                   min="1" max="400"
+                                                   value="94" oninput="updateBlurValue(this.value)">
+                                            <input type="text" id="slider-value slider-value-blur" class="slider-value"
+                                                   value="94%" oninput="updateBlur(this.value)">
+                                            <div class="slider-buttons slider-buttons-motionBlur">
+                                                <button class="slider-up slider-blur-up" onclick="increaseBlur()">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                         viewBox="0 0 24 24"
+                                                         fill="none" stroke="currentColor" stroke-width="2"
+                                                         stroke-linecap="round"
+                                                         stroke-linejoin="round" class="lucide lucide-chevron-up">
+                                                        <path d="m18 15-6-6-6 6"/>
+                                                    </svg>
+                                                </button>
+                                                <button class="slider-down slider-blur-down" onclick="decreaseBlur()">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                         viewBox="0 0 24 24"
+                                                         fill="none" stroke="currentColor" stroke-width="2"
+                                                         stroke-linecap="round"
+                                                         stroke-linejoin="round" class="lucide lucide-chevron-down">
+                                                        <path d="m6 9 6 6 6-6"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="slider-container slider-blend-container">
+                                            <label for="scale-slider">Blend</label>
+                                            <input type="range" id="scale-slider scale-slider-blend" class="slider"
+                                                   min="1" max="400"
+                                                   value="94" oninput="updateSliderValue(this.value)">
+                                            <input type="text" id="slider-value slider-value-blend" class="slider-value"
+                                                   value="94%" oninput="updateBlend(this.value)">
+                                            <div class="slider-buttons slider-buttons">
+                                                <button class="slider-up slider-blend-up" onclick="increaseBlend()">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                         viewBox="0 0 24 24"
+                                                         fill="none" stroke="currentColor" stroke-width="2"
+                                                         stroke-linecap="round"
+                                                         stroke-linejoin="round" class="lucide lucide-chevron-up">
+                                                        <path d="m18 15-6-6-6 6"/>
+                                                    </svg>
+                                                </button>
+                                                <button class="slider-down slider-blend-down" onclick="decreaseBlend()">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                         viewBox="0 0 24 24"
+                                                         fill="none" stroke="currentColor" stroke-width="2"
+                                                         stroke-linecap="round"
+                                                         stroke-linejoin="round" class="lucide lucide-chevron-down">
+                                                        <path d="m6 9 6 6 6-6"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="direction-video-basic-direction video-basic-option-edit">
+                                            <span>Direction</span>
+                                            <select name="direction-video-type" id="direction-video-type">
+                                                <option value="both">Both</option>
+                                                <option value="forward">Forward</option>
+                                                <option value="backward">Backward</option>
+                                            </select>
+                                        </div>
+                                        <div class="speed-video-basic-speed video-basic-option-edit">
+                                            <span>Speed</span>
+                                            <select name="speed-video-type" id="speed-video-type">
+                                                <option value="once">Once</option>
+                                                <option value="twice">Twice</option>
+                                                <option value="4Times">4 times</option>
+                                                <option value="6Times">6 times</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
                             </li>
@@ -7070,10 +7360,1045 @@
                                         </svg>
                                     </button>
                                     <div id="dropdown-content" class="dropdown-content">
+                                        <div class="type-video-basic-canvas">
+                                            <select name="video-basic-canvas-option" class="video-basic-canvas-option">
+                                                <option value="none">None</option>
+                                                <option value="blur">Blur</option>
+                                                <option value="color">Color</option>
+                                                <option value="pattern">Pattern</option>
+                                            </select>
+                                        </div>
+                                        <div class="video-basic-blur-option">
+                                            <div class="blur-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="blur-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="blur-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="blur-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                        </div>
+                                        <div class="video-basic-color-option">
+                                            <div class="color-option-wrap">
+                                                <input type="color" id="color-picker" name="color-picker"
+                                                       value="#ff0000">
+                                                <div class="color-display" id="color-display"
+                                                     style="background-color: #ff0000;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #FFFFFF;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #EEEEEE;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #DDDDDD;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #CCCCCC;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #BBBBBB;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #AAAAAA;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #999999;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #888888;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #777777;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #666666;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #555555;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #444444;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #333333;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #222222;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #111111;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #000000;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #FF0000;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #EE0000;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #DD0000;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #CC0000;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #BB0000;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #AA0000;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #990000;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #880000;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #770000;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #660000;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #550000;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #440000;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #330000;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #220000;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #110000;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #FFFFCC;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #FFFF99;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #FFFF66;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #FFFF33;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #FFFF00;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #CCFFFF;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #CCFFCC;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #CCFF99;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #CCFF66;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #CCFF33;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #CCFF00;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #99FFFF;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #99FFCC;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #99FF99;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #99FF66;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #99FF33;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #99FF00;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #66FFFF;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #66FFCC;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #66FF99;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #66FF66;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #66FF33;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #66FF00;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #33FFFF;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #33FFCC;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #33FF99;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #33FF66;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #33FF33;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #33FF00;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #00FFFF;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #00FFCC;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #00FF99;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #00FF66;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #00FF33;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #00FF00;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #FFCCFF;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #FFCCCC;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #FFCC99;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #FFCC66;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #FFCC33;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #FFCC00;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #CCCCFF;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #CCCCCC;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #CCCC99;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #CCCC66;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #CCCC33;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #CCCC00;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #99CCFF;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #99CCCC;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #99CC99;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #99CC66;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #99CC33;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #99CC00;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #66CCFF;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #66CCCC;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #66CC99;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #66CC66;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #66CC33;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #66CC00;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #33CCFF;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #33CCCC;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #33CC99;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #33CC66;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #33CC33;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #33CC00;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #00CCFF;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #00CCCC;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #00CC99;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #00CC66;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #00CC33;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #00CC00;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #FF99FF;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #FF99CC;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #FF9999;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #FF9966;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #FF9933;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #FF9900;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #CC99FF;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #CC99CC;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #CC9999;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #CC9966;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #CC9933;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #CC9900;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #9999FF;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #9999CC;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #999999;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #999966;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #999933;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #999900;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #6699FF;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #6699CC;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #669999;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #669966;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #669933;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #669900;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #3399FF;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #3399CC;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #339999;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #339966;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #339933;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #339900;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #0099FF;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #0099CC;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #009999;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #009966;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #009933;"></div>
+                                            </div>
+                                            <div class="color-option-wrap">
+                                                <div class="color-display" style="background-color: #009900;"></div>
+                                            </div>
+                                        </div>
+                                        <div class="video-basic-pattern-option">
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="pattern-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </li>
                             <div class="break-line"></div>
+                        </ul>
+                        <ul class="detail-edit-video-removeBG-wrap edit-parameters-wrap" id="video-video-removeBG-option" style="display: none">
+                            <li class="detail-edit-video-removeBG-autoRemoval">
+                                <div class="autoRemoval-option">
+                                    <span>auto removal</span>
+                                    <label>
+                                        <input type="checkbox" class="autoRemoval-slider-check uniform-slider-check"
+                                               id="autoRemoval-slider-check uniform-slider-check">
+                                        <div class="autoRemoval-check slider-check"></div>
+                                    </label>
+                                </div>
+                                <div class="dropdown" style="display: none">
+                                    <button id="btn-dropdown" class="btn-dropdown">
+                                        stroke
+                                    </button>
+                                    <div id="dropdown-content" class="dropdown-content">
+                                        <div class="stroke-option-wrap">
+                                            <img src="../static/images/file.png">
+                                        </div>
+                                        <div class="stroke-option-wrap">
+                                            <img src="../static/images/file.png">
+                                        </div>
+                                        <div class="stroke-option-wrap">
+                                            <img src="../static/images/file.png">
+                                        </div>
+                                        <div class="stroke-option-wrap">
+                                            <img src="../static/images/file.png">
+                                        </div>
+                                        <div class="stroke-option-wrap">
+                                            <img src="../static/images/file.png">
+                                        </div>
+                                        <div class="stroke-option-wrap">
+                                            <img src="../static/images/file.png">
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+                            <div class="break-line"></div>
+                            <li class="detail-edit-video-removeBG-customRemoval">
+                                <div class="dropdown">
+                                    <button id="btn-dropdown" class="btn-dropdown">
+                                        custom removal
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-chevron-right">
+                                            <path d="m9 18 6-6-6-6"/>
+                                        </svg>
+                                    </button>
+                                    {#                                    <button class="detail-edit-video-basic-transform-reset-btn">#}
+                                    {#                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"#}
+                                    {#                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"#}
+                                    {#                                             stroke-linecap="round" stroke-linejoin="round"#}
+                                    {#                                             class="lucide lucide-rotate-ccw">#}
+                                    {#                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>#}
+                                    {#                                            <path d="M3 3v5h5"/>#}
+                                    {#                                        </svg>#}
+                                    {#                                    </button>#}
+                                    <div id="dropdown-content" class="dropdown-content">
+                                        <div class="slider-container slider-customRemoval-container">
+                                            <label for="scale-slider">Size</label>
+                                            <input type="range" id="scale-slider scale-slider-customRemoval"
+                                                   class="slider"
+                                                   min="1" max="400"
+                                                   value="94" oninput="updateBlurValue(this.value)">
+                                            <input type="text" id="slider-value slider-value-customRemoval"
+                                                   class="slider-value"
+                                                   value="94%" oninput="updateBlur(this.value)">
+                                            <div class="slider-buttons slider-buttons-motionBlur">
+                                                <button class="slider-up slider-customRemoval-up"
+                                                        onclick="increaseCustomRemoval()">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                         viewBox="0 0 24 24"
+                                                         fill="none" stroke="currentColor" stroke-width="2"
+                                                         stroke-linecap="round"
+                                                         stroke-linejoin="round" class="lucide lucide-chevron-up">
+                                                        <path d="m18 15-6-6-6 6"/>
+                                                    </svg>
+                                                </button>
+                                                <button class="slider-down slider-customRemoval-down"
+                                                        onclick="decreaseCustomRemoval()">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                         viewBox="0 0 24 24"
+                                                         fill="none" stroke="currentColor" stroke-width="2"
+                                                         stroke-linecap="round"
+                                                         stroke-linejoin="round" class="lucide lucide-chevron-down">
+                                                        <path d="m6 9 6 6 6-6"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+                            <div class="break-line"></div>
+                            <li class="detail-edit-video-removeBG-chromaKey">
+                                <div class="dropdown">
+                                    <button id="btn-dropdown" class="btn-dropdown">
+                                        chroma key
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-chevron-right">
+                                            <path d="m9 18 6-6-6-6"/>
+                                        </svg>
+                                    </button>
+                                    <button class="detail-edit-video-basic-transform-reset-btn">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-rotate-ccw">
+                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                            <path d="M3 3v5h5"/>
+                                        </svg>
+                                    </button>
+                                    <div id="dropdown-content" class="dropdown-content">
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                        <ul class="detail-edit-video-mask-wrap edit-parameters-wrap" id="video-video-mask-option"
+                            style="display: none">
+                            <li class="detail-edit-video-mask-mask">
+                                <div class="dropdown">
+                                    <button id="btn-dropdown" class="btn-dropdown">
+                                        mask
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-chevron-right">
+                                            <path d="m9 18 6-6-6-6"/>
+                                        </svg>
+                                    </button>
+                                    <div id="dropdown-content" class="dropdown-content">
+                                            <div class="mask-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="mask-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="mask-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="mask-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="mask-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="mask-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                            <div class="mask-option-wrap">
+                                                <img src="../static/images/file.png">
+                                            </div>
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                        <ul class="detail-edit-video-retouch-wrap edit-parameters-wrap" id="video-video-retouch-option"
+                            style="display: none">
+                            <li class="detail-edit-video-retouch-retouch">
+                                <div class="dropdown">
+                                    <button id="btn-dropdown" class="btn-dropdown">
+                                        retouch
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-chevron-right">
+                                            <path d="m9 18 6-6-6-6"/>
+                                        </svg>
+                                    </button>
+                                    <button class="detail-edit-video-basic-transform-reset-btn">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-rotate-ccw">
+                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                            <path d="M3 3v5h5"/>
+                                        </svg>
+                                    </button>
+                                    <div id="dropdown-content" class="dropdown-content">
+                                    </div>
+                                </div>
+                            </li>
+                            <div class="break-line"></div>
+                            <li class="detail-edit-video-basic-autoReshape">
+                                <div class="dropdown">
+                                    <button id="btn-dropdown" class="btn-dropdown">
+                                        auto reshape
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-chevron-right">
+                                            <path d="m9 18 6-6-6-6"/>
+                                        </svg>
+                                    </button>
+                                    <button class="detail-edit-video-basic-transform-reset-btn">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-rotate-ccw">
+                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                            <path d="M3 3v5h5"/>
+                                        </svg>
+                                    </button>
+                                    <div id="dropdown-content" class="dropdown-content">
+                                    </div>
+                                </div>
+                            </li>
+                            <div class="break-line"></div>
+                            <li class="detail-edit-video-basic-manual">
+                                <div class="dropdown">
+                                    <button id="btn-dropdown" class="btn-dropdown">
+                                        manual
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-chevron-right">
+                                            <path d="m9 18 6-6-6-6"/>
+                                        </svg>
+                                    </button>
+                                    <button class="detail-edit-video-basic-transform-reset-btn">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-rotate-ccw">
+                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                            <path d="M3 3v5h5"/>
+                                        </svg>
+                                    </button>
+                                    <div id="dropdown-content" class="dropdown-content">
+                                    </div>
+                                </div>
+                            </li>
+                            <div class="break-line"></div>
+                            <li class="detail-edit-video-basic-makeup">
+                                <div class="dropdown">
+                                    <button id="btn-dropdown" class="btn-dropdown">
+                                        makeup
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-chevron-right">
+                                            <path d="m9 18 6-6-6-6"/>
+                                        </svg>
+                                    </button>
+                                    <button class="detail-edit-video-basic-transform-reset-btn">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-rotate-ccw">
+                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                            <path d="M3 3v5h5"/>
+                                        </svg>
+                                    </button>
+                                    <div id="dropdown-content" class="dropdown-content">
+                                    </div>
+                                </div>
+                            </li>
+                            <div class="break-line"></div>
+                            <li class="detail-edit-video-basic-body">
+                                <div class="dropdown">
+                                    <button id="btn-dropdown" class="btn-dropdown">
+                                        body
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-chevron-right">
+                                            <path d="m9 18 6-6-6-6"/>
+                                        </svg>
+                                    </button>
+                                    <button class="detail-edit-video-basic-transform-reset-btn">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-rotate-ccw">
+                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                            <path d="M3 3v5h5"/>
+                                        </svg>
+                                    </button>
+                                    <div id="dropdown-content" class="dropdown-content">
+                                    </div>
+                                </div>
+                            </li>
+                            <div class="break-line"></div>
+                        </ul>
+
+                        <ul class="detail-edit-video-basic-wrap edit-parameters-wrap" id="video-audio-basic-option"
+                            style="display: none">
+                            <li class="detail-edit-video-basic-basic">
+                                <div class="dropdown">
+                                    <button id="btn-dropdown" class="btn-dropdown">
+                                        basic
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-chevron-right">
+                                            <path d="m9 18 6-6-6-6"/>
+                                        </svg>
+                                    </button>
+                                    <button class="detail-edit-video-basic-transform-reset-btn">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-rotate-ccw">
+                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                            <path d="M3 3v5h5"/>
+                                        </svg>
+                                    </button>
+                                    <div id="dropdown-content" class="dropdown-content">
+                                    </div>
+                                </div>
+                            </li>
+                            <div class="break-line"></div>
+                            <li class="detail-edit-video-basic-reduceNoise">
+                                <div class="dropdown">
+                                    <button id="btn-dropdown" class="btn-dropdown">
+                                        reduce noise
+                                    </button>
+                                    <div id="dropdown-content" class="dropdown-content">
+                                    </div>
+                                </div>
+                            </li>
+                            <div class="break-line"></div>
+                            <li class="detail-edit-video-basic-channels">
+                                <div class="dropdown">
+                                    <button id="btn-dropdown" class="btn-dropdown">
+                                        channels
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-chevron-right">
+                                            <path d="m9 18 6-6-6-6"/>
+                                        </svg>
+                                    </button>
+                                    <button class="detail-edit-video-basic-transform-reset-btn">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-rotate-ccw">
+                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                            <path d="M3 3v5h5"/>
+                                        </svg>
+                                    </button>
+                                    <div id="dropdown-content" class="dropdown-content">
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                        <ul class="detail-edit-video-voiceChanger-wrap edit-parameters-wrap"
+                            id="video-audio-voiceChanger-option" style="display: none">
+                        </ul>
+
+                        <ul class="detail-edit-video-standard-wrap edit-parameters-wrap"
+                            id="video-speed-standard-option" style="display: none">
+
+                        </ul>
+                        <ul class="detail-edit-video-curve-wrap edit-parameters-wrap" id="video-speed-curve-option"
+                            style="display: none">
+                        </ul>
+
+                        <ul class="detail-edit-video-in-wrap edit-parameters-wrap" id="video-animation-in-option"
+                            style="display: none">
+
+                        </ul>
+                        <ul class="detail-edit-video-out-wrap edit-parameters-wrap" id="video-animation-out-option"
+                            style="display: none">
+                        </ul>
+                        <ul class="detail-edit-video-combo-wrap edit-parameters-wrap" id="video-animation-combo-option"
+                            style="display: none">
+                        </ul>
+
+                        <ul class="detail-edit-video-basic-wrap edit-parameters-wrap" id="video-adjustment-basic-option"
+                            style="display: none">
+                            <li class="detail-edit-video-basic-autoAdjust">
+                                <div class="dropdown">
+                                    <button id="btn-dropdown" class="btn-dropdown">
+                                        auto adjust
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-chevron-right">
+                                            <path d="m9 18 6-6-6-6"/>
+                                        </svg>
+                                    </button>
+                                    <button class="detail-edit-video-basic-transform-reset-btn">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-rotate-ccw">
+                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                            <path d="M3 3v5h5"/>
+                                        </svg>
+                                    </button>
+                                    <div id="dropdown-content" class="dropdown-content">
+                                    </div>
+                                </div>
+                            </li>
+                            <div class="break-line"></div>
+                            <li class="detail-edit-video-basic-lut">
+                                <div class="dropdown">
+                                    <button id="btn-dropdown" class="btn-dropdown">
+                                        LUT
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-chevron-right">
+                                            <path d="m9 18 6-6-6-6"/>
+                                        </svg>
+                                    </button>
+                                    <button class="detail-edit-video-basic-transform-reset-btn">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-rotate-ccw">
+                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                            <path d="M3 3v5h5"/>
+                                        </svg>
+                                    </button>
+                                    <div id="dropdown-content" class="dropdown-content">
+                                    </div>
+                                </div>
+                            </li>
+                            <div class="break-line"></div>
+                            <li class="detail-edit-video-basic-adjust">
+                                <div class="dropdown">
+                                    <button id="btn-dropdown" class="btn-dropdown">
+                                        adjust
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-chevron-right">
+                                            <path d="m9 18 6-6-6-6"/>
+                                        </svg>
+                                    </button>
+                                    <button class="detail-edit-video-basic-transform-reset-btn">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-rotate-ccw">
+                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                            <path d="M3 3v5h5"/>
+                                        </svg>
+                                    </button>
+                                    <div id="dropdown-content" class="dropdown-content">
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                        <ul class="detail-edit-video-removeBG-wrap edit-parameters-wrap"
+                            id="video-adjustment-hls-option" style="display: none">
+                            <li class="detail-edit-video-hls-autoRemoval">
+                                <div class="dropdown">
+                                    <button id="btn-dropdown" class="btn-dropdown">
+                                        auto removal
+                                    </button>
+                                    <div id="dropdown-content" class="dropdown-content">
+                                    </div>
+                                </div>
+                            </li>
+                            <div class="break-line"></div>
+                            <li class="detail-edit-video-hls-customRemoval">
+                                <div class="dropdown">
+                                    <button id="btn-dropdown" class="btn-dropdown">
+                                        custom removal
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-chevron-right">
+                                            <path d="m9 18 6-6-6-6"/>
+                                        </svg>
+                                    </button>
+                                    <button class="detail-edit-video-basic-transform-reset-btn">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-rotate-ccw">
+                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                            <path d="M3 3v5h5"/>
+                                        </svg>
+                                    </button>
+                                    <div id="dropdown-content" class="dropdown-content">
+                                    </div>
+                                </div>
+                            </li>
+                            <div class="break-line"></div>
+                            <li class="detail-edit-video-hls-chromaKey">
+                                <div class="dropdown">
+                                    <button id="btn-dropdown" class="btn-dropdown">
+                                        chroma key
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-chevron-right">
+                                            <path d="m9 18 6-6-6-6"/>
+                                        </svg>
+                                    </button>
+                                    <button class="detail-edit-video-basic-transform-reset-btn">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-rotate-ccw">
+                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                            <path d="M3 3v5h5"/>
+                                        </svg>
+                                    </button>
+                                    <div id="dropdown-content" class="dropdown-content">
+                                    </div>
+                                </div>
+                            </li>
                         </ul>
                     </div>
                 </div>
@@ -7089,4 +8414,8 @@
 <script src="../static/js/change_effect_option.js"></script>
 <script src="../static/js/change_effect_wrapper.js"></script>
 <script src="../static/js/player-action.js"></script>
+<script src="../static/js/change_adjust_parameters.js"></script>
+<script src="../static/js/change_adjust_parameters_option.js"></script>
+<script src="../static/js/slider.js"></script>
+
 </html>
