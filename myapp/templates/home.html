@@ -6981,6 +6981,10 @@
                             <li class="detail-edit-video-basic-transform">
                                 <div class="dropdown">
                                     <button id="btn-dropdown" class="btn-dropdown">
+                                    <label>
+                                        <input type="checkbox" class="basic-transform-slider-check uniform-slider-check"
+                                               id="basic-transform-slider-check uniform-slider-check">
+                                    </label>
                                         transform
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -7082,14 +7086,14 @@
                                                 <div class="slider-check"></div>
                                             </label>
                                         </div>
-                                        <div class="position-video">
+                                        <div class="slider-container position-video">
                                             <span>position</span>
-                                            <div class="position-x">
+                                            <div class="position-video position-x">
                                                 <label for="position-x-value">X</label>
-                                                <input type="text" id="position-x-value" class="position-x-value"
-                                                       value="94%" oninput="updateSlider(this.value)">
-                                                <div class="position-x-buttons">
-                                                    <button class="position-x-up" onclick="increasePositionX()">
+                                                <input type="text" id="position-x-value" class="slider-value position-x-value"
+                                                       value="94%" oninput="updatePositionX(this.value)">
+                                                <div class="slider-buttons position-x-buttons">
+                                                    <button class="slider-up position-x-up" onclick="increasePositionX()">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                              viewBox="0 0 24 24"
                                                              fill="none" stroke="currentColor" stroke-width="2"
@@ -7098,7 +7102,7 @@
                                                             <path d="m18 15-6-6-6 6"/>
                                                         </svg>
                                                     </button>
-                                                    <button class="position-x-down" onclick="decreasePositionX()">
+                                                    <button class="slider-down position-x-down" onclick="decreasePositionX()">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                              viewBox="0 0 24 24"
                                                              fill="none" stroke="currentColor" stroke-width="2"
@@ -7109,12 +7113,12 @@
                                                     </button>
                                                 </div>
                                             </div>
-                                            <div class="position-y">
+                                            <div class="position-video position-y">
                                                 <label for="position-y-value">Y</label>
-                                                <input type="text" id="position-y-value" class="position-y-value"
-                                                       value="94" oninput="updateSlider(this.value)">
-                                                <div class="position-y-buttons">
-                                                    <button class="position-y-up" onclick="increasePositionY()">
+                                                <input type="text" id="position-y-value" class="slider-value position-y-value"
+                                                       value="94" oninput="updatePositionY(this.value)">
+                                                <div class="slider-buttons position-y-buttons">
+                                                    <button class="slider-up position-y-up" onclick="increasePositionY()">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                              height="24"
                                                              viewBox="0 0 24 24"
@@ -7125,7 +7129,7 @@
                                                             <path d="m18 15-6-6-6 6"/>
                                                         </svg>
                                                     </button>
-                                                    <button class="position-y-down" onclick="decreasePositionY()">
+                                                    <button class="slider-down position-y-down" onclick="decreasePositionY()">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                              height="24"
                                                              viewBox="0 0 24 24"
@@ -7139,13 +7143,14 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="rotate-video">
-                                            <div class="rotate">
+                                        <div class="slider-container rotate-video">
+                                            <span>rotate</span>
+                                            <div class="position-video rotate">
                                                 <label for="rotate-value">X</label>
-                                                <input type="text" id="position-x-value" class="rotate-value"
-                                                       value="94%" oninput="updateSlider(this.value)">
-                                                <div class="rotate-buttons">
-                                                    <button class="rotate-up" onclick="increaseRotate()">
+                                                <input type="text" id="rotate-value" class="slider-value rotate-value"
+                                                       value="94%" oninput="updateRotate(this.value)">
+                                                <div class="slider-buttons rotate-buttons">
+                                                    <button class="slider-up rotate-up" onclick="increaseRotate()">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                              viewBox="0 0 24 24"
                                                              fill="none" stroke="currentColor" stroke-width="2"
@@ -7154,7 +7159,7 @@
                                                             <path d="m18 15-6-6-6 6"/>
                                                         </svg>
                                                     </button>
-                                                    <button class="rotate-down" onclick="decreaseRotate()">
+                                                    <button class="slider-down rotate-down" onclick="decreaseRotate()">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                              viewBox="0 0 24 24"
                                                              fill="none" stroke="currentColor" stroke-width="2"
@@ -7172,6 +7177,10 @@
                             <div class="break-line"></div>
                             <li class="detail-edit-video-basic-blend">
                                 <div class="dropdown">
+                                    <label>
+                                        <input type="checkbox" class="basic-blend-slider-check uniform-slider-check"
+                                               id="basic-blend-slider-check uniform-slider-check">
+                                    </label>
                                     <button id="btn-dropdown" class="btn-dropdown">
                                         blend
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
@@ -7193,7 +7202,7 @@
                                     <div id="dropdown-content" class="dropdown-content">
                                         <div class="mode-video-basic-blend video-basic-option-edit">
                                             <span>Mode</span>
-                                            <select name="mode-video-type" id="mode-video-type">
+                                            <select name="mode-video-type" id="mode-video-type" class="video-type-option mode-video-type">
                                                 <option value="default">Default</option>
                                                 <option value="brighten">Brighten</option>
                                                 <option value="screen">Screen</option>
@@ -7203,10 +7212,10 @@
                                                 <option value="multiply">Multiply</option>
                                             </select>
                                         </div>
-                                        <div class="opacity-video-basic-blend video-basic-option-edit">
-                                            <span>Opacity</span>
+                                        <div class="slider-container opacity-video-basic-blend video-basic-option-edit">
+                                            <label>Opacity</label>
                                             <input type="range" id="opacity-slider" class="slider" min="0" max="100"
-                                                   value="94" oninput="updateSliderValue(this.value)">
+                                                   value="94" oninput="updateOpacityValue(this.value)">
                                             <input type="text" id="opacity-value" class="slider-value"
                                                    value="94%" oninput="updateOpacity(this.value)">
                                             <div class="slider-buttons slider-opacity-buttons">
@@ -7238,6 +7247,10 @@
                             <li class="detail-edit-video-basic-stabilize">
                                 <div class="dropdown">
                                     <button id="btn-dropdown" class="btn-dropdown">
+                                    <label>
+                                        <input type="checkbox" class="basic-stabilize-slider-check uniform-slider-check"
+                                               id="basic-stabilize-slider-check uniform-slider-check">
+                                    </label>
                                         stabilize
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -7249,7 +7262,7 @@
                                     <div id="dropdown-content" class="dropdown-content">
                                         <div class="level-video-basic-stabilize video-basic-option-edit">
                                             <span>Level</span>
-                                            <select name="stabilize-video-type" id="stabilize-video-type">
+                                            <select name="stabilize-video-type" id="stabilize-video-type" class="video-type-option stabilize-video-type">
                                                 <option value="recommended">Recommended</option>
                                                 <option value="minimumCut">Minimum cut</option>
                                                 <option value="mostStable">Most stable</option>
@@ -7262,6 +7275,10 @@
                             <li class="detail-edit-video-basic-motionBlur">
                                 <div class="dropdown">
                                     <button id="btn-dropdown" class="btn-dropdown">
+                                    <label>
+                                        <input type="checkbox" class="basic-motionBlur-slider-check uniform-slider-check"
+                                               id="basic-motionBlur-slider-check uniform-slider-check">
+                                    </label>
                                         motion blur
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -7329,7 +7346,7 @@
                                         </div>
                                         <div class="direction-video-basic-direction video-basic-option-edit">
                                             <span>Direction</span>
-                                            <select name="direction-video-type" id="direction-video-type">
+                                            <select name="direction-video-type" id="direction-video-type" class="video-type-option direction-video-type">
                                                 <option value="both">Both</option>
                                                 <option value="forward">Forward</option>
                                                 <option value="backward">Backward</option>
@@ -7337,7 +7354,7 @@
                                         </div>
                                         <div class="speed-video-basic-speed video-basic-option-edit">
                                             <span>Speed</span>
-                                            <select name="speed-video-type" id="speed-video-type">
+                                            <select name="speed-video-type" id="speed-video-type" class="video-type-option speed-video-type">
                                                 <option value="once">Once</option>
                                                 <option value="twice">Twice</option>
                                                 <option value="4Times">4 times</option>
@@ -7351,6 +7368,10 @@
                             <li class="detail-edit-video-basic-canvas">
                                 <div class="dropdown">
                                     <button id="btn-dropdown" class="btn-dropdown">
+                                    <label>
+                                        <input type="checkbox" class="basic-canvas-slider-check uniform-slider-check"
+                                               id="basic-canvas-slider-check uniform-slider-check">
+                                    </label>
                                         canvas
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -7360,7 +7381,7 @@
                                         </svg>
                                     </button>
                                     <div id="dropdown-content" class="dropdown-content">
-                                        <div class="type-video-basic-canvas">
+                                        <div class="type-video-basic-canvas video-basic-option-edit">
                                             <select name="video-basic-canvas-option" class="video-basic-canvas-option">
                                                 <option value="none">None</option>
                                                 <option value="blur">Blur</option>
@@ -7368,7 +7389,7 @@
                                                 <option value="pattern">Pattern</option>
                                             </select>
                                         </div>
-                                        <div class="video-basic-blur-option">
+                                        <div class="video-basic-blur-option" style="display:none;">
                                             <div class="blur-option-wrap">
                                                 <img src="../static/images/file.png">
                                             </div>
@@ -7382,12 +7403,12 @@
                                                 <img src="../static/images/file.png">
                                             </div>
                                         </div>
-                                        <div class="video-basic-color-option">
+                                        <div class="video-basic-color-option" style="display:none;">
                                             <div class="color-option-wrap">
+                                                <label for="color-picker">
+                                                <img class="color-display" src="../static/images/rainbow.jpg"></label>
                                                 <input type="color" id="color-picker" name="color-picker"
-                                                       value="#ff0000">
-                                                <div class="color-display" id="color-display"
-                                                     style="background-color: #ff0000;"></div>
+                                                       value="#ff0000" style="display: none;">
                                             </div>
                                             <div class="color-option-wrap">
                                                 <div class="color-display" style="background-color: #FFFFFF;"></div>
@@ -7887,21 +7908,25 @@
                                     </div>
                                 </div>
                             </li>
-                            <div class="break-line"></div>
                         </ul>
                         <ul class="detail-edit-video-removeBG-wrap edit-parameters-wrap" id="video-video-removeBG-option" style="display: none">
                             <li class="detail-edit-video-removeBG-autoRemoval">
                                 <div class="autoRemoval-option">
-                                    <span>auto removal</span>
                                     <label>
-                                        <input type="checkbox" class="autoRemoval-slider-check uniform-slider-check"
-                                               id="autoRemoval-slider-check uniform-slider-check">
-                                        <div class="autoRemoval-check slider-check"></div>
+                                        <input type="checkbox" class="removeBG-autoRemoval-slider-check uniform-slider-check"
+                                               id="removeBG-autoRemoval-slider-check uniform-slider-check">
                                     </label>
+                                    <span>auto removal</span>
                                 </div>
-                                <div class="dropdown" style="display: none">
+                                <div class="dropdown">
                                     <button id="btn-dropdown" class="btn-dropdown">
                                         stroke
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                             stroke-linecap="round" stroke-linejoin="round"
+                                             class="lucide lucide-chevron-right">
+                                            <path d="m9 18 6-6-6-6"/>
+                                        </svg>
                                     </button>
                                     <div id="dropdown-content" class="dropdown-content">
                                         <div class="stroke-option-wrap">
@@ -7928,6 +7953,10 @@
                             <div class="break-line"></div>
                             <li class="detail-edit-video-removeBG-customRemoval">
                                 <div class="dropdown">
+                                    <label>
+                                        <input type="checkbox" class="removeBG-customRemoval-slider-check uniform-slider-check"
+                                               id="removeBG-customRemoval-slider-check uniform-slider-check">
+                                    </label>
                                     <button id="btn-dropdown" class="btn-dropdown">
                                         custom removal
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
@@ -7985,6 +8014,10 @@
                             <div class="break-line"></div>
                             <li class="detail-edit-video-removeBG-chromaKey">
                                 <div class="dropdown">
+                                    <label>
+                                        <input type="checkbox" class="removeBG-chromaKey-slider-check uniform-slider-check"
+                                               id="removeBG-chromaKey-slider-check uniform-slider-check">
+                                    </label>
                                     <button id="btn-dropdown" class="btn-dropdown">
                                         chroma key
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
@@ -8013,6 +8046,10 @@
                             <li class="detail-edit-video-mask-mask">
                                 <div class="dropdown">
                                     <button id="btn-dropdown" class="btn-dropdown">
+                                    <label>
+                                        <input type="checkbox" class="mask-mask-slider-check uniform-slider-check"
+                                               id="mask-mask-slider-check uniform-slider-check">
+                                    </label>
                                         mask
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -8052,6 +8089,10 @@
                             <li class="detail-edit-video-retouch-retouch">
                                 <div class="dropdown">
                                     <button id="btn-dropdown" class="btn-dropdown">
+                                    <label>
+                                        <input type="checkbox" class="retouch-retouch-slider-check uniform-slider-check"
+                                               id="retouch-retouch-slider-check uniform-slider-check">
+                                    </label>
                                         retouch
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -8077,6 +8118,10 @@
                             <li class="detail-edit-video-basic-autoReshape">
                                 <div class="dropdown">
                                     <button id="btn-dropdown" class="btn-dropdown">
+                                    <label>
+                                        <input type="checkbox" class="basic-autoReshape-slider-check uniform-slider-check"
+                                               id="basic-autoReshape-slider-check uniform-slider-check">
+                                    </label>
                                         auto reshape
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -8102,6 +8147,10 @@
                             <li class="detail-edit-video-basic-manual">
                                 <div class="dropdown">
                                     <button id="btn-dropdown" class="btn-dropdown">
+                                    <label>
+                                        <input type="checkbox" class="basic-manual-slider-check uniform-slider-check"
+                                               id="basic-manual-slider-check uniform-slider-check">
+                                    </label>
                                         manual
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -8127,6 +8176,10 @@
                             <li class="detail-edit-video-basic-makeup">
                                 <div class="dropdown">
                                     <button id="btn-dropdown" class="btn-dropdown">
+                                    <label>
+                                        <input type="checkbox" class="basic-makeup-slider-check uniform-slider-check"
+                                               id="basic-makeup-slider-check uniform-slider-check">
+                                    </label>
                                         makeup
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -8152,6 +8205,10 @@
                             <li class="detail-edit-video-basic-body">
                                 <div class="dropdown">
                                     <button id="btn-dropdown" class="btn-dropdown">
+                                    <label>
+                                        <input type="checkbox" class="basic-body-slider-check uniform-slider-check"
+                                               id="basic-body-slider-check uniform-slider-check">
+                                    </label>
                                         body
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -8173,7 +8230,6 @@
                                     </div>
                                 </div>
                             </li>
-                            <div class="break-line"></div>
                         </ul>
 
                         <ul class="detail-edit-video-basic-wrap edit-parameters-wrap" id="video-audio-basic-option"
