@@ -1,0 +1,104 @@
+/*.App {*/
+/*  text-align: center;*/
+/*}*/
+
+/*.App-logo {*/
+/*  height: 40vmin;*/
+/*  pointer-events: none;*/
+/*}*/
+
+/*@media (prefers-reduced-motion: no-preference) {*/
+/*  .App-logo {*/
+/*    animation: App-logo-spin infinite 20s linear;*/
+/*  }*/
+/*}*/
+
+/*.App-header {*/
+/*  background-color: #282c34;*/
+/*  min-height: 100vh;*/
+/*  display: flex;*/
+/*  flex-direction: column;*/
+/*  align-items: center;*/
+/*  justify-content: center;*/
+/*  font-size: calc(10px + 2vmin);*/
+/*  color: white;*/
+/*}*/
+
+/*.App-link {*/
+/*  color: #61dafb;*/
+/*}*/
+
+/*@keyframes App-logo-spin {*/
+/*  from {*/
+/*    transform: rotate(0deg);*/
+/*  }*/
+/*  to {*/
+/*    transform: rotate(360deg);*/
+/*  }*/
+/*}*/
+
+@import url('https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Poetsen+One&family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap');
+
+:root {
+    /*Font-size*/
+    --biggest-font-size: 2rem;
+    --h1-font-size: 1.5rem;
+    --h2-font-size: 1.25rem;
+    --h3-font-size: 1rem;
+    --normal-font-size: .938rem;
+    --small-font-size: .813rem;
+    --smaller-font-size: .75rem;
+    /*Color*/
+    --white-color: rgb(255,255,255);
+    --black-color: rgb(0,0,0);
+    --gray-color: rgba(114,114,115,1);
+    --background-color: rgba(27,27,28,1);
+    --nav-color: rgba(46,46,48,1);
+    --focus-color: rgb(109,151,255);
+    --active-color: rgb(107, 146, 255);
+    --text-frame: rgb(153,153,153);
+    --nav-frame: rgb(128,129,133);
+    --effect-frame: rgb(105,105,105);
+    --thumb-color: #222222;
+    --edit-frame: rgba(36,36,37,1);
+    /*Z-index*/
+    --z-fixed: 100;
+    /*Font-style*/
+    --head-font: "Poetsen One", sans-serif;
+    --text-font: "Merriweather", serif;
+    --body-font: "Lato", sans-serif;
+    /*Font-weight*/
+    --font-weight-nomal: 400;
+    --font-weight-medium: 500;
+    --font-weight-big: 600;
+}
+
+* {
+    margin: 0px;
+    padding: 0px;
+    box-sizing: border-box; }
+
+body {
+    margin: 0px;
+    padding: 0px;
+    overflow: hidden;
+    font-size: var(--normal-font-size);
+    position: relative;
+    user-select: none;
+}
+
+li{
+    list-style: none;
+}
+
+.body-wrapper{
+    width: 100%;
+    height: 100vh;
+    background-color: var(--black-color);
+}
+
+
+
+
+
+
