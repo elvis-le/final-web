@@ -12,7 +12,6 @@ import ReactPlayer from 'react-player';
 const HomePage = () => {
 
     const videoRef = useRef(null);
-    const playPauseBtnRef = useRef(null);
     const [videoFile, setVideoFile] = useState(null);
     const [videoUrl, setVideoUrl] = useState(null);
 
@@ -37,22 +36,13 @@ const HomePage = () => {
         if (videoRef.current) {
             if (!playVideo) {
                 videoRef.current.play();
-                setPlayVideo(true);
-                playPauseBtnRef.current.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-pause">
-                        <rect x="14" y="4" width="4" height="16" rx="1"/>
-                        <rect x="6" y="4" width="4" height="16" rx="1"/>
-                    </svg>`;
+                setPlayVideo(!playVideo);
             } else {
                 videoRef.current.pause();
-                setPlayVideo(false);
-                playPauseBtnRef.current.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-play">
-                        <polygon points="6 3 20 12 6 21 6 3"/>
-                    </svg>`;
+                setPlayVideo(!playVideo);
             }
         }
-    }
+    };
 
     const [activeWrapper, setActiveWrapper] = useState({
         import: true,
@@ -210,19 +200,27 @@ const HomePage = () => {
     };
 
     const handleVideoEnd = () => {
+    if (currentVideoIndex + 1 < timelineVideos.length) {
         setAccumulatedTime(accumulatedTime + timelineVideos[currentVideoIndex].duration);
         setCurrentVideoIndex((prevIndex) => {
             const nextIndex = prevIndex + 1;
             return nextIndex < timelineVideos.length ? nextIndex : 0;
         });
-    };
+    } else {
+        setAccumulatedTime(0);
+        setCurrentTime(0);
+        setCurrentVideoIndex(0);
+        if (videoRef.current) {
+            videoRef.current.pause();
+            videoRef.current.currentTime = 0;
 
-    // const handleVideoClick = (url) => {
-    //   setVideoUrl(url);
-    //   if (videoRef.current) {
-    //     videoRef.current.seekTo(0);  // Reset to the start of the video
-    //   }
-    // };
+            videoRef.current.oncanplay = () => {
+                videoRef.current.play();
+                videoRef.current.oncanplay = null;
+            };
+        }
+    }
+};
 
     const handleSeek = (e) => {
         const seekTime = (e.target.value / 100) * durationTimeLine;
@@ -7359,16 +7357,19 @@ const HomePage = () => {
                                 <span>{durationTimeLine ? formatTime(durationTimeLine) : "0:00"}</span>
                             </div>
                             <div className="action-player">
-                                <button id="playPause" className="btn" ref={playPauseBtnRef}
-                                        onClick={() => {
-                                            handleEffectClick()
-                                        }}>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                         viewBox="0 0 24 24"
-                                         fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                         strokeLinejoin="round" className="lucide lucide-play">
-                                        <polygon points="6 3 20 12 6 21 6 3"/>
-                                    </svg>
+                                <button id="playPause" className="btn"
+                                        onClick={handleEffectClick}
+                                        >
+                                    {playVideo ? (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pause">
+        <rect x="14" y="4" width="4" height="16" rx="1"/>
+        <rect x="6" y="4" width="4" height="16" rx="1"/>
+    </svg>
+) : (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-play">
+        <polygon points="6 3 20 12 6 21 6 3"/>
+    </svg>
+)}
                                 </button>
                             </div>
                             <div id="zoom" className="zoom-player">
@@ -9363,13 +9364,14 @@ const HomePage = () => {
                 <div className="video-timeline">
                     <div className="timeline" onDrop={handleDrop} onDragOver={handleDragOver}>
                         {timelineVideos.map((video, index) => (
-                                <div key={index} className="timeline-item" onClick={() => handleVideoClick(video.url)}>
-                                    <video src={video.url} style={{width: video.width + 'px'}}/>
-                                </div>
+                            <div key={index} className="timeline-item" onClick={() => handleVideoClick(video.url)}>
+                                <video src={video.url} style={{width: video.width + 'px'}}/>
+                            </div>
                         ))}
                         {timelineVideos[0] &&
-                            <>
+                            <label className="timeline-wrap">
                                 <input
+                                    className="level"
                                     type="range"
                                     min="0"
                                     max="100"
@@ -9377,10 +9379,7 @@ const HomePage = () => {
                                     onChange={(e) => handleSeek(e)}
                                     style={{width: widthTime + 'px'}}
                                 />
-                                <div className="video-time-display">
-                                    Tổng thời gian: {formatTime(accumulatedTime + currentTime)}
-                                </div>
-                            </>
+                            </label>
                         }
                     </div>
 
