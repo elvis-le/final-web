@@ -18,6 +18,7 @@ const HomePage = () => {
     const [listVideo, setListVideo] = useState([]);
     const [timelineVideos, setTimelineVideos] = useState([]);
     const [selectedVideo, setSelectedVideo] = useState({});
+    const [timestamps, setTimestamps] = useState([]);
 
     const [playVideo, setPlayVideo] = useState(false);
     const [isShowVideoBasic, setShowVideoBasic] = useState(true);
@@ -342,6 +343,23 @@ const HomePage = () => {
 
         return () => clearInterval(interval);
     }, []);
+
+    useEffect(() => {
+        // Calculate the total duration of videos in the timeline
+        const totalDuration = timelineVideos.reduce((acc, video) => acc + video.duration, 0);
+        setDurationTimeLine(totalDuration);
+
+        // Generate timestamps based on total duration
+        const generateTimestamps = (totalDuration, interval = 5) => {
+            const timestamps = [];
+            for (let i = 0; i <= totalDuration; i += interval) {
+                timestamps.push(formatTime(i));
+            }
+            return timestamps;
+        };
+
+        setTimestamps(generateTimestamps(totalDuration, 5)); // Generate timestamps every 5 seconds
+    }, [timelineVideos]);
 
     return (
         <body>
@@ -9361,6 +9379,11 @@ const HomePage = () => {
                 </div>
             </div>
             <div className="edit-wrapper">
+                <div className="timestamps">
+                    {timestamps.map((time, index) => (
+                        <span key={index}>{time}</span>
+                    ))}
+                </div>
                 <div className="video-timeline">
                     <div className="timeline" onDrop={handleDrop} onDragOver={handleDragOver}>
                         {timelineVideos.map((video, index) => (
@@ -9368,21 +9391,19 @@ const HomePage = () => {
                                 <video src={video.url} style={{width: video.width + 'px'}}/>
                             </div>
                         ))}
-                        {timelineVideos[0] &&
-                            <label className="timeline-wrap">
-                                <input
-                                    className="level"
-                                    type="range"
-                                    min="0"
-                                    max="100"
-                                    value={(Math.floor(accumulatedTime + currentTime) / durationTimeLine) * 100}
-                                    onChange={(e) => handleSeek(e)}
-                                    style={{width: widthTime + 'px'}}
-                                />
-                            </label>
-                        }
                     </div>
 
+                    {timelineVideos[0] &&
+                        <input
+                            className="level"
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={(Math.floor(accumulatedTime + currentTime) / durationTimeLine) * 100}
+                            onChange={(e) => handleSeek(e)}
+                            style={{width: widthTime + 'px'}}
+                        />
+                    }
                 </div>
             </div>
         </div>
