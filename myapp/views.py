@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse, FileResponse
 from django.contrib.auth import authenticate
-from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
+from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip, concatenate_videoclips
 from moviepy.config import change_settings
 from tempfile import NamedTemporaryFile
 from django.views.decorators.csrf import csrf_exempt
@@ -88,4 +88,22 @@ def add_text_to_video(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid request method'}, status=400)
+
+@csrf_exempt
+def merge_videos(request):
+    if request.method == 'POST':
+        files = request.FILES.getlist('videos')
+        clips = []
+
+        for file in files:
+            clip = VideoFileClip(file.temporary_file_path())
+            clips.append(clip)
+
+        final_clip = concatenate_videoclips(clips)
+        output_path = 'media/merged_video.mp4'
+        final_clip.write_videofile(output_path)
+
+        return JsonResponse({'merged_video_url': f'/media/merged_video.mp4'})
+
+    return JsonResponse({'error': 'Invalid request'}, status=400)
 

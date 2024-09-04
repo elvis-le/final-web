@@ -313,6 +313,71 @@ const HomePage = () => {
         setTextToAdd(e.target.value);
     };
 
+    const handleExport = async () => {
+    const formData = new FormData();
+
+    for (const video of timelineVideos) {
+        const response = await fetch(video.url);
+        const blob = await response.blob();
+        formData.append('videos', blob, video.fileName);
+    }
+
+    try {
+        const response = await fetch('http://localhost:8000/myapp/merge_videos/', {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (response.ok) {
+    const data = await response.json();
+    const videoUrl = `http://localhost:8000${data.merged_video_url}`;
+    console.log('Video URL:', videoUrl);
+
+    try {
+        // Fetch the video file
+        const videoResponse = await fetch(videoUrl);
+        const videoBlob = await videoResponse.blob();
+
+        // Create a Blob URL for the video file
+        const videoObjectURL = URL.createObjectURL(videoBlob);
+
+        // Create a temporary link element
+        const link = document.createElement('a');
+        link.href = videoObjectURL; // Use the Blob URL
+        link.download = 'merged_video.mp4'; // Suggested file name for download
+
+        // Append the link to the body, trigger click, and then remove it
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Revoke the Blob URL after the download
+        URL.revokeObjectURL(videoObjectURL);
+    } catch (error) {
+        console.error('Error fetching or downloading video:', error);
+    }
+} else {
+    console.error('Failed to fetch the merged video URL.');
+}
+    } catch (error) {
+        console.error('Error:', error);
+    }
+};
+
+    const generateTimestamps = (totalDuration, interval = 5) => {
+    const timestamps = [];
+    const duration = Math.max(totalDuration, 30);
+
+    for (let i = 0; i <= duration; i += interval) {
+        const minutes = Math.floor(i / 60).toString().padStart(2, '0');
+        const seconds = (i % 60).toString().padStart(2, '0');
+        timestamps.push(`${minutes}:${seconds}`);
+    }
+
+    return timestamps;
+};
+
+
     useEffect(() => {
         const videoElement = videoRef.current;
         if (videoElement) {
@@ -345,21 +410,11 @@ const HomePage = () => {
     }, []);
 
     useEffect(() => {
-        // Calculate the total duration of videos in the timeline
-        const totalDuration = timelineVideos.reduce((acc, video) => acc + video.duration, 0);
-        setDurationTimeLine(totalDuration);
+    const totalDuration = timelineVideos.reduce((acc, video) => acc + video.duration, 0);
+    setDurationTimeLine(totalDuration);
+    setTimestamps(generateTimestamps(totalDuration, 5));
+}, [timelineVideos]);
 
-        // Generate timestamps based on total duration
-        const generateTimestamps = (totalDuration, interval = 5) => {
-            const timestamps = [];
-            for (let i = 0; i <= totalDuration; i += interval) {
-                timestamps.push(formatTime(i));
-            }
-            return timestamps;
-        };
-
-        setTimestamps(generateTimestamps(totalDuration, 5)); // Generate timestamps every 5 seconds
-    }, [timelineVideos]);
 
     return (
         <body>
@@ -370,7 +425,7 @@ const HomePage = () => {
                     <p>EditEase</p>
                 </div>
                 <div className="export-btn">
-                    <button className="export">
+                    <button className="export" onClick={handleExport}>
                         Export
                     </button>
                 </div>
@@ -9380,15 +9435,25 @@ const HomePage = () => {
             </div>
             <div className="edit-wrapper">
                 <div className="timestamps">
-                    {timestamps.map((time, index) => (
-                        <span key={index}>{time}</span>
+                    {timestamps.map((timestamp, index) => (
+                        <span key={index}>
+                            <p>|</p>
+                            {timestamp}
+                            <p>|</p>
+                            <p>|</p>
+                            <p>|</p>
+                            <p>|</p>
+                            <p>|</p>
+                            <p>|</p>
+                            <p>|</p>
+                        </span>
                     ))}
                 </div>
                 <div className="video-timeline">
                     <div className="timeline" onDrop={handleDrop} onDragOver={handleDragOver}>
                         {timelineVideos.map((video, index) => (
-                            <div key={index} className="timeline-item" onClick={() => handleVideoClick(video.url)}>
-                                <video src={video.url} style={{width: video.width + 'px'}}/>
+                            <div key={index} className="timeline-item">
+                                <video src={video.url} style={{ width: `${video.width * 4}px` }}/>
                             </div>
                         ))}
                     </div>
@@ -9401,7 +9466,7 @@ const HomePage = () => {
                             max="100"
                             value={(Math.floor(accumulatedTime + currentTime) / durationTimeLine) * 100}
                             onChange={(e) => handleSeek(e)}
-                            style={{width: widthTime + 'px'}}
+                            style={{width: widthTime * 4 + 'px'}}
                         />
                     }
                 </div>
