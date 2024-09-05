@@ -19,6 +19,7 @@ const HomePage = () => {
     const [timelineVideos, setTimelineVideos] = useState([]);
     const [selectedVideo, setSelectedVideo] = useState({});
     const [timestamps, setTimestamps] = useState([]);
+    const [timelines, setTimelines] = useState([{videos: []}]);
 
     const [playVideo, setPlayVideo] = useState(false);
     const [isShowVideoBasic, setShowVideoBasic] = useState(true);
@@ -119,6 +120,26 @@ const HomePage = () => {
         });
     };
 
+    const [activeTextOption, setActiveTextOption] = useState({
+        addText: true,
+        trendingEffect: false,
+        proEffect: false,
+        basicEffect: false,
+        multicolorEffect: false,
+
+    });
+
+    const handleMenuTextOptionClick = (option) => {
+        setActiveTextOption({
+            addText: false,
+            trendingEffect: false,
+            proEffect: false,
+            basicEffect: false,
+            multicolorEffect: false,
+            [option]: true,
+        });
+    };
+
     const isVideo = (fileName) => {
         if (!fileName) {
             return false;
@@ -172,20 +193,41 @@ const HomePage = () => {
         event.dataTransfer.setData("fileName", video.fileName);
     };
 
-    const handleDrop = (event) => {
+    const handleDrop = (event, timelineIndex = null) => {
         event.preventDefault();
         const videoUrl = event.dataTransfer.getData("videoUrl");
         const fileName = event.dataTransfer.getData("fileName");
-        const videoDuration = listVideo.find(video => video.url === videoUrl).fileTime;
+        const video = listVideo.find(video => video.url === videoUrl);
+
+        if (!video) {
+            console.error("Video not found in listVideo");
+            return;
+        }
+
+        const videoDuration = video.fileTime;
         const segmentWidth = videoDuration * 10;
 
-        setDurationTimeLine(durationTimeLine + videoDuration);
-        setWidthTime(widthTime + segmentWidth);
+        let updatedTimelines = [...timelines];
 
-        setTimelineVideos(prevList => [
-            ...prevList,
-            {url: videoUrl, fileName, duration: videoDuration, width: segmentWidth},
-        ]);
+        if (timelineIndex === null) {
+            updatedTimelines.push({
+                videos: [{
+                    url: videoUrl,
+                    fileName,
+                    duration: videoDuration,
+                    width: segmentWidth,
+                }]
+            });
+        } else {
+            updatedTimelines[timelineIndex].videos.push({
+                url: videoUrl,
+                fileName,
+                duration: videoDuration,
+                width: segmentWidth,
+            });
+        }
+
+        setTimelines(updatedTimelines);
     };
 
     const handleDragOver = (event) => {
@@ -201,27 +243,27 @@ const HomePage = () => {
     };
 
     const handleVideoEnd = () => {
-    if (currentVideoIndex + 1 < timelineVideos.length) {
-        setAccumulatedTime(accumulatedTime + timelineVideos[currentVideoIndex].duration);
-        setCurrentVideoIndex((prevIndex) => {
-            const nextIndex = prevIndex + 1;
-            return nextIndex < timelineVideos.length ? nextIndex : 0;
-        });
-    } else {
-        setAccumulatedTime(0);
-        setCurrentTime(0);
-        setCurrentVideoIndex(0);
-        if (videoRef.current) {
-            videoRef.current.pause();
-            videoRef.current.currentTime = 0;
+        if (currentVideoIndex + 1 < timelineVideos.length) {
+            setAccumulatedTime(accumulatedTime + timelineVideos[currentVideoIndex].duration);
+            setCurrentVideoIndex((prevIndex) => {
+                const nextIndex = prevIndex + 1;
+                return nextIndex < timelineVideos.length ? nextIndex : 0;
+            });
+        } else {
+            setAccumulatedTime(0);
+            setCurrentTime(0);
+            setCurrentVideoIndex(0);
+            if (videoRef.current) {
+                videoRef.current.pause();
+                videoRef.current.currentTime = 0;
 
-            videoRef.current.oncanplay = () => {
-                videoRef.current.play();
-                videoRef.current.oncanplay = null;
-            };
+                videoRef.current.oncanplay = () => {
+                    videoRef.current.play();
+                    videoRef.current.oncanplay = null;
+                };
+            }
         }
-    }
-};
+    };
 
     const handleSeek = (e) => {
         const seekTime = (e.target.value / 100) * durationTimeLine;
@@ -314,68 +356,63 @@ const HomePage = () => {
     };
 
     const handleExport = async () => {
-    const formData = new FormData();
+        const formData = new FormData();
 
-    for (const video of timelineVideos) {
-        const response = await fetch(video.url);
-        const blob = await response.blob();
-        formData.append('videos', blob, video.fileName);
-    }
+        for (const video of timelineVideos) {
+            const response = await fetch(video.url);
+            const blob = await response.blob();
+            formData.append('videos', blob, video.fileName);
+        }
 
-    try {
-        const response = await fetch('http://localhost:8000/myapp/merge_videos/', {
-            method: 'POST',
-            body: formData,
-        });
+        try {
+            const response = await fetch('http://localhost:8000/myapp/merge_videos/', {
+                method: 'POST',
+                body: formData,
+            });
 
-        if (response.ok) {
-    const data = await response.json();
-    const videoUrl = `http://localhost:8000${data.merged_video_url}`;
-    console.log('Video URL:', videoUrl);
+            if (response.ok) {
+                const data = await response.json();
+                const videoUrl = `http://localhost:8000${data.merged_video_url}`;
+                console.log('Video URL:', videoUrl);
 
-    try {
-        // Fetch the video file
-        const videoResponse = await fetch(videoUrl);
-        const videoBlob = await videoResponse.blob();
+                try {
+                    const videoResponse = await fetch(videoUrl);
+                    const videoBlob = await videoResponse.blob();
 
-        // Create a Blob URL for the video file
-        const videoObjectURL = URL.createObjectURL(videoBlob);
+                    const videoObjectURL = URL.createObjectURL(videoBlob);
 
-        // Create a temporary link element
-        const link = document.createElement('a');
-        link.href = videoObjectURL; // Use the Blob URL
-        link.download = 'merged_video.mp4'; // Suggested file name for download
+                    const link = document.createElement('a');
+                    link.href = videoObjectURL;
+                    link.download = 'merged_video.mp4';
 
-        // Append the link to the body, trigger click, and then remove it
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
 
-        // Revoke the Blob URL after the download
-        URL.revokeObjectURL(videoObjectURL);
-    } catch (error) {
-        console.error('Error fetching or downloading video:', error);
-    }
-} else {
-    console.error('Failed to fetch the merged video URL.');
-}
-    } catch (error) {
-        console.error('Error:', error);
-    }
-};
+                    URL.revokeObjectURL(videoObjectURL);
+                } catch (error) {
+                    console.error('Error fetching or downloading video:', error);
+                }
+            } else {
+                console.error('Failed to fetch the merged video URL.');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    };
 
     const generateTimestamps = (totalDuration, interval = 5) => {
-    const timestamps = [];
-    const duration = Math.max(totalDuration, 30);
+        const timestamps = [];
+        const duration = Math.max(totalDuration, 30);
 
-    for (let i = 0; i <= duration; i += interval) {
-        const minutes = Math.floor(i / 60).toString().padStart(2, '0');
-        const seconds = (i % 60).toString().padStart(2, '0');
-        timestamps.push(`${minutes}:${seconds}`);
-    }
+        for (let i = 0; i <= duration; i += interval) {
+            const minutes = Math.floor(i / 60).toString().padStart(2, '0');
+            const seconds = (i % 60).toString().padStart(2, '0');
+            timestamps.push(`${minutes}:${seconds}`);
+        }
 
-    return timestamps;
-};
+        return timestamps;
+    };
 
 
     useEffect(() => {
@@ -410,10 +447,10 @@ const HomePage = () => {
     }, []);
 
     useEffect(() => {
-    const totalDuration = timelineVideos.reduce((acc, video) => acc + video.duration, 0);
-    setDurationTimeLine(totalDuration);
-    setTimestamps(generateTimestamps(totalDuration, 5));
-}, [timelineVideos]);
+        const totalDuration = timelineVideos.reduce((acc, video) => acc + video.duration, 0);
+        setDurationTimeLine(totalDuration);
+        setTimestamps(generateTimestamps(totalDuration, 5));
+    }, [timelineVideos]);
 
 
     return (
@@ -438,7 +475,6 @@ const HomePage = () => {
             </div>
             <div className="adjustment-effect-wrapper">
                 <div className="effect-wrapper">
-
                     <div className="effect-nav">
                         <nav className="effect-nav-type">
                             <div className="effect-wrap" id="import-effect-list-wrapper"
@@ -686,7 +722,7 @@ const HomePage = () => {
                                             <div className="list-file-trending list-import-file">
                                                 <div className="file-trending import-file">
                                                     <div className="file">
-                                                        <img src={imgTest} alt="Description of the image"/>
+                                                        <img src={imgTest} alt="Description"/>
                                                         <span className="file-time">04:26</span>
                                                     </div>
                                                 </div>
@@ -702,7 +738,7 @@ const HomePage = () => {
                                             <div className="list-file-christmas&NewYear list-import-file">
                                                 <div className="file-christmas&NewYear import-file">
                                                     <div className="file">
-                                                        <img src={imgTest} alt="Description of the image"
+                                                        <img src={imgTest} alt="Description"
                                                              alt="Video Thumbnail"/>
                                                         <span className="file-time">04:26</span>
                                                     </div>
@@ -719,7 +755,7 @@ const HomePage = () => {
                                             <div className="list-file-greenScreen list-import-file">
                                                 <div className="file-greenScreen import-file">
                                                     <div className="file">
-                                                        <img src={imgTest} alt="Description of the image"
+                                                        <img src={imgTest} alt="Description"
                                                              alt="Video Thumbnail"/>
                                                         <span className="file-time">04:26</span>
                                                     </div>
@@ -736,7 +772,7 @@ const HomePage = () => {
                                             <div className="list-file-background list-import-file">
                                                 <div className="file-background import-file">
                                                     <div className="file">
-                                                        <img src={imgTest} alt="Description of the image"
+                                                        <img src={imgTest} alt="Description"
                                                              alt="Video Thumbnail"/>
                                                         <span className="file-time">04:26</span>
                                                     </div>
@@ -753,7 +789,7 @@ const HomePage = () => {
                                             <div className="list-file-intro&End list-import-file">
                                                 <div className="file-intro&End import-file">
                                                     <div className="file">
-                                                        <img src={imgTest} alt="Description of the image"
+                                                        <img src={imgTest} alt="Description"
                                                              alt="Video Thumbnail"/>
                                                         <span className="file-time">04:26</span>
                                                     </div>
@@ -2151,47 +2187,36 @@ const HomePage = () => {
                         <div className="effect-list-text-wrapper effect-list-option-wrapper"
                              id="effect-list-text-wrapper">
                             <div className="effect-list-text effect-list-option">
-                                <ul className="effect-type-importaudio effect-type-option">
-                                    <li className="#">
-                                        <div className="dropdown">
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-chevron-right">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                                Add text
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                                <a className="default-text" id="default-text" href="#">Default</a>
-                                            </div>
-                                        </div>
-                                    </li>
-                                    <li className="#">
-                                        <div className="dropdown">
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-chevron-right">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                                Effect
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                                <a className="trending-effect" id="trending-effect"
-                                                   href="#">Trending</a>
-                                                <a className="pro-effect" id="pro-effect" href="#">Pro</a>
-                                                <a className="basic-effect" id="basic-effect" href="#">Basic</a>
-                                                <a className="multicolor-effect" id="multicolor-effect"
-                                                   href="#">Multicolor</a>
-                                            </div>
-                                        </div>
-                                    </li>
-                                </ul>
+
+                                <Sidebar className="effect-type-text effect-type-option">
+                                    <Menu className="dropdown">
+                                        <MenuItem id="btn-dropdown"
+                                                  className={`btn-dropdown ${activeTextOption.addText ? 'active' : ''}`}
+                                                  title="Add Text"
+                                                  onClick={() => handleMenuTextOptionClick('addText')}> Add
+                                            text </MenuItem>
+                                        <SubMenu id="btn-dropdown" className="btn-dropdown" label="Effect"
+                                                 title="Effect">
+                                            <MenuItem className={`trending-effect dropdown-item
+                                ${activeTextOption.trendingEffect ? 'active' : ''}`}
+                                                      id="trending-effect"
+                                                      title="Trending"
+                                                      onClick={() => handleMenuTextOptionClick('trendingEffect')}> Trending </MenuItem>
+                                            <MenuItem className={`pro-effect dropdown-item
+                                ${activeTextOption.proEffect ? 'active' : ''}`}
+                                                      id="pro-effect" title="Pro"
+                                                      onClick={() => handleMenuTextOptionClick('proEffect')}> Pro </MenuItem>
+                                            <MenuItem className={`basic-effect dropdown-item
+                                ${activeTextOption.basicEffect ? 'active' : ''}`}
+                                                      id="basic-effect" title="Basic"
+                                                      onClick={() => handleMenuTextOptionClick('basicEffect')}> Basic </MenuItem>
+                                            <MenuItem className={`multicolor-effect dropdown-item
+                                ${activeTextOption.multicolorEffect ? 'active' : ''}`}
+                                                      id="multicolor-effect" title="Multicolor"
+                                                      onClick={() => handleMenuTextOptionClick('multicolorEffect')}> Multicolor </MenuItem>
+                                        </SubMenu>
+                                    </Menu>
+                                </Sidebar>;
                             </div>
                             <div className="effect-list-type-text effect-list-type">
                                 <div className="search-text search-effect">
@@ -2205,8 +2230,7 @@ const HomePage = () => {
                                     <input className="search-input" type="text" name="search-text"
                                            placeholder="search text or color"/>
                                 </div>
-                                <div className="default-text-wrapper effect-option" id="default-text-wrapper"
-                                     style={{display: 'none'}}>
+                                <div className="default-text-wrapper effect-option" id="default-text-wrapper">
                                     <h3>Default</h3>
                                     <div className="list-file-default-text-wrapper list-text-file-wrapper">
                                         <div className="list-file-default-text list-text-file">
@@ -2234,7 +2258,7 @@ const HomePage = () => {
                                         <div className="list-file-trending-effect list-text-file">
                                             <div className="file-trending-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2247,7 +2271,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2260,7 +2284,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2273,7 +2297,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2286,7 +2310,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2299,7 +2323,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2312,7 +2336,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2325,7 +2349,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2338,7 +2362,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2351,7 +2375,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2373,7 +2397,7 @@ const HomePage = () => {
                                         <div className="list-file-pro-effect list-text-file">
                                             <div className="file-pro-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2386,7 +2410,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2399,7 +2423,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2412,7 +2436,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2425,7 +2449,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2438,7 +2462,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2451,7 +2475,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2464,7 +2488,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2477,7 +2501,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2499,7 +2523,7 @@ const HomePage = () => {
                                         <div className="list-file-basic-effect list-text-file">
                                             <div className="file-basic-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2513,8 +2537,8 @@ const HomePage = () => {
                                             <div className="file-basic-effect text-file">
                                                 <div className="file">
                                                     <img
-                                                        src={imgTest1} alt="Description of the image"
-                                                        alt="Description of the image"/>
+                                                        src={imgTest1} alt="Description"
+                                                        alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2527,7 +2551,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-basic-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2540,7 +2564,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-basic-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2553,7 +2577,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-basic-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2566,7 +2590,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-basic-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2579,7 +2603,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-basic-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2592,7 +2616,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-basic-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2605,7 +2629,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-basic-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2618,7 +2642,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-basic-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2640,7 +2664,7 @@ const HomePage = () => {
                                         <div className="list-file-multicolor-effect list-text-file">
                                             <div className="file-multicolor-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2653,7 +2677,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-multicolor-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2666,7 +2690,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-multicolor-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2679,7 +2703,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-multicolor-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2692,7 +2716,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-multicolor-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2705,7 +2729,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-multicolor-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2718,7 +2742,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-multicolor-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2731,7 +2755,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-multicolor-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2744,7 +2768,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-multicolor-effect text-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2780,15 +2804,15 @@ const HomePage = () => {
                                             </button>
                                             <div id="dropdown-content" className="dropdown-content">
                                                 <a className="trending-sticker" id="trending-sticker"
-                                                   href="#">Trending</a>
+                                                >Trending</a>
                                                 <a className="easter-holiday-sticker" id="easter-holiday-sticker"
-                                                   href="#">Easter
+                                                >Easter
                                                     holiday</a>
-                                                <a className="fun-sticker" id="fun-sticker" href="#">Fun</a>
-                                                <a className="troll-face-sticker" id="troll-face-sticker" href="#">Troll
+                                                <a className="fun-sticker" id="fun-sticker">Fun</a>
+                                                <a className="troll-face-sticker" id="troll-face-sticker">Troll
                                                     face</a>
-                                                <a className="gaming-sticker" id="gaming-sticker" href="#">Gaming</a>
-                                                <a className="emoji-sticker" id="emoji-sticker" href="#">Emoji</a>
+                                                <a className="gaming-sticker" id="gaming-sticker">Gaming</a>
+                                                <a className="emoji-sticker" id="emoji-sticker">Emoji</a>
                                             </div>
                                         </div>
                                     </li>
@@ -2814,7 +2838,7 @@ const HomePage = () => {
                                         <div className="list-file-trending-effect list-sticker-file">
                                             <div className="file-trending-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2827,7 +2851,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2840,7 +2864,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2853,7 +2877,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2866,7 +2890,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2879,7 +2903,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2892,7 +2916,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2905,7 +2929,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2918,7 +2942,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2931,7 +2955,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2944,7 +2968,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2957,7 +2981,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2980,7 +3004,7 @@ const HomePage = () => {
                                         <div className="list-file-easter-holiday-effect list-sticker-file">
                                             <div className="file-easter-holiday-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -2993,7 +3017,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-easter-holiday-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3006,7 +3030,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-easter-holiday-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3019,7 +3043,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-easter-holiday-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3032,7 +3056,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-easter-holiday-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3045,7 +3069,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-easter-holiday-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3058,7 +3082,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-easter-holiday-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3071,7 +3095,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-easter-holiday-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3084,7 +3108,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-easter-holiday-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3097,7 +3121,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-easter-holiday-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3110,7 +3134,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-easter-holiday-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3123,7 +3147,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-easter-holiday-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3145,7 +3169,7 @@ const HomePage = () => {
                                         <div className="list-file-fun-effect list-sticker-file">
                                             <div className="file-fun-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3158,7 +3182,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-fun-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3171,7 +3195,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-fun-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3184,7 +3208,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-fun-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3197,7 +3221,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-fun-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3210,7 +3234,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-fun-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3223,7 +3247,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-fun-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3236,7 +3260,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-fun-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3249,7 +3273,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-fun-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3262,7 +3286,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-fun-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3275,7 +3299,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-fun-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3288,7 +3312,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-fun-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3311,7 +3335,7 @@ const HomePage = () => {
                                         <div className="list-file-troll-face-effect list-sticker-file">
                                             <div className="file-troll-face-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3324,7 +3348,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-troll-face-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3337,7 +3361,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-troll-face-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3350,7 +3374,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-troll-face-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3363,7 +3387,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-troll-face-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3376,7 +3400,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-troll-face-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3389,7 +3413,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-troll-face-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3402,7 +3426,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-troll-face-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3415,7 +3439,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-troll-face-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3428,7 +3452,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-troll-face-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3441,7 +3465,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-troll-face-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3454,7 +3478,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-troll-face-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3476,7 +3500,7 @@ const HomePage = () => {
                                         <div className="list-file-gaming-effect list-sticker-file">
                                             <div className="file-gaming-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3489,7 +3513,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-gaming-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3502,7 +3526,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-gaming-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3515,7 +3539,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-gaming-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3528,7 +3552,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-gaming-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3541,7 +3565,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-gaming-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3554,7 +3578,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-gaming-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3567,7 +3591,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-gaming-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3580,7 +3604,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-gaming-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3593,7 +3617,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-gaming-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3606,7 +3630,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-gaming-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3619,7 +3643,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-gaming-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3641,7 +3665,7 @@ const HomePage = () => {
                                         <div className="list-file-emoji-effect list-sticker-file">
                                             <div className="file-emoji-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3654,7 +3678,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-emoji-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3667,7 +3691,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-emoji-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3680,7 +3704,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-emoji-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3693,7 +3717,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-emoji-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3706,7 +3730,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-emoji-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3719,7 +3743,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-emoji-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3732,7 +3756,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-emoji-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3745,7 +3769,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-emoji-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3758,7 +3782,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-emoji-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3771,7 +3795,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-emoji-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3784,7 +3808,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-emoji-effect sticker-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3820,17 +3844,17 @@ const HomePage = () => {
                                             </button>
                                             <div id="dropdown-content" className="dropdown-content">
                                                 <a className="trending-video-effect" id="trending-video-effect"
-                                                   href="#">Trending</a>
-                                                <a className="pro-video-effect" id="pro-video-effect" href="#">Pro</a>
+                                                >Trending</a>
+                                                <a className="pro-video-effect" id="pro-video-effect">Pro</a>
                                                 <a className="nightclub-video-effect" id="nightclub-video-effect"
-                                                   href="#">Nightclub</a>
+                                                >Nightclub</a>
                                                 <a className="lens-video-effect" id="lens-video-effect"
-                                                   href="#">Lens</a>
+                                                >Lens</a>
                                                 <a className="retro-video-effect" id="retro-video-effect"
-                                                   href="#">Retro</a>
-                                                <a className="tv-video-effect" id="tv-video-effect" href="#">TV</a>
+                                                >Retro</a>
+                                                <a className="tv-video-effect" id="tv-video-effect">TV</a>
                                                 <a className="star-video-effect" id="star-video-effect"
-                                                   href="#">Star</a>
+                                                >Star</a>
                                             </div>
                                         </div>
                                     </li>
@@ -3848,15 +3872,15 @@ const HomePage = () => {
                                             </button>
                                             <div id="dropdown-content" className="dropdown-content">
                                                 <a className="trending-body-effect" id="trending-body-effect"
-                                                   href="#">Trending</a>
-                                                <a className="pro-body-effect" id="pro-body-effect" href="#">Pro</a>
-                                                <a className="mood-body-effect" id="mood-body-effect" href="#">Mood</a>
-                                                <a className="mask-body-effect" id="mask-body-effect" href="#">Mask</a>
+                                                >Trending</a>
+                                                <a className="pro-body-effect" id="pro-body-effect">Pro</a>
+                                                <a className="mood-body-effect" id="mood-body-effect">Mood</a>
+                                                <a className="mask-body-effect" id="mask-body-effect">Mask</a>
                                                 <a className="selfie-body-effect" id="selfie-body-effect"
-                                                   href="#">Selfie</a>
-                                                <a className="dark-body-effect" id="dark-body-effect" href="#">Dark</a>
+                                                >Selfie</a>
+                                                <a className="dark-body-effect" id="dark-body-effect">Dark</a>
                                                 <a className="image-body-effect" id="image-body-effect"
-                                                   href="#">Image</a>
+                                                >Image</a>
                                             </div>
                                         </div>
                                     </li>
@@ -3883,7 +3907,7 @@ const HomePage = () => {
                                         <div className="list-file-trending-effect list-effect-file">
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3896,7 +3920,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3909,7 +3933,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3922,7 +3946,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3935,7 +3959,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3948,7 +3972,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3961,7 +3985,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3974,7 +3998,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -3987,7 +4011,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4000,7 +4024,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4013,7 +4037,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4026,7 +4050,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4048,7 +4072,7 @@ const HomePage = () => {
                                         <div className="list-file-pro-effect list-effect-file">
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4061,7 +4085,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4074,7 +4098,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4087,7 +4111,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4100,7 +4124,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4113,7 +4137,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4126,7 +4150,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4139,7 +4163,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4152,7 +4176,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4165,7 +4189,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4178,7 +4202,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4191,7 +4215,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4214,7 +4238,7 @@ const HomePage = () => {
                                         <div className="list-file-nightclub-effect list-effect-file">
                                             <div className="file-nightclub-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4227,7 +4251,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-nightclub-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4240,7 +4264,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-nightclub-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4253,7 +4277,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-nightclub-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4266,7 +4290,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-nightclub-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4279,7 +4303,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-nightclub-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4292,7 +4316,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-nightclub-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4305,7 +4329,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-nightclub-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4318,7 +4342,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-nightclub-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4331,7 +4355,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-nightclub-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4344,7 +4368,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-nightclub-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4357,7 +4381,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-nightclub-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4379,7 +4403,7 @@ const HomePage = () => {
                                         <div className="list-file-lens-effect list-effect-file">
                                             <div className="file-lens-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4392,7 +4416,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-lens-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4405,7 +4429,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-lens-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4418,7 +4442,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-lens-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4431,7 +4455,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-lens-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4444,7 +4468,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-lens-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4457,7 +4481,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-lens-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4470,7 +4494,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-lens-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4483,7 +4507,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-lens-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4496,7 +4520,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-lens-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4509,7 +4533,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-lens-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4522,7 +4546,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-lens-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4545,7 +4569,7 @@ const HomePage = () => {
                                         <div className="list-file-retro-effect list-effect-file">
                                             <div className="file-retro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4558,7 +4582,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-retro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4571,7 +4595,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-retro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4584,7 +4608,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-retro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4597,7 +4621,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-retro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4610,7 +4634,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-retro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4623,7 +4647,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-retro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4636,7 +4660,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-retro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4649,7 +4673,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-retro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4662,7 +4686,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-retro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4675,7 +4699,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-retro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4688,7 +4712,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-retro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4710,7 +4734,7 @@ const HomePage = () => {
                                         <div className="list-file-tv-effect list-effect-file">
                                             <div className="file-tv-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4723,7 +4747,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-tv-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4736,7 +4760,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-tv-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4749,7 +4773,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-tv-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4762,7 +4786,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-tv-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4775,7 +4799,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-tv-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4788,7 +4812,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-tv-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4801,7 +4825,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-tv-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4814,7 +4838,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-tv-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4827,7 +4851,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-tv-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4840,7 +4864,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-tv-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4853,7 +4877,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-tv-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4875,7 +4899,7 @@ const HomePage = () => {
                                         <div className="list-file-star-effect list-effect-file">
                                             <div className="file-star-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4888,7 +4912,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-star-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4901,7 +4925,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-star-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4914,7 +4938,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-star-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4927,7 +4951,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-star-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4940,7 +4964,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-star-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4953,7 +4977,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-star-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4966,7 +4990,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-star-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4979,7 +5003,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-star-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -4992,7 +5016,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-star-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5005,7 +5029,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-star-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5018,7 +5042,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-star-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5041,7 +5065,7 @@ const HomePage = () => {
                                         <div className="list-file-trending-effect list-effect-file">
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5054,7 +5078,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5067,7 +5091,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5080,7 +5104,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5093,7 +5117,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5106,7 +5130,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5119,7 +5143,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5132,7 +5156,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5145,7 +5169,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5158,7 +5182,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5171,7 +5195,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5184,7 +5208,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-trending-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5206,7 +5230,7 @@ const HomePage = () => {
                                         <div className="list-file-pro-effect list-effect-file">
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5219,7 +5243,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5232,7 +5256,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5245,7 +5269,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5258,7 +5282,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5271,7 +5295,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5284,7 +5308,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5297,7 +5321,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5310,7 +5334,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5323,7 +5347,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5336,7 +5360,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5349,7 +5373,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5371,7 +5395,7 @@ const HomePage = () => {
                                         <div className="list-file-mood-effect list-effect-file">
                                             <div className="file-mood-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5384,7 +5408,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-mood-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5397,7 +5421,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-mood-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5410,7 +5434,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-mood-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5423,7 +5447,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-mood-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5436,7 +5460,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-mood-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5449,7 +5473,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-mood-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5462,7 +5486,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-mood-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5475,7 +5499,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-mood-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5488,7 +5512,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-mood-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5501,7 +5525,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-mood-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5514,7 +5538,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-mood-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5536,7 +5560,7 @@ const HomePage = () => {
                                         <div className="list-file-mask-effect list-effect-file">
                                             <div className="file-mask-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5549,7 +5573,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-mask-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5562,7 +5586,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-mask-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5575,7 +5599,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-mask-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5588,7 +5612,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-mask-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5601,7 +5625,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-mask-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5614,7 +5638,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-mask-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5627,7 +5651,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-mask-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5640,7 +5664,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-mask-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5653,7 +5677,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-mask-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5666,7 +5690,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-mask-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5679,7 +5703,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-mask-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5702,7 +5726,7 @@ const HomePage = () => {
                                         <div className="list-file-selfie-effect list-effect-file">
                                             <div className="file-selfie-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5715,7 +5739,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-selfie-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5728,7 +5752,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-selfie-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5741,7 +5765,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-selfie-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5754,7 +5778,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-selfie-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5767,7 +5791,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-selfie-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5780,7 +5804,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-selfie-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5793,7 +5817,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-selfie-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5806,7 +5830,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-selfie-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5819,7 +5843,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-selfie-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5832,7 +5856,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-selfie-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5845,7 +5869,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-selfie-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5867,7 +5891,7 @@ const HomePage = () => {
                                         <div className="list-file-dark-effect list-effect-file">
                                             <div className="file-dark-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5880,7 +5904,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-dark-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5893,7 +5917,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-dark-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5906,7 +5930,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-dark-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5919,7 +5943,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-dark-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5932,7 +5956,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-dark-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5945,7 +5969,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-dark-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5958,7 +5982,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-dark-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5971,7 +5995,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-dark-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5984,7 +6008,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-dark-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -5997,7 +6021,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-dark-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6010,7 +6034,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-dark-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6032,7 +6056,7 @@ const HomePage = () => {
                                         <div className="list-file-image-effect list-effect-file">
                                             <div className="file-image-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6045,7 +6069,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-image-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6058,7 +6082,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-image-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6071,7 +6095,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-image-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6084,7 +6108,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-image-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6097,7 +6121,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-image-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6110,7 +6134,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-image-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6123,7 +6147,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-image-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6136,7 +6160,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-image-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6149,7 +6173,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-image-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6162,7 +6186,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-image-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6175,7 +6199,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-image-effect effect-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6211,13 +6235,13 @@ const HomePage = () => {
                                             </button>
                                             <div id="dropdown-content" className="dropdown-content">
                                                 <a className="featured-filter" id="featured-filter"
-                                                   href="#">Featured</a>
-                                                <a className="pro-filter" id="pro-filter" href="#">Pro</a>
-                                                <a className="life-filter" id="life-filter" href="#">Life</a>
-                                                <a className="scenery-filter" id="scenery-filter" href="#">Scenery</a>
-                                                <a className="movies-filter" id="movies-filter" href="#">Movies</a>
-                                                <a className="retro-filter" id="retro-filter" href="#">Retro</a>
-                                                <a className="style-filter" id="style-filter" href="#">Style</a>
+                                                >Featured</a>
+                                                <a className="pro-filter" id="pro-filter">Pro</a>
+                                                <a className="life-filter" id="life-filter">Life</a>
+                                                <a className="scenery-filter" id="scenery-filter">Scenery</a>
+                                                <a className="movies-filter" id="movies-filter">Movies</a>
+                                                <a className="retro-filter" id="retro-filter">Retro</a>
+                                                <a className="style-filter" id="style-filter">Style</a>
                                             </div>
                                         </div>
                                     </li>
@@ -6243,7 +6267,7 @@ const HomePage = () => {
                                         <div className="list-file-featured-effect list-filter-file">
                                             <div className="file-featured-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6256,7 +6280,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-featured-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6269,7 +6293,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-featured-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6282,7 +6306,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-featured-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6295,7 +6319,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-featured-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6308,7 +6332,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-featured-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6321,7 +6345,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-featured-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6334,7 +6358,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-featured-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6347,7 +6371,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-featured-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6360,7 +6384,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-featured-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6373,7 +6397,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-featured-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6386,7 +6410,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-featured-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6408,7 +6432,7 @@ const HomePage = () => {
                                         <div className="list-file-pro-effect list-filter-file">
                                             <div className="file-pro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6421,7 +6445,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6434,7 +6458,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6447,7 +6471,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6460,7 +6484,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6473,7 +6497,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6486,7 +6510,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6499,7 +6523,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6512,7 +6536,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6525,7 +6549,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6538,7 +6562,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6551,7 +6575,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-pro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6573,7 +6597,7 @@ const HomePage = () => {
                                         <div className="list-file-life-effect list-filter-file">
                                             <div className="file-life-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6586,7 +6610,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-life-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6599,7 +6623,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-life-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6612,7 +6636,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-life-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6625,7 +6649,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-life-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6638,7 +6662,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-life-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6651,7 +6675,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-life-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6664,7 +6688,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-life-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6677,7 +6701,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-life-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6690,7 +6714,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-life-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6703,7 +6727,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-life-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6716,7 +6740,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-life-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6738,7 +6762,7 @@ const HomePage = () => {
                                         <div className="list-file-scenery-effect list-filter-file">
                                             <div className="file-scenery-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6751,7 +6775,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-scenery-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6764,7 +6788,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-scenery-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6777,7 +6801,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-scenery-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6790,7 +6814,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-scenery-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6803,7 +6827,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-scenery-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6816,7 +6840,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-scenery-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6829,7 +6853,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-scenery-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6842,7 +6866,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-scenery-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6855,7 +6879,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-scenery-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6868,7 +6892,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-scenery-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6881,7 +6905,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-scenery-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6903,7 +6927,7 @@ const HomePage = () => {
                                         <div className="list-file-movies-effect list-filter-file">
                                             <div className="file-movies-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6916,7 +6940,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-movies-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6929,7 +6953,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-movies-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6942,7 +6966,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-movies-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6955,7 +6979,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-movies-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6968,7 +6992,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-movies-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6981,7 +7005,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-movies-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -6994,7 +7018,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-movies-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7007,7 +7031,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-movies-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7020,7 +7044,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-movies-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7033,7 +7057,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-movies-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7046,7 +7070,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-movies-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7068,7 +7092,7 @@ const HomePage = () => {
                                         <div className="list-file-retro-effect list-filter-file">
                                             <div className="file-retro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7081,7 +7105,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-retro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7094,7 +7118,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-retro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7107,7 +7131,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-retro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7120,7 +7144,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-retro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7133,7 +7157,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-retro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7146,7 +7170,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-retro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7159,7 +7183,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-retro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7172,7 +7196,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-retro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7185,7 +7209,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-retro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7198,7 +7222,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-retro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7211,7 +7235,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-retro-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7233,7 +7257,7 @@ const HomePage = () => {
                                         <div className="list-file-style-effect list-filter-file">
                                             <div className="file-style-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7246,7 +7270,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-style-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7259,7 +7283,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-style-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7272,7 +7296,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-style-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7285,7 +7309,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-style-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7298,7 +7322,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-style-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7311,7 +7335,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-style-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7324,7 +7348,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-style-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7337,7 +7361,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-style-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7350,7 +7374,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-style-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7363,7 +7387,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-style-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7376,7 +7400,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="file-style-effect filter-file">
                                                 <div className="file">
-                                                    <img src={imgTest1} alt="Description of the image"/>
+                                                    <img src={imgTest1} alt="Description"/>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                          viewBox="0 0 24 24" fill="none"
                                                          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -7400,8 +7424,7 @@ const HomePage = () => {
                         <span>Player</span>
                     </div>
                     <div className="player-wrap">
-
-                        {timelineVideos.length > 0 && (
+                        {timelineVideos.length > 0 ? (
                             <video
                                 id="player"
                                 ref={videoRef}
@@ -7411,7 +7434,14 @@ const HomePage = () => {
                                 onTimeUpdate={(e) => setCurrentTime(e.target.currentTime)}
                                 onLoadedMetadata={() => setDuration(videoRef.current.duration)}
                             />
-                        )}
+                        ) : (
+                            <video
+                                id="player"
+                                className="player-show">
+
+                            </video>
+                        )
+                        }
                         {/*<video*/}
                         {/*    id="player"*/}
                         {/*    className="player-show"*/}
@@ -7432,17 +7462,23 @@ const HomePage = () => {
                             <div className="action-player">
                                 <button id="playPause" className="btn"
                                         onClick={handleEffectClick}
-                                        >
+                                >
                                     {playVideo ? (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pause">
-        <rect x="14" y="4" width="4" height="16" rx="1"/>
-        <rect x="6" y="4" width="4" height="16" rx="1"/>
-    </svg>
-) : (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-play">
-        <polygon points="6 3 20 12 6 21 6 3"/>
-    </svg>
-)}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                             strokeLinecap="round" strokeLinejoin="round"
+                                             className="lucide lucide-pause">
+                                            <rect x="14" y="4" width="4" height="16" rx="1"/>
+                                            <rect x="6" y="4" width="4" height="16" rx="1"/>
+                                        </svg>
+                                    ) : (
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                             strokeLinecap="round" strokeLinejoin="round"
+                                             className="lucide lucide-play">
+                                            <polygon points="6 3 20 12 6 21 6 3"/>
+                                        </svg>
+                                    )}
                                 </button>
                             </div>
                             <div id="zoom" className="zoom-player">
@@ -8154,23 +8190,23 @@ const HomePage = () => {
                                                     <div className="video-basic-blur-option"
                                                          style={{display: 'none'}}>
                                                         <div className="blur-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="blur-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="blur-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="blur-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                     </div>
                                                     <div className="video-basic-color-option"
                                                          style={{display: 'none'}}>
                                                         <div className="color-option-wrap">
                                                             <label htmlFor="color-picker">
-                                                                <img className="color-display"
+                                                                <img className="color-display" alt=""
                                                                      src="../../assets/images/rainbow.jpg"/></label>
                                                             <input type="color" id="color-picker"
                                                                    name="color-picker"
@@ -8731,82 +8767,82 @@ const HomePage = () => {
                                                     </div>
                                                     <div className="video-basic-pattern-option">
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                         <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description of the image"/>
+                                                            <img src={imgTest} alt="Description"/>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -8853,22 +8889,22 @@ const HomePage = () => {
                                             </button>
                                             <div id="dropdown-content" className="dropdown-content">
                                                 <div className="stroke-option-wrap">
-                                                    <img src={imgTest} alt="Description of the image"/>
+                                                    <img src={imgTest} alt="Description"/>
                                                 </div>
                                                 <div className="stroke-option-wrap">
-                                                    <img src={imgTest} alt="Description of the image"/>
+                                                    <img src={imgTest} alt="Description"/>
                                                 </div>
                                                 <div className="stroke-option-wrap">
-                                                    <img src={imgTest} alt="Description of the image"/>
+                                                    <img src={imgTest} alt="Description"/>
                                                 </div>
                                                 <div className="stroke-option-wrap">
-                                                    <img src={imgTest} alt="Description of the image"/>
+                                                    <img src={imgTest} alt="Description"/>
                                                 </div>
                                                 <div className="stroke-option-wrap">
-                                                    <img src={imgTest} alt="Description of the image"/>
+                                                    <img src={imgTest} alt="Description"/>
                                                 </div>
                                                 <div className="stroke-option-wrap">
-                                                    <img src={imgTest} alt="Description of the image"/>
+                                                    <img src={imgTest} alt="Description"/>
                                                 </div>
                                             </div>
                                         </div>
@@ -8997,25 +9033,25 @@ const HomePage = () => {
                                             </button>
                                             <div id="dropdown-content" className="dropdown-content">
                                                 <div className="mask-option-wrap">
-                                                    <img src={imgTest} alt="Description of the image"/>
+                                                    <img src={imgTest} alt="Description"/>
                                                 </div>
                                                 <div className="mask-option-wrap">
-                                                    <img src={imgTest} alt="Description of the image"/>
+                                                    <img src={imgTest} alt="Description"/>
                                                 </div>
                                                 <div className="mask-option-wrap">
-                                                    <img src={imgTest} alt="Description of the image"/>
+                                                    <img src={imgTest} alt="Description"/>
                                                 </div>
                                                 <div className="mask-option-wrap">
-                                                    <img src={imgTest} alt="Description of the image"/>
+                                                    <img src={imgTest} alt="Description"/>
                                                 </div>
                                                 <div className="mask-option-wrap">
-                                                    <img src={imgTest} alt="Description of the image"/>
+                                                    <img src={imgTest} alt="Description"/>
                                                 </div>
                                                 <div className="mask-option-wrap">
-                                                    <img src={imgTest} alt="Description of the image"/>
+                                                    <img src={imgTest} alt="Description"/>
                                                 </div>
                                                 <div className="mask-option-wrap">
-                                                    <img src={imgTest} alt="Description of the image"/>
+                                                    <img src={imgTest} alt="Description"/>
                                                 </div>
                                             </div>
                                         </div>
@@ -9450,12 +9486,32 @@ const HomePage = () => {
                     ))}
                 </div>
                 <div className="video-timeline">
-                    <div className="timeline" onDrop={handleDrop} onDragOver={handleDragOver}>
-                        {timelineVideos.map((video, index) => (
-                            <div key={index} className="timeline-item">
-                                <video src={video.url} style={{ width: `${video.width * 4}px` }}/>
-                            </div>
-                        ))}
+                    {timelines.map((timeline, index) => (
+                        <div
+                            key={index}
+                            className="timeline"
+                            onDrop={(e) => handleDrop(e, index)}  // Thả video vào timeline có sẵn
+                            onDragOver={handleDragOver}
+                        >
+                            {timeline.videos.map((video, i) => (
+                                <div key={i}>
+                                    <video src={video.url} width="200"/>
+                                </div>
+                            ))}
+                        </div>
+                    ))}
+                    <div
+                        className="empty-timeline-dropzone"
+                        onDrop={(e) => handleDrop(e, null)}
+                        onDragOver={handleDragOver}
+                        style={{
+                            border: '2px dashed #ccc',
+                            padding: '20px',
+                            marginTop: '20px',
+                            textAlign: 'center'
+                        }}
+                    >
+                        Drag and drop video here to create a new timeline
                     </div>
 
                     {timelineVideos[0] &&
