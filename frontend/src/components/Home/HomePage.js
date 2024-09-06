@@ -198,16 +198,22 @@ const HomePage = () => {
         const videoUrl = event.dataTransfer.getData("videoUrl");
         const fileName = event.dataTransfer.getData("fileName");
         const video = listVideo.find(video => video.url === videoUrl);
+        const videoDuration = video.fileTime;
+        const segmentWidth = videoDuration * 10;
 
         if (!video) {
             console.error("Video not found in listVideo");
             return;
         }
 
-        const videoDuration = video.fileTime;
-        const segmentWidth = videoDuration * 10;
-
         let updatedTimelines = [...timelines];
+
+        const newVideoSegment = {
+            url: videoUrl,
+            fileName,
+            duration: videoDuration,
+            width: segmentWidth,
+        };
 
         if (timelineIndex === null) {
             updatedTimelines.push({
@@ -227,8 +233,12 @@ const HomePage = () => {
             });
         }
 
+
+        setDurationTimeLine(prevDuration => prevDuration + videoDuration);
+        setWidthTime(prevWidth => prevWidth + segmentWidth);
         setTimelines(updatedTimelines);
     };
+
 
     const handleDragOver = (event) => {
         event.preventDefault();
@@ -357,6 +367,20 @@ const HomePage = () => {
 
     const handleExport = async () => {
         const formData = new FormData();
+
+        timelines.map((timeline, index) => (
+            (timeline.videos.map((file, i) => {
+                    const videoUrl = file.url;
+                    const fileName = file.fileName;
+                    const videoDuration = file.fileTime;
+                    const segmentWidth = file.duration;
+                    setTimelineVideos(prevList => [
+                        ...prevList,
+                        {url: videoUrl, fileName, duration: videoDuration, width: segmentWidth},
+                    ]);
+                }
+            ))
+        ))
 
         for (const video of timelineVideos) {
             const response = await fetch(video.url);
@@ -9490,12 +9514,19 @@ const HomePage = () => {
                         <div
                             key={index}
                             className="timeline"
-                            onDrop={(e) => handleDrop(e, index)}  // Thả video vào timeline có sẵn
+                            onDrop={(e) => handleDrop(e, index)}
                             onDragOver={handleDragOver}
                         >
-                            {timeline.videos.map((video, i) => (
-                                <div key={i}>
-                                    <video src={video.url} width="200"/>
+                            {timeline.videos.map((file, i) => (
+                                <div key={i} className="timeline-item">
+                                    {isVideo(file.fileName) ? (
+                                        <video
+                                            src={file.url}
+                                            style={{width: file.width + 'px'}}>
+                                        </video>
+                                    ) : (
+                                        <img src={file.url} alt="File Thumbnail"/>
+                                    )}
                                 </div>
                             ))}
                         </div>
