@@ -8,6 +8,7 @@ import imgTest1
     from '../../assets/images/cach-chen-chu-vao-anh-them-hieu-ung-trong-photoshop-bangabc-800x450-Photoroom.png';
 import axios from 'axios';
 import ReactPlayer from 'react-player';
+import {v4 as uuidv4} from 'uuid';
 
 const HomePage = () => {
 
@@ -19,7 +20,7 @@ const HomePage = () => {
     const [timelineVideos, setTimelineVideos] = useState([]);
     const [selectedVideo, setSelectedVideo] = useState({});
     const [timestamps, setTimestamps] = useState([]);
-    const [timelines, setTimelines] = useState([{videos: []}]);
+    const [timelines, setTimelines] = useState([]);
 
     const [playVideo, setPlayVideo] = useState(false);
     const [isShowVideoBasic, setShowVideoBasic] = useState(true);
@@ -154,8 +155,8 @@ const HomePage = () => {
         return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
     };
 
-    const handleFileChange = (event) => {
-        const file = event.target.files[0];
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
         if (isVideo(file.name)) {
             const videoURL = URL.createObjectURL(file);
 
@@ -188,60 +189,82 @@ const HomePage = () => {
         }
     };
 
-    const handleDragStart = (event, video) => {
-        event.dataTransfer.setData("videoUrl", video.url);
-        event.dataTransfer.setData("fileName", video.fileName);
+    const handleDragStart = (e, video, timelineIndex) => {
+        e.dataTransfer.setData("videoUrl", video.url);
+        e.dataTransfer.setData("fileName", video.fileName);
+        e.dataTransfer.setData("videoId", video.id || uuidv4());
+        setSelectedVideo({...video, timelineIndex});
     };
 
-    const handleDrop = (event, timelineIndex = null) => {
-        event.preventDefault();
-        const videoUrl = event.dataTransfer.getData("videoUrl");
-        const fileName = event.dataTransfer.getData("fileName");
+    const handleDrop = (e, timelineIndex = null) => {
+        e.preventDefault();
+        const videoUrl = e.dataTransfer.getData("videoUrl");
+        const fileName = e.dataTransfer.getData("fileName");
+        const videoId = e.dataTransfer.getData("videoId");
         const video = listVideo.find(video => video.url === videoUrl);
         const videoDuration = video.fileTime;
-        const segmentWidth = videoDuration * 10;
 
         if (!video) {
             console.error("Video not found in listVideo");
             return;
         }
 
-        let updatedTimelines = [...timelines];
+        const dropX = e.clientX - e.target.getBoundingClientRect().left;
+        const timelineWidth = e.target.clientWidth;
+        const dropPositionPercentage = (dropX / timelineWidth) * 100;
 
-        const newVideoSegment = {
-            url: videoUrl,
-            fileName,
-            duration: videoDuration,
-            width: segmentWidth,
-        };
+        setTimelines((prevTimelines) => {
+            const updatedTimelines = [...prevTimelines];
 
-        if (timelineIndex === null) {
-            updatedTimelines.push({
-                videos: [{
-                    url: videoUrl,
-                    fileName,
-                    duration: videoDuration,
-                    width: segmentWidth,
-                }]
-            });
-        } else {
-            updatedTimelines[timelineIndex].videos.push({
+            const newVideoSegment = {
+                id: videoId,
                 url: videoUrl,
                 fileName,
                 duration: videoDuration,
-                width: segmentWidth,
-            });
-        }
+                position: dropPositionPercentage,
+                width: videoDuration * 10,
+            };
 
+            if (selectedVideo.timelineIndex === timelineIndex) {
+                updatedTimelines[timelineIndex].videos = updatedTimelines[timelineIndex].videos.map(video => {
+                    if (video.id === selectedVideo.id) {
+                        return {
+                            ...video,
+                            position: dropPositionPercentage,
+                        };
+                    }
 
-        setDurationTimeLine(prevDuration => prevDuration + videoDuration);
-        setWidthTime(prevWidth => prevWidth + segmentWidth);
-        setTimelines(updatedTimelines);
+                    return video;
+                });
+
+            } else if (selectedVideo.timelineIndex !== null &&
+                selectedVideo.timelineIndex !== undefined &&
+                selectedVideo.timelineIndex !== timelineIndex &&
+                updatedTimelines[selectedVideo.timelineIndex]) {
+
+                if (selectedVideo.timelineIndex !== null && selectedVideo.timelineIndex !== undefined) {
+                    updatedTimelines[selectedVideo.timelineIndex].videos = updatedTimelines[selectedVideo.timelineIndex].videos.filter(v => v.id !== selectedVideo.id);
+                }
+                if (updatedTimelines[selectedVideo.timelineIndex].videos.length === 0) {
+                    delete updatedTimelines[selectedVideo.timelineIndex];
+                }
+            }
+
+            if (timelineIndex === null) {
+                updatedTimelines.push({
+                    videos: [newVideoSegment],
+                });
+            } else if (updatedTimelines[timelineIndex] && !updatedTimelines[timelineIndex].videos.some(video => video.id === selectedVideo.id)) {
+                updatedTimelines[timelineIndex].videos.push(newVideoSegment);
+            }
+
+            console.log(updatedTimelines);
+            return updatedTimelines;
+        });
     };
 
-
-    const handleDragOver = (event) => {
-        event.preventDefault();
+    const handleDragOver = (e) => {
+        e.preventDefault();
     };
 
     const handleProgress = (progress) => {
@@ -309,12 +332,10 @@ const HomePage = () => {
             body: formData,
         });
 
-        // Handle the response
         if (response.ok) {
             const data = await response.json();
             setVideoUrl(`http://localhost:8000${data.video_url}`);
 
-            // Create a video element and set the source to the received video URL
             const videoElement = document.createElement('video');
             videoElement.src = `http://localhost:8000${data.video_url}`;
 
@@ -335,8 +356,8 @@ const HomePage = () => {
         const fetchResponse = await fetch(selectedVideo.url);
         const blob = await fetchResponse.blob();
 
-        formData.append('file', blob, 'video.mp4'); // Đảm bảo bạn đã có videoFile
-        formData.append('text', textToAdd); // Gửi text đến backend
+        formData.append('file', blob, 'video.mp4');
+        formData.append('text', textToAdd);
 
         const response = await fetch('http://localhost:8000/myapp/add_text_to_video/', {
             method: 'POST',
@@ -347,7 +368,6 @@ const HomePage = () => {
             const data = await response.json();
             setVideoUrl(`http://localhost:8000${data.video_url}`);
 
-            // Create a video element and set the source to the received video URL
             const videoElement = document.createElement('video');
             videoElement.src = `http://localhost:8000${data.video_url}`;
 
@@ -708,7 +728,7 @@ const HomePage = () => {
                                                     listVideo.map((file, index) => (
                                                         <div key={index} className="file-import import-file"
                                                              draggable
-                                                             onDragStart={(event) => handleDragStart(event, file)}
+                                                             onDragStart={(e) => handleDragStart(e, file, index)}
                                                             // onClick={() => {
                                                             //     handleVideoClick(file.url, file.fileTime);
                                                             // }}
@@ -9510,19 +9530,22 @@ const HomePage = () => {
                     ))}
                 </div>
                 <div className="video-timeline">
-                    {timelines.map((timeline, index) => (
+                    {timelines.map((timeline, timelineIndex) => (
                         <div
-                            key={index}
+                            key={timelineIndex}
                             className="timeline"
-                            onDrop={(e) => handleDrop(e, index)}
                             onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, timelineIndex)}
                         >
-                            {timeline.videos.map((file, i) => (
-                                <div key={i} className="timeline-item">
+                            {timeline.videos.map((file, index) => (
+                                <div key={index} className="timeline-item"
+                                     style={{left: `${file.position}%`, width: `${file.width}px`}}
+                                     draggable="true"
+                                     onDragStart={(e) => handleDragStart(e, file, timelineIndex)}>
                                     {isVideo(file.fileName) ? (
                                         <video
                                             src={file.url}
-                                            style={{width: file.width + 'px'}}>
+                                            style={{width: file.width * 4 + 'px'}}>
                                         </video>
                                     ) : (
                                         <img src={file.url} alt="File Thumbnail"/>
@@ -9545,17 +9568,17 @@ const HomePage = () => {
                         Drag and drop video here to create a new timeline
                     </div>
 
-                    {timelineVideos[0] &&
-                        <input
-                            className="level"
-                            type="range"
-                            min="0"
-                            max="100"
-                            value={(Math.floor(accumulatedTime + currentTime) / durationTimeLine) * 100}
-                            onChange={(e) => handleSeek(e)}
-                            style={{width: widthTime * 4 + 'px'}}
-                        />
-                    }
+                    {/*{timelines &&*/}
+                    {/*    <input*/}
+                    {/*        className="level"*/}
+                    {/*        type="range"*/}
+                    {/*        min="0"*/}
+                    {/*        max="100"*/}
+                    {/*        value={(Math.floor(accumulatedTime + currentTime) / durationTimeLine) * 100}*/}
+                    {/*        onChange={(e) => handleSeek(e)}*/}
+                    {/*        style={{width: widthTime * 4 + 'px'}}*/}
+                    {/*    />*/}
+                    {/*}*/}
                 </div>
             </div>
         </div>

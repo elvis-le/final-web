@@ -1336,7 +1336,9 @@
       border-bottom: 1px solid var(--gray-color);
 
       .timeline-item {
-        height: 100%;
+    position: absolute;
+    height: 30%;
+    left: calc(var(--position, 0) * 1%);
 
         video {
           height: 100%;
