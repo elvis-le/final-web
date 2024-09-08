@@ -19,8 +19,14 @@ const HomePage = () => {
     const [listVideo, setListVideo] = useState([]);
     const [timelineVideos, setTimelineVideos] = useState([]);
     const [selectedVideo, setSelectedVideo] = useState({});
+    const [selectedText, setSelectedText] = useState({});
     const [timestamps, setTimestamps] = useState([]);
     const [timelines, setTimelines] = useState([]);
+    const [timelinesText, setTimelinesText] = useState([]);
+    const [draggableText, setDraggableText] = useState({
+        content: "Your draggable text here",
+        position: {x: 0, y: 0},
+    });
 
     const [playVideo, setPlayVideo] = useState(false);
     const [isShowVideoBasic, setShowVideoBasic] = useState(true);
@@ -141,6 +147,87 @@ const HomePage = () => {
         });
     };
 
+    const [activeStickerOption, setActiveStickerOption] = useState({
+        trendingSticker: true,
+        easterHolidaySticker: false,
+        funSticker: false,
+        trollFaceSticker: false,
+        gamingSticker: false,
+        emojiSticker: false,
+    });
+
+    const handleMenuStickerOptionClick = (option) => {
+        setActiveStickerOption({
+            trendingSticker: false,
+            easterHolidaySticker: false,
+            funSticker: false,
+            trollFaceSticker: false,
+            gamingSticker: false,
+            emojiSticker: false,
+            [option]: true,
+        });
+    };
+
+    const [activeEffectOption, setActiveEffectOption] = useState({
+        trendingVideoEffect: true,
+        proVideoEffect: false,
+        nightclubVideoEffect: false,
+        lensVideoEffect: false,
+        retroVideoEffect: false,
+        tvVideoEffect: false,
+        starVideoEffect: false,
+        trendingBodyEffect: false,
+        proBodyEffect: false,
+        moodBodyEffect: false,
+        maskBodyEffect: false,
+        selfieBodyEffect: false,
+        darkBodyEffect: false,
+        imageBodyEffect: false,
+    });
+
+    const handleMenuEffectOptionClick = (option) => {
+        setActiveEffectOption({
+            trendingVideoEffect: false,
+            proVideoEffect: false,
+            nightclubVideoEffect: false,
+            lensVideoEffect: false,
+            retroVideoEffect: false,
+            tvVideoEffect: false,
+            starVideoEffect: false,
+            trendingBodyEffect: false,
+            proBodyEffect: false,
+            moodBodyEffect: false,
+            maskBodyEffect: false,
+            selfieBodyEffect: false,
+            darkBodyEffect: false,
+            imageBodyEffect: false,
+            [option]: true,
+        });
+    };
+
+    const [activeFilterOption, setActiveFilterOption] = useState({
+        featuredFilter: true,
+        proFilter: false,
+        lifeFilter: false,
+        sceneryFilter: false,
+        moviesFilter: false,
+        retroFilter: false,
+        styleFilter: false,
+    });
+
+    const handleMenuFilterOptionClick = (option) => {
+        setActiveFilterOption({
+            featuredFilter: false,
+            proFilter: false,
+            lifeFilter: false,
+            sceneryFilter: false,
+            moviesFilter: false,
+            retroFilter: false,
+            styleFilter: false,
+            [option]: true,
+        });
+    };
+
     const isVideo = (fileName) => {
         if (!fileName) {
             return false;
@@ -189,14 +276,28 @@ const HomePage = () => {
         }
     };
 
-    const handleDragStart = (e, video, timelineIndex) => {
+    const handleDrop = (e, timelineIndex = null) => {
+        e.preventDefault();
+
+        const videoUrl = e.dataTransfer.getData("videoUrl");
+        const fileName = e.dataTransfer.getData("fileName");
+        const text = e.dataTransfer.getData("text/plain");
+
+        if (videoUrl && fileName) {
+            handleDropVideo(e, timelineIndex);
+        } else if (text) {
+            handleDropText(e, timelineIndex);
+        }
+    };
+
+    const handleDragStartVideo = (e, video, timelineIndex) => {
         e.dataTransfer.setData("videoUrl", video.url);
         e.dataTransfer.setData("fileName", video.fileName);
         e.dataTransfer.setData("videoId", video.id || uuidv4());
         setSelectedVideo({...video, timelineIndex});
     };
 
-    const handleDrop = (e, timelineIndex = null) => {
+    const handleDropVideo = (e, timelineIndex = null) => {
         e.preventDefault();
         const videoUrl = e.dataTransfer.getData("videoUrl");
         const fileName = e.dataTransfer.getData("fileName");
@@ -260,6 +361,70 @@ const HomePage = () => {
 
             console.log(updatedTimelines);
             return updatedTimelines;
+        });
+    };
+
+    const handleDragStartText = (e, text, timelineIndex) => {
+        e.dataTransfer.setData("text/plain", text.content);
+        e.dataTransfer.setData("textId", text.id || uuidv4());
+        setSelectedText({...text, timelineIndex});
+    };
+
+    const handleDropText = (e, timelineIndex = null) => {
+        e.preventDefault();
+
+        const content = e.dataTransfer.getData("text/plain");
+        const textId = e.dataTransfer.getData("textId");
+
+        const dropX = e.clientX - e.target.getBoundingClientRect().left;
+        const timelineWidth = e.target.clientWidth;
+        const dropPositionPercentage = (dropX / timelineWidth) * 100;
+
+        setTimelinesText((prevTimelinesText) => {
+            const updatedTimelinesText = [...prevTimelinesText];
+
+            const newTextSegment = {
+                id: textId,
+                content,
+                position: dropPositionPercentage,
+                width: content.length * 5,
+            };
+
+            if (selectedText.timelineIndex === timelineIndex) {
+                updatedTimelinesText[timelineIndex].texts = updatedTimelinesText[timelineIndex].texts.map(text => {
+                    if (text.id === selectedText.id) {
+                        return {
+                            ...text,
+                            position: dropPositionPercentage,
+                        };
+                    }
+
+                    return text;
+                });
+
+            } else if (selectedText.timelineIndex !== null &&
+                selectedText.timelineIndex !== undefined &&
+                selectedText.timelineIndex !== timelineIndex &&
+                updatedTimelinesText[selectedText.timelineIndex]) {
+
+                if (selectedText.timelineIndex !== null && selectedText.timelineIndex !== undefined) {
+                    updatedTimelinesText[selectedText.timelineIndex].texts = updatedTimelinesText[selectedText.timelineIndex].texts.filter(text => text.id !== selectedText.id);
+                }
+                if (updatedTimelinesText[selectedText.timelineIndex].texts.length === 0) {
+                    delete updatedTimelinesText[selectedText.timelineIndex];
+                }
+            }
+
+            if (timelineIndex === null) {
+                updatedTimelinesText.push({
+                    texts: [newTextSegment],
+                });
+            } else if (updatedTimelinesText[timelineIndex] && !updatedTimelinesText[timelineIndex].texts.some(text => text.id === selectedText.id)) {
+                updatedTimelinesText[timelineIndex].texts.push(newTextSegment);
+            }
+
+            console.log("Updated timelinesText:", updatedTimelinesText);
+            return updatedTimelinesText;
         });
     };
 
@@ -458,7 +623,6 @@ const HomePage = () => {
         return timestamps;
     };
 
-
     useEffect(() => {
         const videoElement = videoRef.current;
         if (videoElement) {
@@ -495,7 +659,6 @@ const HomePage = () => {
         setDurationTimeLine(totalDuration);
         setTimestamps(generateTimestamps(totalDuration, 5));
     }, [timelineVideos]);
-
 
     return (
         <body>
@@ -728,7 +891,7 @@ const HomePage = () => {
                                                     listVideo.map((file, index) => (
                                                         <div key={index} className="file-import import-file"
                                                              draggable
-                                                             onDragStart={(e) => handleDragStart(e, file, index)}
+                                                             onDragStart={(e) => handleDragStartVideo(e, file, index)}
                                                             // onClick={() => {
                                                             //     handleVideoClick(file.url, file.fileTime);
                                                             // }}
@@ -2274,558 +2437,613 @@ const HomePage = () => {
                                     <input className="search-input" type="text" name="search-text"
                                            placeholder="search text or color"/>
                                 </div>
-                                <div className="default-text-wrapper effect-option" id="default-text-wrapper">
-                                    <h3>Default</h3>
-                                    <div className="list-file-default-text-wrapper list-text-file-wrapper">
-                                        <div className="list-file-default-text list-text-file">
-                                            <div className="file-default-text text-file">
-                                                <div className="file">
-                                                    <label>Default text</label>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                {activeTextOption.addText &&
+                                    <div className="default-text-wrapper effect-option"
+                                         id="default-text-wrapper">
+                                        <h3>Default</h3>
+                                        <div className="list-file-default-text-wrapper list-text-file-wrapper">
+                                            <div className="list-file-default-text list-text-file">
+                                                <div className="file-default-text text-file">
+                                                    <div className="file"
+                                                         style={{
+                                                             position: "absolute",
+                                                             left: `${draggableText.position.x}px`,
+                                                             top: `${draggableText.position.y}px`,
+                                                             cursor: "move",
+                                                         }}
+                                                         draggable="true"
+                                                         onDragStart={(e) => handleDragStartText(e, draggableText, undefined)}>
+                                                        <label
+                                                        >{draggableText.content}</label>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="trending-effect-wrapper effect-option" id="trending-effect-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>Trending</h3>
-                                    <div className="list-file-trending-effect-wrapper list-text-file-wrapper">
-                                        <div className="list-file-trending-effect list-text-file">
-                                            <div className="file-trending-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                }
+                                {activeTextOption.trendingEffect &&
+                                    <div className="trending-effect-wrapper effect-option"
+                                         id="trending-effect-wrapper">
+                                        <h3>Trending</h3>
+                                        <div className="list-file-trending-effect-wrapper list-text-file-wrapper">
+                                            <div className="list-file-trending-effect list-text-file">
+                                                <div className="file-trending-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="pro-effect-wrapper effect-option" id="pro-effect-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>Pro</h3>
-                                    <div className="list-file-pro-effect-wrapper list-text-file-wrapper">
-                                        <div className="list-file-pro-effect list-text-file">
-                                            <div className="file-pro-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="basic-effect-wrapper effect-option" id="basic-effect-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>Basic</h3>
-                                    <div className="list-file-basic-effect-wrapper list-text-file-wrapper">
-                                        <div className="list-file-basic-effect list-text-file">
-                                            <div className="file-basic-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                }
+                                {activeTextOption.proEffect &&
+                                    <div className="pro-effect-wrapper effect-option"
+                                         id="pro-effect-wrapper">
+                                        <h3>Pro</h3>
+                                        <div className="list-file-pro-effect-wrapper list-text-file-wrapper">
+                                            <div className="list-file-pro-effect list-text-file">
+                                                <div className="file-pro-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-basic-effect text-file">
-                                                <div className="file">
-                                                    <img
-                                                        src={imgTest1} alt="Description"
-                                                        alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-basic-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-basic-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-basic-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-basic-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-basic-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-basic-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-basic-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-basic-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="multicolor-effect-wrapper effect-option" id="multicolor-effect-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>Multicolor</h3>
-                                    <div className="list-file-multicolor-effect-wrapper list-text-file-wrapper">
-                                        <div className="list-file-multicolor-effect list-text-file">
-                                            <div className="file-multicolor-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                }
+                                {activeTextOption.basicEffect &&
+                                    <div className="basic-effect-wrapper effect-option"
+                                         id="basic-effect-wrapper">
+                                        <h3>Basic</h3>
+                                        <div className="list-file-basic-effect-wrapper list-text-file-wrapper">
+                                            <div className="list-file-basic-effect list-text-file">
+                                                <div className="file-basic-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-multicolor-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-basic-effect text-file">
+                                                    <div className="file">
+                                                        <img
+                                                            src={imgTest1} alt="Description"
+                                                            alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-multicolor-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-basic-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-multicolor-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-basic-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-multicolor-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-basic-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-multicolor-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-basic-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-multicolor-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-basic-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-multicolor-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-basic-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-multicolor-effect text-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-basic-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-basic-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                }
+                                {activeTextOption.multicolorEffect &&
+                                    <div className="multicolor-effect-wrapper effect-option"
+                                         id="multicolor-effect-wrapper">
+                                        <h3>Multicolor</h3>
+                                        <div className="list-file-multicolor-effect-wrapper list-text-file-wrapper">
+                                            <div className="list-file-multicolor-effect list-text-file">
+                                                <div className="file-multicolor-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-multicolor-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-multicolor-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-multicolor-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-multicolor-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-multicolor-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-multicolor-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-multicolor-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-multicolor-effect text-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
                             </div>
                         </div>
                     }
@@ -2833,34 +3051,45 @@ const HomePage = () => {
                         <div className="effect-list-sticker-wrapper effect-list-option-wrapper"
                              id="effect-list-sticker-wrapper">
                             <div className="effect-list-sticker effect-list-option">
-                                <ul className="effect-type-importaudio effect-type-option">
-                                    <li className="#">
-                                        <div className="dropdown">
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-chevron-right">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                                Sticker
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                                <a className="trending-sticker" id="trending-sticker"
-                                                >Trending</a>
-                                                <a className="easter-holiday-sticker" id="easter-holiday-sticker"
-                                                >Easter
-                                                    holiday</a>
-                                                <a className="fun-sticker" id="fun-sticker">Fun</a>
-                                                <a className="troll-face-sticker" id="troll-face-sticker">Troll
-                                                    face</a>
-                                                <a className="gaming-sticker" id="gaming-sticker">Gaming</a>
-                                                <a className="emoji-sticker" id="emoji-sticker">Emoji</a>
-                                            </div>
-                                        </div>
-                                    </li>
-                                </ul>
+                                <Sidebar className="effect-type-sticker effect-type-option">
+                                    <Menu className="dropdown">
+                                        <SubMenu id="btn-dropdown" className="btn-dropdown" label="Sticker"
+                                                 title="Sticker">
+                                            <MenuItem
+                                                className={`trending-sticker dropdown-item ${activeStickerOption.trendingSticker ? 'active' : ''}`}
+                                                id="trending-sticker"
+                                                title="Trending"
+                                                onClick={() => handleMenuStickerOptionClick('trendingSticker')}> Trending </MenuItem>
+                                            <MenuItem
+                                                className={`easter-holiday-sticker dropdown-item ${activeStickerOption.easterHolidaySticker ? 'active' : ''}`}
+                                                id="easter-holiday-sticker"
+                                                title="Easter Holiday"
+                                                onClick={() => handleMenuStickerOptionClick('easterHolidaySticker')}> Easter
+                                                Holiday </MenuItem>
+                                            <MenuItem
+                                                className={`fun-sticker dropdown-item ${activeStickerOption.funSticker ? 'active' : ''}`}
+                                                id="fun-sticker"
+                                                title="Fun"
+                                                onClick={() => handleMenuStickerOptionClick('funSticker')}> Fun </MenuItem>
+                                            <MenuItem
+                                                className={`troll-face-sticker dropdown-item ${activeStickerOption.trollFaceSticker ? 'active' : ''}`}
+                                                id="troll-face-sticker"
+                                                title="Troll Face"
+                                                onClick={() => handleMenuStickerOptionClick('trollFaceSticker')}> Troll
+                                                Face </MenuItem>
+                                            <MenuItem
+                                                className={`gaming-sticker dropdown-item ${activeStickerOption.gamingSticker ? 'active' : ''}`}
+                                                id="gaming-sticker"
+                                                title="Gaming"
+                                                onClick={() => handleMenuStickerOptionClick('gamingSticker')}> Gaming </MenuItem>
+                                            <MenuItem
+                                                className={`emoji-sticker dropdown-item ${activeStickerOption.emojiSticker ? 'active' : ''}`}
+                                                id="emoji-sticker"
+                                                title="Emoji"
+                                                onClick={() => handleMenuStickerOptionClick('emojiSticker')}> Emoji </MenuItem>
+                                        </SubMenu>
+                                    </Menu>
+                                </Sidebar>;
                             </div>
                             <div className="effect-list-type-sticker effect-list-type">
                                 <div className="search-sticker search-effect">
@@ -2874,998 +3103,1078 @@ const HomePage = () => {
                                     <input className="search-input" type="text" name="search-audio"
                                            placeholder="search for sticker"/>
                                 </div>
-
-                                <div className="trending-sticker-wrapper effect-option" id="trending-sticker-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>Trending</h3>
-                                    <div className="list-file-trending-sticker-wrapper list-sticker-file-wrapper">
-                                        <div className="list-file-trending-effect list-sticker-file">
-                                            <div className="file-trending-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                {activeStickerOption.trendingSticker &&
+                                    <div className="trending-sticker-wrapper effect-option"
+                                         id="trending-sticker-wrapper"
+                                    >
+                                        <h3>Trending</h3>
+                                        <div className="list-file-trending-sticker-wrapper list-sticker-file-wrapper">
+                                            <div className="list-file-trending-effect list-sticker-file">
+                                                <div className="file-trending-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="easter-holiday-sticker-wrapper effect-option"
-                                     id="easter-holiday-sticker-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>Easter holiday</h3>
-                                    <div className="list-file-easter-holiday-sticker-wrapper list-sticker-file-wrapper">
-                                        <div className="list-file-easter-holiday-effect list-sticker-file">
-                                            <div className="file-easter-holiday-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-easter-holiday-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-easter-holiday-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-easter-holiday-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-easter-holiday-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-easter-holiday-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-easter-holiday-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-easter-holiday-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-easter-holiday-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-easter-holiday-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-easter-holiday-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-easter-holiday-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="fun-sticker-wrapper effect-option" id="fun-sticker-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>Fun</h3>
-                                    <div className="list-file-fun-sticker-wrapper list-sticker-file-wrapper">
-                                        <div className="list-file-fun-effect list-sticker-file">
-                                            <div className="file-fun-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                }
+                                {activeStickerOption.easterHolidaySticker &&
+                                    <div className="easter-holiday-sticker-wrapper effect-option"
+                                         id="easter-holiday-sticker-wrapper"
+                                    >
+                                        <h3>Easter holiday</h3>
+                                        <div
+                                            className="list-file-easter-holiday-sticker-wrapper list-sticker-file-wrapper">
+                                            <div className="list-file-easter-holiday-effect list-sticker-file">
+                                                <div className="file-easter-holiday-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-fun-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-easter-holiday-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-fun-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-easter-holiday-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-fun-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-easter-holiday-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-fun-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-easter-holiday-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-fun-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-easter-holiday-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-fun-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-easter-holiday-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-fun-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-easter-holiday-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-fun-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-easter-holiday-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-fun-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-easter-holiday-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-fun-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-easter-holiday-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-fun-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="troll-face-sticker-wrapper effect-option"
-                                     id="troll-face-sticker-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>Troll face</h3>
-                                    <div className="list-file-troll-face-sticker-wrapper list-sticker-file-wrapper">
-                                        <div className="list-file-troll-face-effect list-sticker-file">
-                                            <div className="file-troll-face-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-troll-face-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-troll-face-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-troll-face-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-troll-face-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-troll-face-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-troll-face-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-troll-face-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-troll-face-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-troll-face-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-troll-face-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-troll-face-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-easter-holiday-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="gaming-sticker-wrapper effect-option" id="gaming-sticker-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>Gaming</h3>
-                                    <div className="list-file-gaming-sticker-wrapper list-sticker-file-wrapper">
-                                        <div className="list-file-gaming-effect list-sticker-file">
-                                            <div className="file-gaming-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                }
+                                {activeStickerOption.funSticker &&
+                                    <div className="fun-sticker-wrapper effect-option" id="fun-sticker-wrapper"
+                                    >
+                                        <h3>Fun</h3>
+                                        <div className="list-file-fun-sticker-wrapper list-sticker-file-wrapper">
+                                            <div className="list-file-fun-effect list-sticker-file">
+                                                <div className="file-fun-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-gaming-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-fun-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-gaming-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-fun-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-gaming-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-fun-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-gaming-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-fun-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-gaming-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-fun-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-gaming-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-fun-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-gaming-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-fun-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-gaming-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-fun-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-gaming-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-fun-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-gaming-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-fun-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-gaming-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="emoji-sticker-wrapper effect-option" id="emoji-sticker-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>Emoji</h3>
-                                    <div className="list-file-emoji-sticker-wrapper list-sticker-file-wrapper">
-                                        <div className="list-file-emoji-effect list-sticker-file">
-                                            <div className="file-emoji-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-emoji-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-emoji-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-emoji-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-emoji-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-emoji-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-emoji-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-emoji-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-emoji-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-emoji-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-emoji-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-emoji-effect sticker-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-fun-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                }
+                                {activeStickerOption.trollFaceSticker &&
+                                    <div className="troll-face-sticker-wrapper effect-option"
+                                         id="troll-face-sticker-wrapper"
+                                    >
+                                        <h3>Troll face</h3>
+                                        <div className="list-file-troll-face-sticker-wrapper list-sticker-file-wrapper">
+                                            <div className="list-file-troll-face-effect list-sticker-file">
+                                                <div className="file-troll-face-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-troll-face-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-troll-face-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-troll-face-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-troll-face-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-troll-face-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-troll-face-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-troll-face-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-troll-face-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-troll-face-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-troll-face-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-troll-face-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                {activeStickerOption.gamingSticker &&
+                                    <div className="gaming-sticker-wrapper effect-option" id="gaming-sticker-wrapper"
+                                    >
+                                        <h3>Gaming</h3>
+                                        <div className="list-file-gaming-sticker-wrapper list-sticker-file-wrapper">
+                                            <div className="list-file-gaming-effect list-sticker-file">
+                                                <div className="file-gaming-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-gaming-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-gaming-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-gaming-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-gaming-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-gaming-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-gaming-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-gaming-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-gaming-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-gaming-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-gaming-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-gaming-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                {activeStickerOption.emojiSticker &&
+                                    <div className="emoji-sticker-wrapper effect-option" id="emoji-sticker-wrapper"
+                                    >
+                                        <h3>Emoji</h3>
+                                        <div className="list-file-emoji-sticker-wrapper list-sticker-file-wrapper">
+                                            <div className="list-file-emoji-effect list-sticker-file">
+                                                <div className="file-emoji-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-emoji-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-emoji-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-emoji-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-emoji-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-emoji-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-emoji-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-emoji-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-emoji-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-emoji-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-emoji-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-emoji-effect sticker-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
                             </div>
                         </div>
                     }
@@ -3873,62 +4182,87 @@ const HomePage = () => {
                         <div className="effect-list-effect-wrapper effect-list-option-wrapper"
                              id="effect-list-effect-wrapper">
                             <div className="effect-list-effect effect-list-option">
-                                <ul className="effect-type-importaudio effect-type-option">
-                                    <li className="#">
-                                        <div className="dropdown">
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-chevron-right">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                                Video effect
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                                <a className="trending-video-effect" id="trending-video-effect"
-                                                >Trending</a>
-                                                <a className="pro-video-effect" id="pro-video-effect">Pro</a>
-                                                <a className="nightclub-video-effect" id="nightclub-video-effect"
-                                                >Nightclub</a>
-                                                <a className="lens-video-effect" id="lens-video-effect"
-                                                >Lens</a>
-                                                <a className="retro-video-effect" id="retro-video-effect"
-                                                >Retro</a>
-                                                <a className="tv-video-effect" id="tv-video-effect">TV</a>
-                                                <a className="star-video-effect" id="star-video-effect"
-                                                >Star</a>
-                                            </div>
-                                        </div>
-                                    </li>
-                                    <li className="#">
-                                        <div className="dropdown">
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-chevron-right">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                                Body effect
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                                <a className="trending-body-effect" id="trending-body-effect"
-                                                >Trending</a>
-                                                <a className="pro-body-effect" id="pro-body-effect">Pro</a>
-                                                <a className="mood-body-effect" id="mood-body-effect">Mood</a>
-                                                <a className="mask-body-effect" id="mask-body-effect">Mask</a>
-                                                <a className="selfie-body-effect" id="selfie-body-effect"
-                                                >Selfie</a>
-                                                <a className="dark-body-effect" id="dark-body-effect">Dark</a>
-                                                <a className="image-body-effect" id="image-body-effect"
-                                                >Image</a>
-                                            </div>
-                                        </div>
-                                    </li>
-                                </ul>
+                                <Sidebar className="effect-type-effect effect-type-option">
+                                    <Menu className="dropdown">
+                                        <SubMenu id="btn-dropdown" className="btn-dropdown" label="Video effect"
+                                                 title="Video effect">
+                                            <MenuItem
+                                                className={`trending-video-effect dropdown-item ${activeEffectOption.trendingVideoEffect ? 'active' : ''}`}
+                                                id="trending-video-effect"
+                                                title="Trending"
+                                                onClick={() => handleMenuEffectOptionClick('trendingVideoEffect')}> Trending </MenuItem>
+                                            <MenuItem
+                                                className={`pro-video-effect dropdown-item ${activeEffectOption.proVideoEffect ? 'active' : ''}`}
+                                                id="pro-video-effect"
+                                                title="Pro"
+                                                onClick={() => handleMenuEffectOptionClick('proVideoEffect')}> Pro </MenuItem>
+                                            <MenuItem
+                                                className={`nightclub-video-effect dropdown-item ${activeEffectOption.nightclubVideoEffect ? 'active' : ''}`}
+                                                id="nightclub-video-effect"
+                                                title="Nightclub"
+                                                onClick={() => handleMenuEffectOptionClick('nightclubVideoEffect')}> Nightclub </MenuItem>
+                                            <MenuItem
+                                                className={`lens-video-effect dropdown-item ${activeEffectOption.lensVideoEffect ? 'active' : ''}`}
+                                                id="lens-video-effect"
+                                                title="Lens"
+                                                onClick={() => handleMenuEffectOptionClick('lensVideoEffect')}> Lens </MenuItem>
+                                            <MenuItem
+                                                className={`retro-video-effect dropdown-item ${activeEffectOption.retroVideoEffect ? 'active' : ''}`}
+                                                id="retro-video-effect"
+                                                title="Retro"
+                                                onClick={() => handleMenuEffectOptionClick('retroVideoEffect')}> Retro </MenuItem>
+                                            <MenuItem
+                                                className={`tv-video-effect dropdown-item ${activeEffectOption.tvVideoEffect ? 'active' : ''}`}
+                                                id="tv-video-effect"
+                                                title="TV"
+                                                onClick={() => handleMenuEffectOptionClick('tvVideoEffect')}> TV </MenuItem>
+                                            <MenuItem
+                                                className={`star-video-effect dropdown-item ${activeEffectOption.starVideoEffect ? 'active' : ''}`}
+                                                id="star-video-effect"
+                                                title="Star"
+                                                onClick={() => handleMenuEffectOptionClick('starVideoEffect')}> Star </MenuItem>
+                                        </SubMenu>
+
+                                        <SubMenu id="btn-dropdown" className="btn-dropdown" label="Body effect"
+                                                 title="Body effect">
+                                            <MenuItem
+                                                className={`trending-body-effect dropdown-item ${activeEffectOption.trendingBodyEffect ? 'active' : ''}`}
+                                                id="trending-body-effect"
+                                                title="Trending"
+                                                onClick={() => handleMenuEffectOptionClick('trendingBodyEffect')}> Trending </MenuItem>
+                                            <MenuItem
+                                                className={`pro-body-effect dropdown-item ${activeEffectOption.proBodyEffect ? 'active' : ''}`}
+                                                id="pro-body-effect"
+                                                title="Pro"
+                                                onClick={() => handleMenuEffectOptionClick('proBodyEffect')}> Pro </MenuItem>
+                                            <MenuItem
+                                                className={`mood-body-effect dropdown-item ${activeEffectOption.moodBodyEffect ? 'active' : ''}`}
+                                                id="mood-body-effect"
+                                                title="Mood"
+                                                onClick={() => handleMenuEffectOptionClick('moodBodyEffect')}> Mood </MenuItem>
+                                            <MenuItem
+                                                className={`mask-body-effect dropdown-item ${activeEffectOption.maskBodyEffect ? 'active' : ''}`}
+                                                id="mask-body-effect"
+                                                title="Mask"
+                                                onClick={() => handleMenuEffectOptionClick('maskBodyEffect')}> Mask </MenuItem>
+                                            <MenuItem
+                                                className={`selfie-body-effect dropdown-item ${activeEffectOption.selfieBodyEffect ? 'active' : ''}`}
+                                                id="selfie-body-effect"
+                                                title="Selfie"
+                                                onClick={() => handleMenuEffectOptionClick('selfieBodyEffect')}> Selfie </MenuItem>
+                                            <MenuItem
+                                                className={`dark-body-effect dropdown-item ${activeEffectOption.darkBodyEffect ? 'active' : ''}`}
+                                                id="dark-body-effect"
+                                                title="Dark"
+                                                onClick={() => handleMenuEffectOptionClick('darkBodyEffect')}> Dark </MenuItem>
+                                            <MenuItem
+                                                className={`image-body-effect dropdown-item ${activeEffectOption.imageBodyEffect ? 'active' : ''}`}
+                                                id="image-body-effect"
+                                                title="Image"
+                                                onClick={() => handleMenuEffectOptionClick('imageBodyEffect')}> Image </MenuItem>
+                                        </SubMenu>
+                                    </Menu>
+                                </Sidebar>;
                             </div>
                             <div className="effect-list-type-effect effect-list-type">
                                 <div className="search-effect">
@@ -3942,2321 +4276,2505 @@ const HomePage = () => {
                                     <input className="search-input" type="text" name="search-audio"
                                            placeholder="search for effect"/>
                                 </div>
-
-                                <div className="trending-video-effect-wrapper effect-option"
-                                     id="trending-video-effect-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>Trending</h3>
-                                    <div className="list-file-trending-video-effect-wrapper list-effect-file-wrapper">
-                                        <div className="list-file-trending-effect list-effect-file">
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                {activeEffectOption.trendingVideoEffect &&
+                                    <div className="trending-video-effect-wrapper effect-option"
+                                         id="trending-video-effect-wrapper">
+                                        <h3>Trending</h3>
+                                        <div
+                                            className="list-file-trending-video-effect-wrapper list-effect-file-wrapper">
+                                            <div className="list-file-trending-effect list-effect-file">
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="pro-video-effect-wrapper effect-option" id="pro-video-effect-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>Pro</h3>
-                                    <div className="list-file-pro-video-effect-wrapper list-effect-file-wrapper">
-                                        <div className="list-file-pro-effect list-effect-file">
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="nightclub-video-effect-wrapper effect-option"
-                                     id="nightclub-video-effect-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>nightclub</h3>
-                                    <div className="list-file-nightclub-video-effect-wrapper list-effect-file-wrapper">
-                                        <div className="list-file-nightclub-effect list-effect-file">
-                                            <div className="file-nightclub-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                }
+                                {activeEffectOption.proVideoEffect &&
+                                    <div className="pro-video-effect-wrapper effect-option"
+                                         id="pro-video-effect-wrapper"
+                                    >
+                                        <h3>Pro</h3>
+                                        <div className="list-file-pro-video-effect-wrapper list-effect-file-wrapper">
+                                            <div className="list-file-pro-effect list-effect-file">
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-nightclub-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-nightclub-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-nightclub-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-nightclub-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-nightclub-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-nightclub-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-nightclub-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-nightclub-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-nightclub-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-nightclub-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-nightclub-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="lens-video-effect-wrapper effect-option" id="lens-video-effect-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>lens</h3>
-                                    <div className="list-file-lens-video-effect-wrapper list-effect-file-wrapper">
-                                        <div className="list-file-lens-effect list-effect-file">
-                                            <div className="file-lens-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-lens-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-lens-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-lens-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-lens-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-lens-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-lens-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-lens-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-lens-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-lens-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-lens-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-lens-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="retro-video-effect-wrapper effect-option"
-                                     id="retro-video-effect-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>retro</h3>
-                                    <div className="list-file-retro-video-effect-wrapper list-effect-file-wrapper">
-                                        <div className="list-file-retro-effect list-effect-file">
-                                            <div className="file-retro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                }
+                                {activeEffectOption.nightclubVideoEffect &&
+                                    <div className="nightclub-video-effect-wrapper effect-option"
+                                         id="nightclub-video-effect-wrapper"
+                                    >
+                                        <h3>nightclub</h3>
+                                        <div
+                                            className="list-file-nightclub-video-effect-wrapper list-effect-file-wrapper">
+                                            <div className="list-file-nightclub-effect list-effect-file">
+                                                <div className="file-nightclub-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-retro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-nightclub-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-retro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-nightclub-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-retro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-nightclub-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-retro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-nightclub-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-retro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-nightclub-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-retro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-nightclub-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-retro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-nightclub-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-retro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-nightclub-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-retro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-nightclub-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-retro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-nightclub-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-retro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="tv-video-effect-wrapper effect-option" id="tv-video-effect-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>tv</h3>
-                                    <div className="list-file-tv-video-effect-wrapper list-effect-file-wrapper">
-                                        <div className="list-file-tv-effect list-effect-file">
-                                            <div className="file-tv-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-tv-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-tv-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-tv-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-tv-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-tv-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-tv-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-tv-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-tv-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-tv-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-tv-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-tv-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-nightclub-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="star-video-effect-wrapper effect-option" id="star-video-effect-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>star</h3>
-                                    <div className="list-file-star-video-effect-wrapper list-effect-file-wrapper">
-                                        <div className="list-file-star-effect list-effect-file">
-                                            <div className="file-star-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                }
+                                {activeEffectOption.lensVideoEffect &&
+                                    <div className="lens-video-effect-wrapper effect-option"
+                                         id="lens-video-effect-wrapper"
+                                    >
+                                        <h3>lens</h3>
+                                        <div className="list-file-lens-video-effect-wrapper list-effect-file-wrapper">
+                                            <div className="list-file-lens-effect list-effect-file">
+                                                <div className="file-lens-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-star-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-lens-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-star-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-lens-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-star-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-lens-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-star-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-lens-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-star-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-lens-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-star-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-lens-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-star-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-lens-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-star-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-lens-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-star-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-lens-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-star-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-lens-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-star-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="trending-body-effect-wrapper effect-option"
-                                     id="trending-body-effect-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>Trending</h3>
-                                    <div className="list-file-trending-body-effect-wrapper list-effect-file-wrapper">
-                                        <div className="list-file-trending-effect list-effect-file">
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-trending-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-lens-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="pro-body-effect-wrapper effect-option" id="pro-body-effect-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>pro</h3>
-                                    <div className="list-file-pro-body-effect-wrapper list-effect-file-wrapper">
-                                        <div className="list-file-pro-effect list-effect-file">
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                }
+                                {activeEffectOption.retroVideoEffect &&
+                                    <div className="retro-video-effect-wrapper effect-option"
+                                         id="retro-video-effect-wrapper">
+                                        <h3>retro</h3>
+                                        <div className="list-file-retro-video-effect-wrapper list-effect-file-wrapper">
+                                            <div className="list-file-retro-effect list-effect-file">
+                                                <div className="file-retro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-retro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-retro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-retro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-retro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-retro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-retro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-retro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-retro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-retro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-retro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-pro-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="mood-body-effect-wrapper effect-option" id="mood-body-effect-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>mood</h3>
-                                    <div className="list-file-mood-body-effect-wrapper list-effect-file-wrapper">
-                                        <div className="list-file-mood-effect list-effect-file">
-                                            <div className="file-mood-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-mood-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-mood-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-mood-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-mood-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-mood-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-mood-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-mood-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-mood-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-mood-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-mood-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-mood-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-retro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="mask-body-effect-wrapper effect-option" id="mask-body-effect-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>mask</h3>
-                                    <div className="list-file-mask-body-effect-wrapper list-effect-file-wrapper">
-                                        <div className="list-file-mask-effect list-effect-file">
-                                            <div className="file-mask-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                }
+                                {activeEffectOption.tvVideoEffect &&
+                                    <div className="tv-video-effect-wrapper effect-option"
+                                         id="tv-video-effect-wrapper"
+                                    >
+                                        <h3>tv</h3>
+                                        <div className="list-file-tv-video-effect-wrapper list-effect-file-wrapper">
+                                            <div className="list-file-tv-effect list-effect-file">
+                                                <div className="file-tv-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-mask-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-tv-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-mask-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-tv-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-mask-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-tv-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-mask-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-tv-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-mask-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-tv-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-mask-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-tv-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-mask-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-tv-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-mask-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-tv-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-mask-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-tv-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-mask-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-tv-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-mask-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="selfie-body-effect-wrapper effect-option"
-                                     id="selfie-body-effect-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>selfie</h3>
-                                    <div className="list-file-selfie-body-effect-wrapper list-effect-file-wrapper">
-                                        <div className="list-file-selfie-effect list-effect-file">
-                                            <div className="file-selfie-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-selfie-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-selfie-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-selfie-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-selfie-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-selfie-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-selfie-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-selfie-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-selfie-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-selfie-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-selfie-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-selfie-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-tv-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="dark-body-effect-wrapper effect-option" id="dark-body-effect-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>dark</h3>
-                                    <div className="list-file-dark-body-effect-wrapper list-effect-file-wrapper">
-                                        <div className="list-file-dark-effect list-effect-file">
-                                            <div className="file-dark-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                }
+                                {activeEffectOption.starVideoEffect &&
+                                    <div className="star-video-effect-wrapper effect-option"
+                                         id="star-video-effect-wrapper">
+                                        <h3>star</h3>
+                                        <div className="list-file-star-video-effect-wrapper list-effect-file-wrapper">
+                                            <div className="list-file-star-effect list-effect-file">
+                                                <div className="file-star-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-dark-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-star-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-dark-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-star-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-dark-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-star-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-dark-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-star-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-dark-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-star-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-dark-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-star-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-dark-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-star-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-dark-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-star-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-dark-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-star-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-dark-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-star-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-dark-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="image-body-effect-wrapper effect-option" id="image-body-effect-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>image</h3>
-                                    <div className="list-file-image-body-effect-wrapper list-effect-file-wrapper">
-                                        <div className="list-file-image-effect list-effect-file">
-                                            <div className="file-image-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-image-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-image-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-image-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-image-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-image-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-image-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-image-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-image-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-image-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-image-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-image-effect effect-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-star-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                }
+                                {activeEffectOption.trendingBodyEffect &&
+                                    <div className="trending-body-effect-wrapper effect-option"
+                                         id="trending-body-effect-wrapper">
+                                        <h3>Trending</h3>
+                                        <div
+                                            className="list-file-trending-body-effect-wrapper list-effect-file-wrapper">
+                                            <div className="list-file-trending-effect list-effect-file">
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-trending-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                {activeEffectOption.proBodyEffect &&
+                                    <div className="pro-body-effect-wrapper effect-option"
+                                         id="pro-body-effect-wrapper">
+                                        <h3>pro</h3>
+                                        <div className="list-file-pro-body-effect-wrapper list-effect-file-wrapper">
+                                            <div className="list-file-pro-effect list-effect-file">
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-pro-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                {activeEffectOption.moodBodyEffect &&
+                                    <div className="mood-body-effect-wrapper effect-option"
+                                         id="mood-body-effect-wrapper">
+                                        <h3>mood</h3>
+                                        <div className="list-file-mood-body-effect-wrapper list-effect-file-wrapper">
+                                            <div className="list-file-mood-effect list-effect-file">
+                                                <div className="file-mood-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-mood-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-mood-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-mood-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-mood-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-mood-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-mood-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-mood-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-mood-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-mood-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-mood-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-mood-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                {activeEffectOption.maskBodyEffect &&
+                                    <div className="mask-body-effect-wrapper effect-option"
+                                         id="mask-body-effect-wrapper">
+                                        <h3>mask</h3>
+                                        <div className="list-file-mask-body-effect-wrapper list-effect-file-wrapper">
+                                            <div className="list-file-mask-effect list-effect-file">
+                                                <div className="file-mask-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-mask-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-mask-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-mask-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-mask-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-mask-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-mask-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-mask-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-mask-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-mask-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-mask-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-mask-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                {activeEffectOption.selfieBodyEffect &&
+                                    <div className="selfie-body-effect-wrapper effect-option"
+                                         id="selfie-body-effect-wrapper">
+                                        <h3>selfie</h3>
+                                        <div className="list-file-selfie-body-effect-wrapper list-effect-file-wrapper">
+                                            <div className="list-file-selfie-effect list-effect-file">
+                                                <div className="file-selfie-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-selfie-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-selfie-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-selfie-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-selfie-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-selfie-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-selfie-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-selfie-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-selfie-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-selfie-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-selfie-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-selfie-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                {activeEffectOption.darkBodyEffect &&
+                                    <div className="dark-body-effect-wrapper effect-option"
+                                         id="dark-body-effect-wrapper">
+                                        <h3>dark</h3>
+                                        <div className="list-file-dark-body-effect-wrapper list-effect-file-wrapper">
+                                            <div className="list-file-dark-effect list-effect-file">
+                                                <div className="file-dark-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-dark-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-dark-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-dark-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-dark-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-dark-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-dark-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-dark-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-dark-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-dark-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-dark-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-dark-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                {activeEffectOption.imageBodyEffect &&
+                                    <div className="image-body-effect-wrapper effect-option"
+                                         id="image-body-effect-wrapper">
+                                        <h3>image</h3>
+                                        <div className="list-file-image-body-effect-wrapper list-effect-file-wrapper">
+                                            <div className="list-file-image-effect list-effect-file">
+                                                <div className="file-image-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-image-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-image-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-image-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-image-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-image-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-image-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-image-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-image-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-image-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-image-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-image-effect effect-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
                             </div>
                         </div>
                     }
@@ -6264,32 +6782,48 @@ const HomePage = () => {
                         <div className="effect-list-filter-wrapper effect-list-option-wrapper"
                              id="effect-list-filter-wrapper">
                             <div className="effect-list-filter effect-list-option">
-                                <ul className="effect-type-importaudio effect-type-option">
-                                    <li className="#">
-                                        <div className="dropdown">
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-chevron-right">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                                Filter
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                                <a className="featured-filter" id="featured-filter"
-                                                >Featured</a>
-                                                <a className="pro-filter" id="pro-filter">Pro</a>
-                                                <a className="life-filter" id="life-filter">Life</a>
-                                                <a className="scenery-filter" id="scenery-filter">Scenery</a>
-                                                <a className="movies-filter" id="movies-filter">Movies</a>
-                                                <a className="retro-filter" id="retro-filter">Retro</a>
-                                                <a className="style-filter" id="style-filter">Style</a>
-                                            </div>
-                                        </div>
-                                    </li>
-                                </ul>
+                                <Sidebar className="effect-type-filter effect-type-option">
+                                    <Menu className="dropdown">
+                                        <SubMenu id="btn-dropdown" className="btn-dropdown" label="Filter"
+                                                 title="Filter">
+                                            <MenuItem
+                                                className={`featured-filter dropdown-item ${activeFilterOption.featuredFilter ? 'active' : ''}`}
+                                                id="featured-filter"
+                                                title="Featured"
+                                                onClick={() => handleMenuFilterOptionClick('featuredFilter')}> Featured </MenuItem>
+                                            <MenuItem
+                                                className={`pro-filter dropdown-item ${activeFilterOption.proFilter ? 'active' : ''}`}
+                                                id="pro-filter"
+                                                title="Pro"
+                                                onClick={() => handleMenuFilterOptionClick('proFilter')}> Pro </MenuItem>
+                                            <MenuItem
+                                                className={`life-filter dropdown-item ${activeFilterOption.lifeFilter ? 'active' : ''}`}
+                                                id="life-filter"
+                                                title="Life"
+                                                onClick={() => handleMenuFilterOptionClick('lifeFilter')}> Life </MenuItem>
+                                            <MenuItem
+                                                className={`scenery-filter dropdown-item ${activeFilterOption.sceneryFilter ? 'active' : ''}`}
+                                                id="scenery-filter"
+                                                title="Scenery"
+                                                onClick={() => handleMenuFilterOptionClick('sceneryFilter')}> Scenery </MenuItem>
+                                            <MenuItem
+                                                className={`movies-filter dropdown-item ${activeFilterOption.moviesFilter ? 'active' : ''}`}
+                                                id="movies-filter"
+                                                title="Movies"
+                                                onClick={() => handleMenuFilterOptionClick('moviesFilter')}> Movies </MenuItem>
+                                            <MenuItem
+                                                className={`retro-filter dropdown-item ${activeFilterOption.retroFilter ? 'active' : ''}`}
+                                                id="retro-filter"
+                                                title="Retro"
+                                                onClick={() => handleMenuFilterOptionClick('retroFilter')}> Retro </MenuItem>
+                                            <MenuItem
+                                                className={`style-filter dropdown-item ${activeFilterOption.styleFilter ? 'active' : ''}`}
+                                                id="style-filter"
+                                                title="Style"
+                                                onClick={() => handleMenuFilterOptionClick('styleFilter')}> Style </MenuItem>
+                                        </SubMenu>
+                                    </Menu>
+                                </Sidebar>;
                             </div>
                             <div className="effect-list-type-filter effect-list-type">
                                 <div className="search-filter search-effect">
@@ -6304,1160 +6838,1252 @@ const HomePage = () => {
                                            placeholder="search for filter"/>
                                 </div>
 
-                                <div className="featured-filter-wrapper effect-option" id="featured-filter-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>featured</h3>
-                                    <div className="list-file-featured-filter-wrapper list-filter-file-wrapper">
-                                        <div className="list-file-featured-effect list-filter-file">
-                                            <div className="file-featured-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                {activeFilterOption.featuredFilter &&
+                                    <div className="featured-filter-wrapper effect-option"
+                                         id="featured-filter-wrapper">
+                                        <h3>featured</h3>
+                                        <div className="list-file-featured-filter-wrapper list-filter-file-wrapper">
+                                            <div className="list-file-featured-effect list-filter-file">
+                                                <div className="file-featured-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-featured-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-featured-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-featured-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-featured-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-featured-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-featured-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-featured-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-featured-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-featured-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-featured-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-featured-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-featured-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-featured-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-featured-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-featured-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-featured-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-featured-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-featured-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-featured-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-featured-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-featured-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="pro-filter-wrapper effect-option" id="pro-filter-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>pro</h3>
-                                    <div className="list-file-pro-filter-wrapper list-filter-file-wrapper">
-                                        <div className="list-file-pro-effect list-filter-file">
-                                            <div className="file-pro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-pro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-featured-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="life-filter-wrapper effect-option" id="life-filter-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>life</h3>
-                                    <div className="list-file-life-filter-wrapper list-filter-file-wrapper">
-                                        <div className="list-file-life-effect list-filter-file">
-                                            <div className="file-life-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                }
+                                {activeFilterOption.proFilter &&
+                                    <div className="pro-filter-wrapper effect-option"
+                                         id="pro-filter-wrapper">
+                                        <h3>pro</h3>
+                                        <div className="list-file-pro-filter-wrapper list-filter-file-wrapper">
+                                            <div className="list-file-pro-effect list-filter-file">
+                                                <div className="file-pro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-life-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-life-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-life-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-life-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-life-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-life-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-life-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-life-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-life-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-life-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-life-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="scenery-filter-wrapper effect-option" id="scenery-filter-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>scenery</h3>
-                                    <div className="list-file-scenery-filter-wrapper list-filter-file-wrapper">
-                                        <div className="list-file-scenery-effect list-filter-file">
-                                            <div className="file-scenery-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-scenery-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-scenery-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-scenery-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-scenery-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-scenery-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-scenery-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-scenery-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-scenery-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-scenery-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-scenery-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-scenery-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-pro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="movies-filter-wrapper effect-option" id="movies-filter-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>movies</h3>
-                                    <div className="list-file-movies-filter-wrapper list-filter-file-wrapper">
-                                        <div className="list-file-movies-effect list-filter-file">
-                                            <div className="file-movies-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                }
+                                {activeFilterOption.lifeFilter &&
+                                    <div className="life-filter-wrapper effect-option"
+                                         id="life-filter-wrapper">
+                                        <h3>life</h3>
+                                        <div className="list-file-life-filter-wrapper list-filter-file-wrapper">
+                                            <div className="list-file-life-effect list-filter-file">
+                                                <div className="file-life-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-movies-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-life-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-movies-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-life-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-movies-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-life-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-movies-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-life-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-movies-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-life-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-movies-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-life-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-movies-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-life-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-movies-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-life-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-movies-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-life-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-movies-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-life-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-movies-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="retro-filter-wrapper effect-option" id="retro-filter-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>retro</h3>
-                                    <div className="list-file-retro-filter-wrapper list-filter-file-wrapper">
-                                        <div className="list-file-retro-effect list-filter-file">
-                                            <div className="file-retro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-retro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-retro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-retro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-retro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-retro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-retro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-retro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-retro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-retro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-retro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <div className="file-retro-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-life-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="style-filter-wrapper effect-option" id="style-filter-wrapper"
-                                     style={{display: 'none'}}>
-                                    <h3>style</h3>
-                                    <div className="list-file-style-filter-wrapper list-filter-file-wrapper">
-                                        <div className="list-file-style-effect list-filter-file">
-                                            <div className="file-style-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                }
+                                {activeFilterOption.sceneryFilter &&
+                                    <div className="scenery-filter-wrapper effect-option"
+                                         id="scenery-filter-wrapper">
+                                        <h3>scenery</h3>
+                                        <div className="list-file-scenery-filter-wrapper list-filter-file-wrapper">
+                                            <div className="list-file-scenery-effect list-filter-file">
+                                                <div className="file-scenery-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-style-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-scenery-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-style-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-scenery-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-style-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-scenery-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-style-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-scenery-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-style-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-scenery-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-style-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-scenery-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-style-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-scenery-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-style-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-scenery-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-style-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-scenery-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-style-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-scenery-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="file-style-effect filter-file">
-                                                <div className="file">
-                                                    <img src={imgTest1} alt="Description"/>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none"
-                                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                                         strokeLinejoin="round" className="lucide lucide-circle-plus">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M8 12h8"/>
-                                                        <path d="M12 8v8"/>
-                                                    </svg>
+                                                <div className="file-scenery-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                }
+                                {activeFilterOption.moviesFilter &&
+                                    <div className="movies-filter-wrapper effect-option"
+                                         id="movies-filter-wrapper">
+                                        <h3>movies</h3>
+                                        <div className="list-file-movies-filter-wrapper list-filter-file-wrapper">
+                                            <div className="list-file-movies-effect list-filter-file">
+                                                <div className="file-movies-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-movies-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-movies-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-movies-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-movies-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-movies-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-movies-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-movies-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-movies-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-movies-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-movies-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-movies-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                {activeFilterOption.retroFilter &&
+                                    <div className="retro-filter-wrapper effect-option"
+                                         id="retro-filter-wrapper">
+                                        <h3>retro</h3>
+                                        <div className="list-file-retro-filter-wrapper list-filter-file-wrapper">
+                                            <div className="list-file-retro-effect list-filter-file">
+                                                <div className="file-retro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-retro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-retro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-retro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-retro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-retro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-retro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-retro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-retro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-retro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-retro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-retro-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                {activeFilterOption.styleFilter &&
+                                    <div className="style-filter-wrapper effect-option"
+                                         id="style-filter-wrapper">
+                                        <h3>style</h3>
+                                        <div className="list-file-style-filter-wrapper list-filter-file-wrapper">
+                                            <div className="list-file-style-effect list-filter-file">
+                                                <div className="file-style-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-style-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-style-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-style-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-style-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-style-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-style-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-style-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-style-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-style-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-style-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="file-style-effect filter-file">
+                                                    <div className="file">
+                                                        <img src={imgTest1} alt="Description"/>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                             viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                                             strokeLinejoin="round"
+                                                             className="lucide lucide-circle-plus">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <path d="M8 12h8"/>
+                                                            <path d="M12 8v8"/>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
                             </div>
                         </div>
                     }
@@ -9535,13 +10161,13 @@ const HomePage = () => {
                             key={timelineIndex}
                             className="timeline"
                             onDragOver={handleDragOver}
-                            onDrop={(e) => handleDrop(e, timelineIndex)}
+                            onDrop={(e) => handleDropVideo(e, timelineIndex)}
                         >
                             {timeline.videos.map((file, index) => (
                                 <div key={index} className="timeline-item"
                                      style={{left: `${file.position}%`, width: `${file.width}px`}}
                                      draggable="true"
-                                     onDragStart={(e) => handleDragStart(e, file, timelineIndex)}>
+                                     onDragStart={(e) => handleDragStartVideo(e, file, timelineIndex)}>
                                     {isVideo(file.fileName) ? (
                                         <video
                                             src={file.url}
@@ -9554,16 +10180,32 @@ const HomePage = () => {
                             ))}
                         </div>
                     ))}
+                    {timelinesText.map((timeline, timelineIndex) => (
+                        <div
+                            key={timelineIndex}
+                            className="timeline-text"
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, timelineIndex)}>
+                            {timeline.texts.map((textSegment, idx) => (
+                                <div
+                                    key={idx}
+                                    className="text-segment"
+                                    style={{
+                                        left: `${textSegment.position}%`,
+                                        width: `${textSegment.width}px`,
+                                    }}
+                                    draggable="true"
+                                    onDragStart={(e) => handleDragStartText(e, textSegment, timelineIndex)}
+                                >
+                                    <input type={"text"} value={textSegment.content} disabled/>
+                                </div>
+                            ))}
+                        </div>
+                    ))}
                     <div
                         className="empty-timeline-dropzone"
                         onDrop={(e) => handleDrop(e, null)}
                         onDragOver={handleDragOver}
-                        style={{
-                            border: '2px dashed #ccc',
-                            padding: '20px',
-                            marginTop: '20px',
-                            textAlign: 'center'
-                        }}
                     >
                         Drag and drop video here to create a new timeline
                     </div>
