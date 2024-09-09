@@ -10,6 +10,10 @@ import axios from 'axios';
 import ReactPlayer from 'react-player';
 import {v4 as uuidv4} from 'uuid';
 
+function importAll(r) {
+    return r.keys().map(r);
+}
+
 const HomePage = () => {
 
     const videoRef = useRef(null);
@@ -20,12 +24,27 @@ const HomePage = () => {
     const [timelineVideos, setTimelineVideos] = useState([]);
     const [selectedVideo, setSelectedVideo] = useState({});
     const [selectedText, setSelectedText] = useState({});
+    const [selectedAudio, setSelectedAudio] = useState({});
     const [timestamps, setTimestamps] = useState([]);
     const [timelines, setTimelines] = useState([]);
     const [timelinesText, setTimelinesText] = useState([]);
+    const [timelinesAudio, setTimelinesAudio] = useState([]);
     const [draggableText, setDraggableText] = useState({
         content: "Your draggable text here",
         position: {x: 0, y: 0},
+    });
+    const [audioFiles, setAudioFiles] = useState({
+        vlog: [],
+        tourism: [],
+        spring: [],
+        love: [],
+        beat: [],
+        heal: [],
+        warm: [],
+        trend: [],
+        revenue: [],
+        horrified: [],
+        laugh: [],
     });
 
     const [playVideo, setPlayVideo] = useState(false);
@@ -244,6 +263,7 @@ const HomePage = () => {
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
+        setVideoFile(file);
         if (isVideo(file.name)) {
             const videoURL = URL.createObjectURL(file);
 
@@ -282,19 +302,48 @@ const HomePage = () => {
         const videoUrl = e.dataTransfer.getData("videoUrl");
         const fileName = e.dataTransfer.getData("fileName");
         const text = e.dataTransfer.getData("text/plain");
+        const audioUrl = e.dataTransfer.getData("audioUrl");
 
         if (videoUrl && fileName) {
             handleDropVideo(e, timelineIndex);
         } else if (text) {
             handleDropText(e, timelineIndex);
+        } else if (audioUrl) {
+            let foundAudio = null;
+
+            for (let category in audioFiles) {
+                if (audioFiles[category]) {
+                    const audio = audioFiles[category].find(audio => audio.url === audioUrl.url);
+                    if (audio) {
+                        foundAudio = audio;
+                        break;
+                    }
+                }
+            }
+
+            if (foundAudio) {
+                handleDropAudio(e, timelineIndex, foundAudio);
+            } else {
+                console.error("Audio not found");
+            }
         }
     };
 
-    const handleDragStartVideo = (e, video, timelineIndex) => {
-        e.dataTransfer.setData("videoUrl", video.url);
-        e.dataTransfer.setData("fileName", video.fileName);
-        e.dataTransfer.setData("videoId", video.id || uuidv4());
-        setSelectedVideo({...video, timelineIndex});
+    const handleDragStart = (e, item, timelineIndex, type) => {
+        const idKey = type === "video" ? "videoId" : type === "text" ? "textId" : "audioId";
+        const urlKey = type === "video" ? "videoUrl" : type === "audio" ? "audioUrl" : "text/plain";
+
+        e.dataTransfer.setData(urlKey, type === "text" ? item.content : item.url);
+        e.dataTransfer.setData("fileName", item.fileName);
+        e.dataTransfer.setData(idKey, item.id || uuidv4());
+
+        if (type === "video") {
+            setSelectedVideo({...item, timelineIndex});
+        } else if (type === "text") {
+            setSelectedText({...item, timelineIndex});
+        } else if (type === "audio") {
+            setSelectedAudio({...item, timelineIndex});
+        }
     };
 
     const handleDropVideo = (e, timelineIndex = null) => {
@@ -359,15 +408,8 @@ const HomePage = () => {
                 updatedTimelines[timelineIndex].videos.push(newVideoSegment);
             }
 
-            console.log(updatedTimelines);
             return updatedTimelines;
         });
-    };
-
-    const handleDragStartText = (e, text, timelineIndex) => {
-        e.dataTransfer.setData("text/plain", text.content);
-        e.dataTransfer.setData("textId", text.id || uuidv4());
-        setSelectedText({...text, timelineIndex});
     };
 
     const handleDropText = (e, timelineIndex = null) => {
@@ -423,8 +465,70 @@ const HomePage = () => {
                 updatedTimelinesText[timelineIndex].texts.push(newTextSegment);
             }
 
-            console.log("Updated timelinesText:", updatedTimelinesText);
             return updatedTimelinesText;
+        });
+    };
+
+    const handleDropAudio = (e, timelineIndex = null, audio) => {
+        e.preventDefault();
+
+        const audioUrl = e.dataTransfer.getData("audioUrl");
+        const fileName = e.dataTransfer.getData("fileName");
+        const audioId = e.dataTransfer.getData("audioId");
+
+        if (!audio) {
+            console.error("Audio not found in audioFiles");
+            return;
+        }
+
+        const dropX = e.clientX - e.target.getBoundingClientRect().left;
+        const timelineWidth = e.target.clientWidth;
+        const dropPositionPercentage = (dropX / timelineWidth) * 100;
+
+        setTimelinesAudio((prevTimelinesAudio) => {
+            const updatedTimelinesAudio = [...prevTimelinesAudio];
+
+            const newAudioSegment = {
+                id: audioId,
+                url: audioUrl,
+                fileName,
+                position: dropPositionPercentage,
+                width: audio.duration * 10,
+            };
+
+            if (selectedAudio.timelineIndex === timelineIndex) {
+                updatedTimelinesAudio[timelineIndex].audios = updatedTimelinesAudio[timelineIndex].audios.map(audio => {
+                    if (audio.id === selectedAudio.id) {
+                        return {
+                            ...audio,
+                            position: dropPositionPercentage,
+                        };
+                    }
+                    return audio;
+                });
+            } else if (selectedAudio.timelineIndex !== null &&
+                selectedAudio.timelineIndex !== undefined &&
+                selectedAudio.timelineIndex !== timelineIndex &&
+                updatedTimelinesAudio[selectedAudio.timelineIndex]) {
+
+                if (selectedAudio.timelineIndex !== null && selectedAudio.timelineIndex !== undefined) {
+                    updatedTimelinesAudio[selectedAudio.timelineIndex].audios = updatedTimelinesAudio[selectedAudio.timelineIndex].audios.filter(audio => audio.id !== selectedAudio.id);
+                }
+                if (updatedTimelinesAudio[selectedAudio.timelineIndex].audios.length === 0) {
+                    delete updatedTimelinesAudio[selectedAudio.timelineIndex];
+                }
+            }
+
+
+            if (timelineIndex === null) {
+                updatedTimelinesAudio.push({
+                    audios: [newAudioSegment],
+                });
+            } else {
+                updatedTimelinesAudio[timelineIndex].audios.push(newAudioSegment);
+            }
+
+            return updatedTimelinesAudio;
         });
     };
 
@@ -623,6 +727,42 @@ const HomePage = () => {
         return timestamps;
     };
 
+    const handleAudioChange = (e) => {
+        const file = e.target.files[0];
+        setAudioFiles(file);
+    };
+
+    const handleAddAudio = async () => {
+        if (!videoFile || !audioFiles) {
+            alert("Please select both video and audio files.");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('video', videoFile);
+        formData.append('audio', audioFiles);
+
+        const response = await fetch('http://localhost:8000/myapp/add_audio_to_video/', {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            setVideoUrl(`http://localhost:8000${data.video_url}`);
+
+            const videoElement = document.createElement('video');
+            videoElement.src = `http://localhost:8000${data.video_url}`;
+
+            videoElement.onloadedmetadata = () => {
+                const fileTime = videoElement.duration;
+                handleVideoClick(videoElement.src, fileTime);
+            };
+        } else {
+            console.error('Failed to add audio to video');
+        }
+    };
+
     useEffect(() => {
         const videoElement = videoRef.current;
         if (videoElement) {
@@ -659,6 +799,24 @@ const HomePage = () => {
         setDurationTimeLine(totalDuration);
         setTimestamps(generateTimestamps(totalDuration, 5));
     }, [timelineVideos]);
+
+    useEffect(() => {
+        const importedAudioFiles = {
+            vlog: importAll(require.context('../../assets/audio/music/vlog', false, /\.MP3$/)),
+            tourism: importAll(require.context('../../assets/audio/music/tourism', false, /\.MP3$/)),
+            spring: importAll(require.context('../../assets/audio/music/spring', false, /\.MP3$/)),
+            love: importAll(require.context('../../assets/audio/music/love', false, /\.MP3$/)),
+            beat: importAll(require.context('../../assets/audio/music/beat', false, /\.MP3$/)),
+            heal: importAll(require.context('../../assets/audio/music/heal', false, /\.MP3$/)),
+            warm: importAll(require.context('../../assets/audio/music/warm', false, /\.MP3$/)),
+            trend: importAll(require.context('../../assets/audio/soundEffects/trend', false, /\.MP3$/)),
+            revenue: importAll(require.context('../../assets/audio/soundEffects/revenue', false, /\.MP3$/)),
+            horrified: importAll(require.context('../../assets/audio/soundEffects/horrified', false, /\.MP3$/)),
+            laugh: importAll(require.context('../../assets/audio/soundEffects/laugh', false, /\.MP3$/)),
+        };
+
+        setAudioFiles(importedAudioFiles);
+    }, []);
 
     return (
         <body>
@@ -891,10 +1049,7 @@ const HomePage = () => {
                                                     listVideo.map((file, index) => (
                                                         <div key={index} className="file-import import-file"
                                                              draggable
-                                                             onDragStart={(e) => handleDragStartVideo(e, file, index)}
-                                                            // onClick={() => {
-                                                            //     handleVideoClick(file.url, file.fileTime);
-                                                            // }}
+                                                             onDragStart={(e) => handleDragStart(e, file, index, "video")}
                                                         >
                                                             <div className="file">
                                                                 {isVideo(file.fileName) ? (
@@ -1109,576 +1264,39 @@ const HomePage = () => {
                                         <h3>Vlog</h3>
                                         <div className="list-file-vlog-music-wrapper list-audio-file-wrapper">
                                             <div className="list-file-vlog-music list-audio-file">
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
+                                                {audioFiles.vlog.map((audio, index) => (
+                                                    <div className="file-vlog-music audio-file">
+                                                        <div className="file" draggable
+                                                             onDragStart={(e) => handleDragStart(e, audio, index, "audio")}>
+                                                            <div className="file-image">
+                                                                <img src={logo}
+                                                                     alt="Video Thumbnail"/>
+                                                            </div>
+                                                            <div className="file-information">
+                                                                <span className="file-name">Goodbye</span>
+                                                                <span className="file-artist">finetune</span>
+                                                                <span className="file-time">04:26</span>
+                                                            </div>
+                                                            <div className="favorite-file">
+                                                                <label htmlFor="favorite-audio">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24" fill="none"
+                                                                         stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round" strokeLinejoin="round"
+                                                                         className="lucide lucide-star">
+                                                                        <polygon
+                                                                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                                                    </svg>
+                                                                </label>
+                                                                <input type="checkbox" id="favorite-audio"
+                                                                       className="favorite-audio"
+                                                                       style={{display: 'none'}}/>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                ))}
                                             </div>
                                         </div>
                                     </div>
@@ -1688,66 +1306,40 @@ const HomePage = () => {
                                         <h3>Tourism</h3>
                                         <div className="list-file-tourism-music-wrapper list-audio-file-wrapper">
                                             <div className="list-file-tourism-music list-audio-file">
-                                                <div className="file-tourism-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
+                                                {audioFiles.tourism.map((audio, index) => (
+                                                    <div className="file-tourism-music audio-file">
+                                                        <div className="file" draggable
+                                                             onDragStart={(e) => handleDragStart(e, audio, index, "audio")}>
+                                                            <div className="file-image">
+                                                                <img src={logo}
+                                                                     alt="Video Thumbnail"/>
+                                                            </div>
+                                                            <div className="file-information">
+                                                                <span className="file-name">Goodbye</span>
+                                                                <span className="file-artist">finetune</span>
+                                                                <span className="file-time">04:26</span>
+                                                            </div>
+                                                            <div className="favorite-file">
+                                                                <label htmlFor="favorite-audio">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24" fill="none"
+                                                                         stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round" strokeLinejoin="round"
+                                                                         className="lucide lucide-star">
+                                                                        <polygon
+                                                                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                                                    </svg>
+                                                                </label>
+                                                                <input type="checkbox" id="favorite-audio"
+                                                                       className="favorite-audio"
+                                                                       style={{display: 'none'}}/>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
+
+                                                ))}
                                             </div>
                                         </div>
                                     </div>
@@ -1758,66 +1350,39 @@ const HomePage = () => {
                                         <h3>Spring</h3>
                                         <div className="list-file-spring-music-wrapper list-audio-file-wrapper">
                                             <div className="list-file-spring-music list-audio-file">
-                                                <div className="file-spring-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
+
+                                                {audioFiles.spring.map((audio, index) => (
+                                                    <div className="file-spring-music audio-file">
+                                                        <div className="file">
+                                                            <div className="file-image">
+                                                                <img src={logo}
+                                                                     alt="Video Thumbnail"/>
+                                                            </div>
+                                                            <div className="file-information">
+                                                                <span className="file-name">Goodbye</span>
+                                                                <span className="file-artist">finetune</span>
+                                                                <span className="file-time">04:26</span>
+                                                            </div>
+                                                            <div className="favorite-file">
+                                                                <label htmlFor="favorite-audio">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24" fill="none"
+                                                                         stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round" strokeLinejoin="round"
+                                                                         className="lucide lucide-star">
+                                                                        <polygon
+                                                                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                                                    </svg>
+                                                                </label>
+                                                                <input type="checkbox" id="favorite-audio"
+                                                                       className="favorite-audio"
+                                                                       style={{display: 'none'}}/>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
+                                                ))}
                                             </div>
                                         </div>
                                     </div>
@@ -1828,66 +1393,38 @@ const HomePage = () => {
                                         <h3>Love</h3>
                                         <div className="list-file-love-music-wrapper list-audio-file-wrapper">
                                             <div className="list-file-love-music list-audio-file">
-                                                <div className="file-love-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
+                                                {audioFiles.love.map((audio, index) => (
+                                                    <div className="file-love-music audio-file">
+                                                        <div className="file">
+                                                            <div className="file-image">
+                                                                <img src={logo}
+                                                                     alt="Video Thumbnail"/>
+                                                            </div>
+                                                            <div className="file-information">
+                                                                <span className="file-name">Goodbye</span>
+                                                                <span className="file-artist">finetune</span>
+                                                                <span className="file-time">04:26</span>
+                                                            </div>
+                                                            <div className="favorite-file">
+                                                                <label htmlFor="favorite-audio">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24" fill="none"
+                                                                         stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round" strokeLinejoin="round"
+                                                                         className="lucide lucide-star">
+                                                                        <polygon
+                                                                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                                                    </svg>
+                                                                </label>
+                                                                <input type="checkbox" id="favorite-audio"
+                                                                       className="favorite-audio"
+                                                                       style={{display: 'none'}}/>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
+                                                ))}
                                             </div>
                                         </div>
                                     </div>
@@ -1898,66 +1435,38 @@ const HomePage = () => {
                                         <h3>Beat</h3>
                                         <div className="list-file-beat-music-wrapper list-audio-file-wrapper">
                                             <div className="list-file-beat-music list-audio-file">
-                                                <div className="file-beat-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
+                                                {audioFiles.beat.map((audio, index) => (
+                                                    <div className="file-beat-music audio-file">
+                                                        <div className="file">
+                                                            <div className="file-image">
+                                                                <img src={logo}
+                                                                     alt="Video Thumbnail"/>
+                                                            </div>
+                                                            <div className="file-information">
+                                                                <span className="file-name">Goodbye</span>
+                                                                <span className="file-artist">finetune</span>
+                                                                <span className="file-time">04:26</span>
+                                                            </div>
+                                                            <div className="favorite-file">
+                                                                <label htmlFor="favorite-audio">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24" fill="none"
+                                                                         stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round" strokeLinejoin="round"
+                                                                         className="lucide lucide-star">
+                                                                        <polygon
+                                                                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                                                    </svg>
+                                                                </label>
+                                                                <input type="checkbox" id="favorite-audio"
+                                                                       className="favorite-audio"
+                                                                       style={{display: 'none'}}/>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
+                                                ))}
                                             </div>
                                         </div>
                                     </div>
@@ -1968,66 +1477,38 @@ const HomePage = () => {
                                         <h3>Heal</h3>
                                         <div className="list-file-heal-music-wrapper list-audio-file-wrapper">
                                             <div className="list-file-heal-music list-audio-file">
-                                                <div className="file-heal-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
+                                                {audioFiles.heal.map((audio, index) => (
+                                                    <div className="file-heal-music audio-file">
+                                                        <div className="file">
+                                                            <div className="file-image">
+                                                                <img src={logo}
+                                                                     alt="Video Thumbnail"/>
+                                                            </div>
+                                                            <div className="file-information">
+                                                                <span className="file-name">Goodbye</span>
+                                                                <span className="file-artist">finetune</span>
+                                                                <span className="file-time">04:26</span>
+                                                            </div>
+                                                            <div className="favorite-file">
+                                                                <label htmlFor="favorite-audio">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24" fill="none"
+                                                                         stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round" strokeLinejoin="round"
+                                                                         className="lucide lucide-star">
+                                                                        <polygon
+                                                                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                                                    </svg>
+                                                                </label>
+                                                                <input type="checkbox" id="favorite-audio"
+                                                                       className="favorite-audio"
+                                                                       style={{display: 'none'}}/>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
+                                                ))}
                                             </div>
                                         </div>
                                     </div>
@@ -2038,66 +1519,38 @@ const HomePage = () => {
                                         <h3>Warm</h3>
                                         <div className="list-file-warm-music-wrapper list-audio-file-wrapper">
                                             <div className="list-file-warm-music list-audio-file">
-                                                <div className="file-warm-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
+                                                {audioFiles.warm.map((audio, index) => (
+                                                    <div className="file-warm-music audio-file">
+                                                        <div className="file">
+                                                            <div className="file-image">
+                                                                <img src={logo}
+                                                                     alt="Video Thumbnail"/>
+                                                            </div>
+                                                            <div className="file-information">
+                                                                <span className="file-name">Goodbye</span>
+                                                                <span className="file-artist">finetune</span>
+                                                                <span className="file-time">04:26</span>
+                                                            </div>
+                                                            <div className="favorite-file">
+                                                                <label htmlFor="favorite-audio">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24" fill="none"
+                                                                         stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round" strokeLinejoin="round"
+                                                                         className="lucide lucide-star">
+                                                                        <polygon
+                                                                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                                                    </svg>
+                                                                </label>
+                                                                <input type="checkbox" id="favorite-audio"
+                                                                       className="favorite-audio"
+                                                                       style={{display: 'none'}}/>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
+                                                ))}
                                             </div>
                                         </div>
                                     </div>
@@ -2109,36 +1562,39 @@ const HomePage = () => {
                                         <h3>Trend</h3>
                                         <div className="list-file-trend-sound-wrapper list-audio-file-wrapper">
                                             <div className="list-file-trend-sound list-audio-file">
-                                                <div className="file-trend-sound audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
+                                                {audioFiles.trend.map((audio, index) => (
+                                                    <div className="file-trend-sound audio-file">
+                                                        <div className="file">
+                                                            <div className="file-image">
+                                                                <img src={logo}
+                                                                     alt="Video Thumbnail"/>
+                                                            </div>
+                                                            <div className="file-information">
+                                                                <span className="file-name">Goodbye</span>
+                                                                <span className="file-artist">finetune</span>
+                                                                <span className="file-time">04:26</span>
+                                                            </div>
+                                                            <div className="favorite-file">
+                                                                <label htmlFor="favorite-audio">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24" fill="none"
+                                                                         stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round" strokeLinejoin="round"
+                                                                         className="lucide lucide-star">
+                                                                        <polygon
+                                                                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                                                    </svg>
+                                                                </label>
+                                                                <input type="checkbox" id="favorite-audio"
+                                                                       className="favorite-audio"
+                                                                       style={{display: 'none'}}/>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
+                                                ))}
+
                                                 <div className="file-vlog-music audio-file">
                                                     <div className="file">
                                                         <div className="file-image">
@@ -2180,66 +1636,38 @@ const HomePage = () => {
                                         <h3>Revenue</h3>
                                         <div className="list-file-revenue-sound-wrapper list-audio-file-wrapper">
                                             <div className="list-file-revenue-sound list-audio-file">
-                                                <div className="file-revenue-sound audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
+                                                {audioFiles.revenue.map((audio, index) => (
+                                                    <div className="file-revenue-sound audio-file">
+                                                        <div className="file">
+                                                            <div className="file-image">
+                                                                <img src={logo}
+                                                                     alt="Video Thumbnail"/>
+                                                            </div>
+                                                            <div className="file-information">
+                                                                <span className="file-name">Goodbye</span>
+                                                                <span className="file-artist">finetune</span>
+                                                                <span className="file-time">04:26</span>
+                                                            </div>
+                                                            <div className="favorite-file">
+                                                                <label htmlFor="favorite-audio">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24" fill="none"
+                                                                         stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round" strokeLinejoin="round"
+                                                                         className="lucide lucide-star">
+                                                                        <polygon
+                                                                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                                                    </svg>
+                                                                </label>
+                                                                <input type="checkbox" id="favorite-audio"
+                                                                       className="favorite-audio"
+                                                                       style={{display: 'none'}}/>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
+                                                ))}
                                             </div>
                                         </div>
                                     </div>
@@ -2251,66 +1679,38 @@ const HomePage = () => {
                                         <h3>Horrified</h3>
                                         <div className="list-file-horrified-sound-wrapper list-audio-file-wrapper">
                                             <div className="list-file-horrified-sound list-audio-file">
-                                                <div className="file-horrified-sound audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
+                                                {audioFiles.horrified.map((audio, index) => (
+                                                    <div className="file-horrified-sound audio-file">
+                                                        <div className="file">
+                                                            <div className="file-image">
+                                                                <img src={logo}
+                                                                     alt="Video Thumbnail"/>
+                                                            </div>
+                                                            <div className="file-information">
+                                                                <span className="file-name">Goodbye</span>
+                                                                <span className="file-artist">finetune</span>
+                                                                <span className="file-time">04:26</span>
+                                                            </div>
+                                                            <div className="favorite-file">
+                                                                <label htmlFor="favorite-audio">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24" fill="none"
+                                                                         stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round" strokeLinejoin="round"
+                                                                         className="lucide lucide-star">
+                                                                        <polygon
+                                                                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                                                    </svg>
+                                                                </label>
+                                                                <input type="checkbox" id="favorite-audio"
+                                                                       className="favorite-audio"
+                                                                       style={{display: 'none'}}/>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
+                                                ))}
                                             </div>
                                         </div>
                                     </div>
@@ -2322,66 +1722,38 @@ const HomePage = () => {
                                         <h3>Laugh</h3>
                                         <div className="list-file-laugh-sound-wrapper list-audio-file-wrapper">
                                             <div className="list-file-laugh-sound list-audio-file">
-                                                <div className="file-laugh-sound audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
+                                                {audioFiles.laugh.map((audio, index) => (
+                                                    <div className="file-laugh-sound audio-file">
+                                                        <div className="file">
+                                                            <div className="file-image">
+                                                                <img src={logo}
+                                                                     alt="Video Thumbnail"/>
+                                                            </div>
+                                                            <div className="file-information">
+                                                                <span className="file-name">Goodbye</span>
+                                                                <span className="file-artist">finetune</span>
+                                                                <span className="file-time">04:26</span>
+                                                            </div>
+                                                            <div className="favorite-file">
+                                                                <label htmlFor="favorite-audio">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24" fill="none"
+                                                                         stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round" strokeLinejoin="round"
+                                                                         className="lucide lucide-star">
+                                                                        <polygon
+                                                                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                                                    </svg>
+                                                                </label>
+                                                                <input type="checkbox" id="favorite-audio"
+                                                                       className="favorite-audio"
+                                                                       style={{display: 'none'}}/>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
+                                                ))}
                                             </div>
                                         </div>
                                     </div>
@@ -2452,7 +1824,7 @@ const HomePage = () => {
                                                              cursor: "move",
                                                          }}
                                                          draggable="true"
-                                                         onDragStart={(e) => handleDragStartText(e, draggableText, undefined)}>
+                                                         onDragStart={(e) => handleDragStart(e, draggableText, undefined, "text")}>
                                                         <label
                                                         >{draggableText.content}</label>
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
@@ -9533,6 +8905,12 @@ const HomePage = () => {
                                                    placeholder="Enter text to add"/>
                                             <button type="submit">Add Text to Video</button>
                                         </form>
+                                        <div>
+                                            <input type="file" onChange={handleFileChange}/>
+                                            <input type="file" accept="audio/*" onChange={handleAudioChange}/>
+                                            <button onClick={handleAddAudio}>Add Audio to Video</button>
+                                            {videoUrl && <ReactPlayer url={videoUrl} controls/>}
+                                        </div>
                                     </ul>
                                 }
                                 <ul className="detail-edit-video-removeBG-wrap edit-parameters-wrap"
@@ -10167,7 +9545,7 @@ const HomePage = () => {
                                 <div key={index} className="timeline-item"
                                      style={{left: `${file.position}%`, width: `${file.width}px`}}
                                      draggable="true"
-                                     onDragStart={(e) => handleDragStartVideo(e, file, timelineIndex)}>
+                                     onDragStart={(e) => handleDragStart(e, file, timelineIndex, "video")}>
                                     {isVideo(file.fileName) ? (
                                         <video
                                             src={file.url}
@@ -10195,9 +9573,31 @@ const HomePage = () => {
                                         width: `${textSegment.width}px`,
                                     }}
                                     draggable="true"
-                                    onDragStart={(e) => handleDragStartText(e, textSegment, timelineIndex)}
+                                    onDragStart={(e) => handleDragStart(e, textSegment, timelineIndex, "text")}
                                 >
                                     <input type={"text"} value={textSegment.content} disabled/>
+                                </div>
+                            ))}
+                        </div>
+                    ))}
+                    {timelinesAudio.map((timeline, timelineIndex) => (
+                        <div
+                            key={timelineIndex}
+                            className="timeline-audio"
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, timelineIndex)}>
+                            {timeline.audios.map((audioSegment, idx) => (
+                                <div
+                                    key={idx}
+                                    className="audio-segment"
+                                    style={{
+                                        left: `${audioSegment.position}%`,
+                                        width: `${audioSegment.width}px`,
+                                    }}
+                                    draggable="true"
+                                    onDragStart={(e) => handleDragStart(e, audioSegment, timelineIndex, "audio")}
+                                >
+                                    <input type={"file"} value={audioSegment.content} disabled/>
                                 </div>
                             ))}
                         </div>

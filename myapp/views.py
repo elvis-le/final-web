@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse, FileResponse
 from django.contrib.auth import authenticate
-from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip, concatenate_videoclips
+from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip, concatenate_videoclips, AudioFileClip
 from moviepy.config import change_settings
 from tempfile import NamedTemporaryFile
 from django.views.decorators.csrf import csrf_exempt
@@ -106,4 +106,37 @@ def merge_videos(request):
         return JsonResponse({'merged_video_url': f'/media/merged_video.mp4'})
 
     return JsonResponse({'error': 'Invalid request'}, status=400)
+
+@csrf_exempt
+def add_audio_to_video(request):
+    if request.method == 'POST':
+        video_file = request.FILES['video']
+        audio_file = request.FILES['audio']
+
+        with NamedTemporaryFile(delete=False, suffix='.mp4') as temp_video:
+            for chunk in video_file.chunks():
+                temp_video.write(chunk)
+            video_path = temp_video.name
+
+        with NamedTemporaryFile(delete=False, suffix='.mp3') as temp_audio:
+            for chunk in audio_file.chunks():
+                temp_audio.write(chunk)
+            audio_path = temp_audio.name
+
+        output_path = os.path.join(settings.MEDIA_ROOT, 'video_with_audio.mp4')
+
+        try:
+            video_clip = VideoFileClip(video_path)
+            audio_clip = AudioFileClip(audio_path)
+
+            video_with_audio = video_clip.set_audio(audio_clip)
+
+            video_with_audio.write_videofile(output_path, codec='libx264', audio_codec='aac')
+
+            return JsonResponse({'video_url': f'/media/video_with_audio.mp4'})
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Invalid request method'}, status=400)
 

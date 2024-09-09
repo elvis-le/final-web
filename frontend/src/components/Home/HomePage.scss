@@ -1388,6 +1388,28 @@
       }
     }
 
+    .timeline-audio {
+      display: inline-flex;
+      width: 100%;
+      height: 30%;
+      background-color: var(--nav-color);
+      border-top: 1px solid var(--gray-color);
+      border-bottom: 1px solid var(--gray-color);
+
+      .audio-segment {
+        position: absolute;
+        height: 8%;
+        left: calc(var(--position, 0) * 1%);
+          border-radius: 7px;
+
+        input {
+      height: 100%;
+          border-radius: 7px;
+          text-align: center;
+        }
+      }
+    }
+
     input[type="range"] {
       position: absolute;
       left: 0;
