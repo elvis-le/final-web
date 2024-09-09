@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse, FileResponse
 from django.contrib.auth import authenticate
-from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip, concatenate_videoclips, AudioFileClip
+from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip, concatenate_videoclips, AudioFileClip, ImageClip
 from moviepy.config import change_settings
 from tempfile import NamedTemporaryFile
 from django.views.decorators.csrf import csrf_exempt
@@ -134,6 +134,59 @@ def add_audio_to_video(request):
             video_with_audio.write_videofile(output_path, codec='libx264', audio_codec='aac')
 
             return JsonResponse({'video_url': f'/media/video_with_audio.mp4'})
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Invalid request method'}, status=400)
+
+@csrf_exempt
+def add_sticker_to_video(request):
+    if request.method == 'POST':
+        try:
+            video_file = request.FILES['file']
+            sticker_file = request.FILES['sticker_url']  # Sticker image file (GIF động)
+            position_x = int(request.POST['position_x'])  # X coordinate for sticker placement
+            position_y = int(request.POST['position_y'])  # Y coordinate for sticker placement
+
+            # Temporary paths to save uploaded files
+            video_temp_path = '/tmp/uploaded_video.mp4'
+            sticker_temp_path = '/tmp/uploaded_sticker.gif'
+
+            # Save the video file temporarily
+            with open(video_temp_path, 'wb+') as destination:
+                for chunk in video_file.chunks():
+                    destination.write(chunk)
+
+            # Save the sticker file temporarily
+            with open(sticker_temp_path, 'wb+') as destination:
+                for chunk in sticker_file.chunks():
+                    destination.write(chunk)
+
+            # Load the video
+            video = VideoFileClip(video_temp_path)
+
+            # Load the sticker GIF as a VideoFileClip
+            sticker = VideoFileClip(sticker_temp_path)
+
+            # Make the sticker loop continuously during the entire video
+            sticker = sticker.loop(duration=video.duration)
+
+            # Set the position of the sticker
+            sticker = sticker.set_position((position_x, position_y))
+
+            # Composite the sticker onto the video
+            video_with_sticker = CompositeVideoClip([video, sticker])
+
+            # Output file path
+            output_filename = 'video_with_sticker.mp4'
+            output_file_path = os.path.join(settings.MEDIA_ROOT, output_filename)
+
+            # Write the final video with the sticker
+            video_with_sticker.write_videofile(output_file_path, codec='libx264', audio_codec='aac')
+
+            # Return the video URL
+            return JsonResponse({'video_url': f'{settings.MEDIA_URL}{output_filename}'})
 
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
