@@ -10,7 +10,11 @@ import ReactPlayer from 'react-player';
 import {v4 as uuidv4} from 'uuid';
 
 function importAll(r) {
-    return r.keys().map(r);
+    return r.keys().map(key => {
+        const url = r(key);
+        const fileName = key.replace('./', '');
+        return { fileName, url };
+    });
 }
 
 const HomePage = () => {
@@ -944,6 +948,8 @@ const handleStickerChange = (sticker) => {
         setStickerFiles(importedStickerFiles);
     }, []);
 
+    console.log(audioFiles.vlog);
+
     return (
         <body>
         <div className="body-wrapper">
@@ -1396,13 +1402,13 @@ const handleStickerChange = (sticker) => {
                                                              draggable
                                                              onDragStart={(e) => handleDragStart(e, audio, index, "audio")}>
                                                             <div className="file-image">
-                                                                <img src={logo}
+                                                                <img src={audio.url}
                                                                      alt="Video Thumbnail"/>
                                                             </div>
                                                             <div className="file-information">
-                                                                <span className="file-name">Goodbye</span>
+                                                                <span className="file-name">{audio.fileName}</span>
                                                                 <span className="file-artist">finetune</span>
-                                                                <span className="file-time">04:26</span>
+                                                                <span className="file-time">{formatTime(audio.duration)}</span>
                                                             </div>
                                                             <div className="favorite-file">
                                                                 <label htmlFor="favorite-audio">
@@ -1418,8 +1424,7 @@ const handleStickerChange = (sticker) => {
                                                                     </svg>
                                                                 </label>
                                                                 <input type="checkbox" id="favorite-audio"
-                                                                       className="favorite-audio"
-                                                                       style={{display: 'none'}}/>
+                                                                       className="favorite-audio"/>
                                                             </div>
                                                         </div>
                                                     </div>
