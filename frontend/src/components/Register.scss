@@ -1,0 +1,94 @@
+.register-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-image: url('../assets/images/Nitro_Wallpaper_01_3840x2400.jpg'); // Replace with an actual image URL
+  background-size: cover;
+  background-position: center;
+
+  .form-box {
+    background-color: var(--form-background);
+    padding: 2rem;
+    border-radius: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+
+    .logo {
+      font-size: 1.5rem;
+      color: var(--primary-color);
+      margin-bottom: 1rem;
+    }
+
+    h2 {
+      color: var(--white-color);
+      font-size: 1.75rem;
+      margin-bottom: 1rem;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+
+      .input-group {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+
+        input {
+          width: 48%;
+        }
+      }
+
+      input {
+        padding: 0.75rem;
+        margin-bottom: 1.5rem;
+        border: none;
+        border-radius: 10px;
+        background-color: #3a3a48;
+        color: #ffffff;
+      }
+
+      .submit-btn {
+        padding: 0.75rem;
+        border: none;
+        border-radius: 10px;
+        background-color: var(--primary-color);
+        color: #ffffff;
+        font-size: 1rem;
+        cursor: pointer;
+        margin-bottom: 1rem;
+
+        &:hover {
+          background-color: darken(#308df8, 10%);
+        }
+      }
+
+      .change-method {
+        padding: 0.75rem;
+        border: none;
+        border-radius: 10px;
+        background-color: #565665;
+        color: #ffffff;
+        font-size: 1rem;
+        cursor: pointer;
+
+        &:hover {
+          background-color: darken(#565665, 10%);
+        }
+      }
+
+    p {
+      margin-bottom: 2rem;
+      color: var(--white-color);
+
+      span {
+        color: var(--primary-color);
+        text-decoration: none;
+      }
+    }
+    }
+  }
+}

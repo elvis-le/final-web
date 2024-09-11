@@ -2,14 +2,16 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
-import reportWebVitals from './reportWebVitals';import {
+import reportWebVitals from './reportWebVitals';
+import {
   BrowserRouter,
   Routes,
   Route,
 } from "react-router-dom";
 import User from "./components/User/User";
 import Admin from "./components/Admin/Admin";
-import Login from "./components/User/Login";
+import Login from "./components/Login";
+import HomePage from "./components/Home/HomePage";
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -17,6 +19,7 @@ root.render(
     <Routes>
       <Route path="/" element={<App />} />
       <Route path="login" element={<Login />} />
+      <Route path="home" element={<HomePage />} />
       <Route path="user" element={<User />} />
       <Route path="admin" element={<Admin />} />
     </Routes>

@@ -7,12 +7,12 @@ from tempfile import NamedTemporaryFile
 from django.views.decorators.csrf import csrf_exempt
 from tempfile import NamedTemporaryFile
 from django.conf import settings
-from .models import Video
+from .models import Video, User
+from django.contrib.auth.hashers import make_password
 import os
 import json
 import logging
 
-# Create your views here.
 
 def home(request):
     return render(request, 'home.html')
@@ -145,47 +145,36 @@ def add_sticker_to_video(request):
     if request.method == 'POST':
         try:
             video_file = request.FILES['file']
-            sticker_file = request.FILES['sticker_url']  # Sticker image file (GIF động)
-            position_x = int(request.POST['position_x'])  # X coordinate for sticker placement
-            position_y = int(request.POST['position_y'])  # Y coordinate for sticker placement
+            sticker_file = request.FILES['sticker_url']
+            position_x = int(request.POST['position_x'])
+            position_y = int(request.POST['position_y'])
 
-            # Temporary paths to save uploaded files
             video_temp_path = '/tmp/uploaded_video.mp4'
             sticker_temp_path = '/tmp/uploaded_sticker.gif'
 
-            # Save the video file temporarily
             with open(video_temp_path, 'wb+') as destination:
                 for chunk in video_file.chunks():
                     destination.write(chunk)
 
-            # Save the sticker file temporarily
             with open(sticker_temp_path, 'wb+') as destination:
                 for chunk in sticker_file.chunks():
                     destination.write(chunk)
 
-            # Load the video
             video = VideoFileClip(video_temp_path)
 
-            # Load the sticker GIF as a VideoFileClip
             sticker = VideoFileClip(sticker_temp_path)
 
-            # Make the sticker loop continuously during the entire video
             sticker = sticker.loop(duration=video.duration)
 
-            # Set the position of the sticker
             sticker = sticker.set_position((position_x, position_y))
 
-            # Composite the sticker onto the video
             video_with_sticker = CompositeVideoClip([video, sticker])
 
-            # Output file path
             output_filename = 'video_with_sticker.mp4'
             output_file_path = os.path.join(settings.MEDIA_ROOT, output_filename)
 
-            # Write the final video with the sticker
             video_with_sticker.write_videofile(output_file_path, codec='libx264', audio_codec='aac')
 
-            # Return the video URL
             return JsonResponse({'video_url': f'{settings.MEDIA_URL}{output_filename}'})
 
         except Exception as e:
@@ -193,3 +182,46 @@ def add_sticker_to_video(request):
 
     return JsonResponse({'error': 'Invalid request method'}, status=400)
 
+@csrf_exempt
+def login_user(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        email = data.get('email')
+        password = data.get('password')
+
+        logger.info(f"Login attempt with email: {email}, password: {password}")
+
+        user = authenticate(request, username=email, password=password)
+
+        if user is not None:
+            return JsonResponse({'success': True, 'message': 'Logged in successfully.'})
+        else:
+            return JsonResponse({'success': False, 'error': 'Invalid email or password.'}, status=400)
+
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=400)
+
+@csrf_exempt
+def register_user(request):
+    logger.info("Received request to register user.")
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            logger.info(f"Request data: {data}")
+
+            if User.objects.filter(email=data.get('email')).exists():
+                return JsonResponse({'success': False, 'error': 'Email already exists'}, status=400)
+
+            user = User.objects.create(
+                username=data.get('username'),
+                email=data.get('email'),
+                password=make_password(data.get('password'))
+            )
+
+            logger.info(f"User created: {user}")
+            return JsonResponse({'success': True, 'message': 'User registered successfully.'})
+
+        except Exception as e:
+            logger.error(f"Error occurred: {str(e)}")
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    logger.warning("Invalid request method.")
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=400)

@@ -8,6 +8,8 @@ import imgTest1 from '../../assets/images/cach-chen-chu-vao-anh-them-hieu-ung-tr
 import axios from 'axios';
 import ReactPlayer from 'react-player';
 import {v4 as uuidv4} from 'uuid';
+import Login from "../Login";
+import Register from "../Register";
 
 function importAll(r) {
     return r.keys().map(key => {
@@ -18,6 +20,7 @@ function importAll(r) {
 }
 
 const HomePage = () => {
+    const [isLogin, setIsLogin] = useState(true);
 
     const videoRef = useRef(null);
     const [videoFile, setVideoFile] = useState(null);
@@ -963,12 +966,15 @@ const handleStickerChange = (sticker) => {
                         Export
                     </button>
                 </div>
-                <div className="login-btn">
-                    <Link className="btn-login-link" to="/login">Login</Link>
-                </div>
-                {/*<div className="profile-user">*/}
-                {/*    <img src={logo} alt="User image"/>*/}
-                {/*</div>*/}
+                {isLogin ? (
+                        <div className="profile-user">
+                            <img src={logo} alt="User image"/>
+                        </div>
+                ) : (
+                    <div className="login-btn">
+                        <Link className="btn-login-link" to="/login">Login</Link>
+                    </div>
+                )}
             </div>
             <div className="adjustment-effect-wrapper">
                 <div className="effect-wrapper">

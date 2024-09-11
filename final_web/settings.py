@@ -11,9 +11,12 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
+from dotenv import load_dotenv
 
 import dj_database_url
 import os
+
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -105,6 +108,9 @@ REST_FRAMEWORK = {
 }
 
 
+SUPABASE_URL = os.getenv('SUPABASE_URL')
+SUPABASE_KEY = os.getenv('SUPABASE_KEY')
+
 DATABASES = {
     'default': dj_database_url.config(
         default=os.getenv('DATABASE_URL'),
@@ -112,6 +118,8 @@ DATABASES = {
         ssl_require=True
     )
 }
+
+AUTHENTICATION_BACKENDS = ['myapp.auth_backend.EmailBackend', 'django.contrib.auth.backends.ModelBackend']
 
 
 # Password validation
