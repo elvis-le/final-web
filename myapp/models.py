@@ -21,8 +21,8 @@ class User(AbstractBaseUser):
     username = models.CharField(max_length=255, unique=True)
     role = models.CharField(max_length=50, default='user')
     birth_date = models.DateField(null=True, blank=True)
-    sex = models.CharField(max_length=10, choices=(('Male', 'Male'), ('Female', 'Female')))
-    address = models.CharField(max_length=255, blank=True)
+    sex = models.CharField(max_length=10, null=True, choices=(('Male', 'Male'), ('Female', 'Female')))
+    address = models.CharField(max_length=255, null=True, blank=True)
     is_delete = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -61,8 +61,8 @@ class Video(models.Model):
         return self.name
 
 class Audio(models.Model):
-    audio_url = models.URLField(max_length=500, null=False)
-    name = models.CharField(max_length=255)
+    audio_file = models.URLField(max_length=500)
+    name = models.CharField(max_length=255, default='Default Audio')
     artist = models.CharField(max_length=255, blank=True)
     category = models.CharField(max_length=50, choices=(('vlog', 'Vlog'), ('tourism', 'Tourism'), ('love', 'Love'), ('spring', 'Spring'), ('beat', 'Beat'), ('heal', 'Heal'), ('warm', 'Warm'), ('trend', 'Trend'), ('revenue', 'Revenue'), ('horrified', 'Horrified'), ('laugh', 'Laugh')))
     is_delete = models.BooleanField(default=False)
@@ -74,6 +74,8 @@ class Audio(models.Model):
 
 
 class Text(models.Model):
+    text_file = models.URLField(max_length=500)
+    name = models.CharField(max_length=255, default='Default Text')
     content = models.TextField()
     category = models.CharField(max_length=50, choices=(('default', 'Default'), ('trending', 'Trending'), ('pro', 'Pro'), ('basic', 'Basic'), ('multicolor', 'Multicolor')))
     is_delete = models.BooleanField(default=False)
@@ -85,8 +87,8 @@ class Text(models.Model):
 
 
 class Sticker(models.Model):
-    sticker_url = models.URLField(max_length=500, null=False)
-    name = models.CharField(max_length=255)
+    sticker_file = models.URLField(max_length=500)
+    name = models.CharField(max_length=255, default='Default Sticker')
     category = models.CharField(max_length=50, choices=(('trending', 'Trending'), ('easter_holiday', 'Easter Holiday'), ('fun', 'Fun'), ('troll_face', 'Troll Face'), ('gaming', 'Gaming'), ('emoji', 'Emoji')))
     is_delete = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -97,7 +99,7 @@ class Sticker(models.Model):
 
 
 class Effect(models.Model):
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, default='Default Effect')
     category = models.CharField(max_length=50, choices=(
         ('trending', 'Trending'),
         ('pro', 'Pro'),
@@ -114,7 +116,7 @@ class Effect(models.Model):
         ('dark_body', 'Dark Body'),
         ('image_body', 'Image Body'),
     ))
-    effect_url = models.URLField(max_length=500, null=False, blank=True)
+    effect_file = models.URLField(max_length=500)
     is_delete = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -124,7 +126,7 @@ class Effect(models.Model):
 
 
 class Filter(models.Model):
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, default='Default Filter')
     category = models.CharField(
         max_length=50,
         choices=(
@@ -137,7 +139,7 @@ class Filter(models.Model):
             ('style', 'Style'),
         )
     )
-    filter_url = models.URLField(max_length=500, blank=True)
+    filter_file = models.URLField(max_length=500)
     is_delete = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

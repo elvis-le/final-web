@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import HttpResponse, JsonResponse, FileResponse
 from django.contrib.auth import authenticate
 from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip, concatenate_videoclips, AudioFileClip, ImageClip
@@ -7,12 +7,18 @@ from tempfile import NamedTemporaryFile
 from django.views.decorators.csrf import csrf_exempt
 from tempfile import NamedTemporaryFile
 from django.conf import settings
-from .models import Video, User
-from django.contrib.auth.hashers import make_password
+from django.utils.timezone import now
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from django.contrib.auth import get_user_model
+from rest_framework.permissions import AllowAny
+from .serializers import *
+from rest_framework import status
 import os
 import json
 import logging
-
 
 def home(request):
     return render(request, 'home.html')
@@ -182,46 +188,119 @@ def add_sticker_to_video(request):
 
     return JsonResponse({'error': 'Invalid request method'}, status=400)
 
-@csrf_exempt
+def get_tokens_for_user(user):
+    refresh = RefreshToken.for_user(user)
+    return {
+        'refresh': str(refresh),
+        'access': str(refresh.access_token),
+    }
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
 def login_user(request):
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        email = data.get('email')
-        password = data.get('password')
+    data = request.data
+    email = data.get('email')
+    password = data.get('password')
+    user = authenticate(request, username=email, password=password)
 
-        logger.info(f"Login attempt with email: {email}, password: {password}")
+    if user is not None:
+        refresh = RefreshToken.for_user(user)
+        serializer = UserSerializer(instance=user)
 
-        user = authenticate(request, username=email, password=password)
+        return Response({
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'user': serializer.data
+        }, status=status.HTTP_200_OK)
+    else:
+        return Response({'error': 'Invalid email or password'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if user is not None:
-            return JsonResponse({'success': True, 'message': 'Logged in successfully.'})
-        else:
-            return JsonResponse({'success': False, 'error': 'Invalid email or password.'}, status=400)
-
-    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=400)
-
-@csrf_exempt
+User = get_user_model()
+@api_view(['POST'])
+@permission_classes([AllowAny])
 def register_user(request):
-    logger.info("Received request to register user.")
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            logger.info(f"Request data: {data}")
+    try:
+        serializer = UserSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            logger.info(f"Created user: {user}")
 
-            if User.objects.filter(email=data.get('email')).exists():
-                return JsonResponse({'success': False, 'error': 'Email already exists'}, status=400)
+            tokens = get_tokens_for_user(user)
+            return JsonResponse({'tokens': tokens, 'user': serializer.data}, status=201)
+        else:
+            logger.error(f"Serializer validation errors: {serializer.errors}")
+            return JsonResponse({'error': serializer.errors}, status=400)
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
 
-            user = User.objects.create(
-                username=data.get('username'),
-                email=data.get('email'),
-                password=make_password(data.get('password'))
-            )
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout_user(request):
+    try:
+        refresh_token = request.data['refresh_token']
 
-            logger.info(f"User created: {user}")
-            return JsonResponse({'success': True, 'message': 'User registered successfully.'})
+        token = RefreshToken(refresh_token)
+        token.blacklist()
 
-        except Exception as e:
-            logger.error(f"Error occurred: {str(e)}")
-            return JsonResponse({'success': False, 'error': str(e)}, status=400)
-    logger.warning("Invalid request method.")
-    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=400)
+        return Response({"message": "Đăng xuất thành công."}, status=200)
+    except Exception as e:
+        return Response({"error": str(e)}, status=400)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_projects(request):
+    user = request.user
+    projects = Project.objects.filter(user=user, is_delete=False)
+    serializer = ProjectSerializer(projects, many=True)
+    return Response({'projects': serializer.data}, status=200)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_project(request):
+    user = request.user
+    project_name = now().strftime("%Y-%m-%d")
+
+    if not project_name:
+        return Response({'error': 'Project name is required'}, status=400)
+
+    project = Project.objects.create(user=user, name=project_name)
+
+    serializer = ProjectSerializer(project)
+    return Response({'project': serializer.data}, status=201)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_audios(request, category):
+    audios = Audio.objects.filter(category=category, is_delete=False)
+    serializer = AudioSerializer(audios, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_texts(request, category):
+    texts = Text.objects.filter(category=category, is_delete=False)
+    serializer = TextSerializer(texts, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_stickers(request, category):
+    stickers = Sticker.objects.filter(category=category, is_delete=False)
+    serializer = StickerSerializer(stickers, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_effects(request, category):
+    effects = Effect.objects.filter(category=category, is_delete=False)
+    serializer = EffectSerializer(effects, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_filters(request, category):
+    filters = Filter.objects.filter(category=category, is_delete=False)
+    serializer = FilterSerializer(filters, many=True)
+    return Response(serializer.data)
+

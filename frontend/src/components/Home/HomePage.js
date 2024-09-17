@@ -8,8 +8,6 @@ import imgTest1 from '../../assets/images/cach-chen-chu-vao-anh-them-hieu-ung-tr
 import axios from 'axios';
 import ReactPlayer from 'react-player';
 import {v4 as uuidv4} from 'uuid';
-import Login from "../Login";
-import Register from "../Register";
 
 function importAll(r) {
     return r.keys().map(key => {
@@ -35,6 +33,12 @@ const HomePage = () => {
 
     const [selectedText, setSelectedText] = useState({});
     const [timelinesText, setTimelinesText] = useState([]);
+    const [textFiles, setTextFiles] = useState({
+        trending: [],
+        pro: [],
+        basic: [],
+        multicolor: [],
+    });
 
     const [selectedAudio, setSelectedAudio] = useState({});
     const [timelinesAudio, setTimelinesAudio] = useState([]);
@@ -65,6 +69,30 @@ const HomePage = () => {
         emoji: [],
     });
 
+    const [selectedEffect, setSelectedEffect] = useState({});
+    const [timelinesEffect, setTimelinesEffect] = useState([]);
+    const [effectFiles, setEffectFiles] = useState({
+        trending: [],
+        pro: [],
+        nightclub: [],
+        lens: [],
+        retro: [],
+        tv: [],
+        star: [],
+    });
+
+    const [selectedFilter, setSelectedFilter] = useState({});
+    const [timelinesFilter, setTimelinesFilter] = useState([]);
+    const [filterFiles, setFilterFiles] = useState({
+        featured: [],
+        pro: [],
+        life: [],
+        scenery: [],
+        movies: [],
+        retro: [],
+        style: [],
+    });
+
     const [draggableText, setDraggableText] = useState({
         content: "Your draggable text here",
         position: {x: 0, y: 0},
@@ -83,6 +111,70 @@ const HomePage = () => {
     const [textToAdd, setTextToAdd] = useState('');
     const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
     const [accumulatedTime, setAccumulatedTime] = useState(0);
+
+    const fetchDataByCategory = async (category, setData, endpoint) => {
+        try {
+            const token = localStorage.getItem('access_token');
+        const response = await axios.get(`http://localhost:8000/myapp/${endpoint}/${category}/`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        setData(response.data);
+    } catch (error) {
+        console.error(`Error fetching ${endpoint} for category ${category}:`, error);
+    }
+    };
+
+    useEffect(() => {
+
+
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        console.error('User is not authenticated');
+        return;
+    }
+        fetchDataByCategory('vlog', setAudioFiles, 'audio');
+        fetchDataByCategory('tourism', setAudioFiles, 'audio');
+        fetchDataByCategory('love', setAudioFiles, 'audio');
+        fetchDataByCategory('spring', setAudioFiles, 'audio');
+        fetchDataByCategory('beat', setAudioFiles, 'audio');
+        fetchDataByCategory('heal', setAudioFiles, 'audio');
+        fetchDataByCategory('warm', setAudioFiles, 'audio');
+        fetchDataByCategory('trend', setAudioFiles, 'audio');
+        fetchDataByCategory('revenue', setAudioFiles, 'audio');
+        fetchDataByCategory('horrified', setAudioFiles, 'audio');
+        fetchDataByCategory('laugh', setAudioFiles, 'audio');
+
+        fetchDataByCategory('trending', setTextFiles, 'text');
+        fetchDataByCategory('pro', setTextFiles, 'text');
+        fetchDataByCategory('basic', setTextFiles, 'text');
+        fetchDataByCategory('multicolor', setTextFiles, 'text');
+
+        fetchDataByCategory('trending', setStickerFiles, 'sticker');
+        fetchDataByCategory('easter_holiday', setStickerFiles, 'sticker');
+        fetchDataByCategory('fun', setStickerFiles, 'sticker');
+        fetchDataByCategory('troll_face', setStickerFiles, 'sticker');
+        fetchDataByCategory('gaming', setStickerFiles, 'sticker');
+        fetchDataByCategory('emoji', setStickerFiles, 'sticker');
+
+        fetchDataByCategory('trending', setEffectFiles, 'effect');
+        fetchDataByCategory('pro', setEffectFiles, 'effect');
+        fetchDataByCategory('nightclub', setEffectFiles, 'effect');
+        fetchDataByCategory('lens', setEffectFiles, 'effect');
+        fetchDataByCategory('retro', setEffectFiles, 'effect');
+        fetchDataByCategory('tv', setEffectFiles, 'effect');
+        fetchDataByCategory('star', setEffectFiles, 'effect');
+
+        fetchDataByCategory('featured', setFilterFiles, 'filter');
+        fetchDataByCategory('pro', setFilterFiles, 'filter');
+        fetchDataByCategory('life', setFilterFiles, 'filter');
+        fetchDataByCategory('scenery', setFilterFiles, 'filter');
+        fetchDataByCategory('movies', setFilterFiles, 'filter');
+        fetchDataByCategory('retro', setFilterFiles, 'filter');
+        fetchDataByCategory('style', setFilterFiles, 'filter');
+    }, []);
+
 
     const handleEffectClick = () => {
         if (videoRef.current) {
@@ -923,35 +1015,8 @@ const handleStickerChange = (sticker) => {
         setTimestamps(generateTimestamps(totalDuration, 5));
     }, [timelineVideos]);
 
-    useEffect(() => {
-        const importedAudioFiles = {
-            vlog: importAll(require.context('../../assets/audio/music/vlog', false, /\.MP3$/)),
-            tourism: importAll(require.context('../../assets/audio/music/tourism', false, /\.MP3$/)),
-            spring: importAll(require.context('../../assets/audio/music/spring', false, /\.MP3$/)),
-            love: importAll(require.context('../../assets/audio/music/love', false, /\.MP3$/)),
-            beat: importAll(require.context('../../assets/audio/music/beat', false, /\.MP3$/)),
-            heal: importAll(require.context('../../assets/audio/music/heal', false, /\.MP3$/)),
-            warm: importAll(require.context('../../assets/audio/music/warm', false, /\.MP3$/)),
-            trend: importAll(require.context('../../assets/audio/soundEffects/trend', false, /\.MP3$/)),
-            revenue: importAll(require.context('../../assets/audio/soundEffects/revenue', false, /\.MP3$/)),
-            horrified: importAll(require.context('../../assets/audio/soundEffects/horrified', false, /\.MP3$/)),
-            laugh: importAll(require.context('../../assets/audio/soundEffects/laugh', false, /\.MP3$/)),
-        };
 
-        const importedStickerFiles = {
-            trending: importAll(require.context('../../assets/sticker/trending', false, /\.gif$/)),
-        easter_holiday: importAll(require.context('../../assets/sticker/easter_holiday', false, /\.gif$/)),
-        fun: importAll(require.context('../../assets/sticker/fun', false, /\.gif$/)),
-        troll_face: importAll(require.context('../../assets/sticker/troll_face', false, /\.gif$/)),
-        gaming: importAll(require.context('../../assets/sticker/gaming', false, /\.gif$/)),
-        emoji: importAll(require.context('../../assets/sticker/emoji', false, /\.gif$/)),
-        };
 
-        setAudioFiles(importedAudioFiles);
-        setStickerFiles(importedStickerFiles);
-    }, []);
-
-    console.log(audioFiles.vlog);
 
     return (
         <body>
