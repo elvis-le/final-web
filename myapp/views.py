@@ -14,6 +14,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import AllowAny
+
+from final_web.settings import supabase
 from .serializers import *
 from rest_framework import status
 import os
@@ -207,15 +209,21 @@ def login_user(request):
         refresh = RefreshToken.for_user(user)
         serializer = UserSerializer(instance=user)
 
+        role = serializer.data['role']
+        if role == 'admin':
+            redirect_url = '/admin'
+        else:
+            redirect_url = '/user'
+
         return Response({
             'refresh': str(refresh),
             'access': str(refresh.access_token),
-            'user': serializer.data
+            'user': serializer.data,
+            'redirect_url': redirect_url
         }, status=status.HTTP_200_OK)
     else:
         return Response({'error': 'Invalid email or password'}, status=status.HTTP_400_BAD_REQUEST)
 
-User = get_user_model()
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
@@ -231,7 +239,6 @@ def register_user(request):
             logger.error(f"Serializer validation errors: {serializer.errors}")
             return JsonResponse({'error': serializer.errors}, status=400)
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
 @api_view(['POST'])
@@ -269,6 +276,26 @@ def create_project(request):
     serializer = ProjectSerializer(project)
     return Response({'project': serializer.data}, status=201)
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_audio(request):
+    try:
+        serializer = AudioSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        else:
+            return JsonResponse({'error': serializer.errors}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_all_audios(request):
+    audios = Audio.objects.filter(is_delete=False)
+    serializer = AudioSerializer(audios, many=True)
+    return Response(serializer.data)
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_audios(request, category):
@@ -276,11 +303,48 @@ def get_audios(request, category):
     serializer = AudioSerializer(audios, many=True)
     return Response(serializer.data)
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_text(request):
+    try:
+        serializer = TextSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        else:
+            return JsonResponse({'error': serializer.errors}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_all_texts(request):
+    texts = Text.objects.filter(is_delete=False)
+    serializer = TextSerializer(texts, many=True)
+    return Response(serializer.data)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_texts(request, category):
     texts = Text.objects.filter(category=category, is_delete=False)
     serializer = TextSerializer(texts, many=True)
+    return Response(serializer.data)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_sticker(request):
+    try:
+        serializer = StickerSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        else:
+            return JsonResponse({'error': serializer.errors}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_all_stickers(request):
+    stickers = Sticker.objects.filter(is_delete=False)
+    serializer = StickerSerializer(stickers, many=True)
     return Response(serializer.data)
 
 @api_view(['GET'])
@@ -290,11 +354,49 @@ def get_stickers(request, category):
     serializer = StickerSerializer(stickers, many=True)
     return Response(serializer.data)
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_effect(request):
+    try:
+        serializer = EffectSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        else:
+            return JsonResponse({'error': serializer.errors}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_all_effects(request):
+    effects = Effect.objects.filter(is_delete=False)
+    serializer = EffectSerializer(effects, many=True)
+    return Response(serializer.data)
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_effects(request, category):
     effects = Effect.objects.filter(category=category, is_delete=False)
     serializer = EffectSerializer(effects, many=True)
+    return Response(serializer.data)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_filter(request):
+    try:
+        serializer = FilterSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        else:
+            return JsonResponse({'error': serializer.errors}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_all_filters(request):
+    filters = Filter.objects.filter(is_delete=False)
+    serializer = FilterSerializer(filters, many=True)
     return Response(serializer.data)
 
 @api_view(['GET'])

@@ -51,8 +51,11 @@ const Login = ({ onLogin, onSwitch }) => {
     localStorage.setItem('access_token', data.access);
     localStorage.setItem('refresh_token', data.refresh);
     localStorage.setItem('user', JSON.stringify(data.user));
-
-    navigate('/user');
+    if (data.redirect_url === '/admin') {
+      navigate('/admin');
+    } else {
+      navigate('/user');
+    }
   } catch (error) {
     console.error('Error during login:', error);
     setErrorMessage(error.response?.data?.error || 'Login error');

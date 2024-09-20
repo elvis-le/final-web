@@ -120,20 +120,17 @@ const HomePage = () => {
                 'Authorization': `Bearer ${token}`
             }
         });
-        setData(response.data);
+        const dataByCategory = response.data.filter(audio => audio.category === category);
+        setData(prevState => ({
+            ...prevState,
+            [category]: dataByCategory
+        }));
     } catch (error) {
         console.error(`Error fetching ${endpoint} for category ${category}:`, error);
     }
     };
 
     useEffect(() => {
-
-
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-        console.error('User is not authenticated');
-        return;
-    }
         fetchDataByCategory('vlog', setAudioFiles, 'audio');
         fetchDataByCategory('tourism', setAudioFiles, 'audio');
         fetchDataByCategory('love', setAudioFiles, 'audio');
@@ -1015,8 +1012,7 @@ const handleStickerChange = (sticker) => {
         setTimestamps(generateTimestamps(totalDuration, 5));
     }, [timelineVideos]);
 
-
-
+    console.log({audioFiles})
 
     return (
         <body>
@@ -1473,12 +1469,12 @@ const handleStickerChange = (sticker) => {
                                                              draggable
                                                              onDragStart={(e) => handleDragStart(e, audio, index, "audio")}>
                                                             <div className="file-image">
-                                                                <img src={audio.url}
+                                                                <img src={audio.audio_file}
                                                                      alt="Video Thumbnail"/>
                                                             </div>
                                                             <div className="file-information">
-                                                                <span className="file-name">{audio.fileName}</span>
-                                                                <span className="file-artist">finetune</span>
+                                                                <span className="file-name">{audio.name}</span>
+                                                                <span className="file-artist">{audio.artist}</span>
                                                                 <span className="file-time">{formatTime(audio.duration)}</span>
                                                             </div>
                                                             <div className="favorite-file">

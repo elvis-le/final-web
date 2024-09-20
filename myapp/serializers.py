@@ -35,12 +35,12 @@ class VideoSerializer(serializers.ModelSerializer):
 class AudioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Audio
-        fields = ['id', 'audio_file', 'name', 'artist', 'category', 'is_delete', 'created_at', 'updated_at']
+        fields = ['id', 'audio_file', 'name', 'artist', 'duration', 'category', 'is_delete', 'created_at', 'updated_at']
 
 class TextSerializer(serializers.ModelSerializer):
     class Meta:
         model = Text
-        fields = ['id', 'text_file', 'content', 'category', 'is_delete', 'created_at', 'updated_at']
+        fields = ['id', 'text_file', 'content', 'color', 'font', 'stroke_color', 'stroke_width', 'duration', 'fontsize', 'transparent', 'category', 'is_delete', 'created_at', 'updated_at']
 
 class StickerSerializer(serializers.ModelSerializer):
     class Meta:

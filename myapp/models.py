@@ -64,6 +64,7 @@ class Audio(models.Model):
     audio_file = models.URLField(max_length=500)
     name = models.CharField(max_length=255, default='Default Audio')
     artist = models.CharField(max_length=255, blank=True)
+    duration = models.FloatField(null=True, blank=True)
     category = models.CharField(max_length=50, choices=(('vlog', 'Vlog'), ('tourism', 'Tourism'), ('love', 'Love'), ('spring', 'Spring'), ('beat', 'Beat'), ('heal', 'Heal'), ('warm', 'Warm'), ('trend', 'Trend'), ('revenue', 'Revenue'), ('horrified', 'Horrified'), ('laugh', 'Laugh')))
     is_delete = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -75,15 +76,21 @@ class Audio(models.Model):
 
 class Text(models.Model):
     text_file = models.URLField(max_length=500)
-    name = models.CharField(max_length=255, default='Default Text')
     content = models.TextField()
+    color = models.CharField(max_length=255, default='white')
+    fontsize = models.IntegerField(default=100)
+    font = models.CharField(max_length=255, default='Arial')
+    stroke_color = models.CharField(max_length=255, default='white')
+    stroke_width = models.IntegerField(default=2)
+    duration = models.IntegerField(default=5)
+    transparent = models.BooleanField(default=True)
     category = models.CharField(max_length=50, choices=(('default', 'Default'), ('trending', 'Trending'), ('pro', 'Pro'), ('basic', 'Basic'), ('multicolor', 'Multicolor')))
     is_delete = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.content[:50]  # Display first 50 chars
+        return f"{self.content[:50]} (Font: {self.font}, Color: {self.color})"
 
 
 class Sticker(models.Model):

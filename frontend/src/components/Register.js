@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import "./Register.scss"
+import {useNavigate} from "react-router-dom";
+import axios from 'axios';
 
 const Register = ({ onRegister, onSwitch }) => {
   const [formData, setFormData] = useState({
@@ -8,6 +10,7 @@ const Register = ({ onRegister, onSwitch }) => {
     email: "",
     password: ""
   });
+  const navigate = useNavigate();
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -18,25 +21,28 @@ const Register = ({ onRegister, onSwitch }) => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-        const response = await fetch('http://localhost:8000/myapp/register_user/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(formData),
-        });
+  e.preventDefault();
+  try {
+    const response = await axios.post('http://localhost:8000/myapp/register_user/', formData, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
-        const result = await response.json();
-        if (result.success) {
-            console.log('User registered successfully');
-        } else {
-            console.error(result.error);
-        }
-    } catch (error) {
-        console.error('Error:', error);
+    if (response.status === 201) {
+      console.log('User registered successfully');
+
+      localStorage.setItem('access_token', response.data.tokens.access);
+      localStorage.setItem('refresh_token', response.data.tokens.refresh);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+
+      navigate('/user');
+    } else {
+      console.error(response.data.error);
     }
+  } catch (error) {
+    console.error('Error:', error);
+  }
 };
 
   return (

@@ -4,30 +4,39 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import {
-  BrowserRouter,
-  Routes,
-  Route,
+    BrowserRouter,
+    Routes,
+    Route,
 } from "react-router-dom";
 import User from "./components/User/User";
 import Admin from "./components/Admin/Admin";
 import Login from "./components/Login";
 import HomePage from "./components/Home/HomePage";
 import Register from "./components/Register";
-import AudioUploadForm from "./components/Admin/UploadEffect";
+import AudioManage from "./components/Admin/AudioManage";
+import TextManage from "./components/Admin/TextManage";
+import StickerManage from "./components/Admin/StickerManage";
+import EffectManage from "./components/Admin/EffectManage";
+import FilterManage from "./components/Admin/FilterManage";
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
     <BrowserRouter>
-    <Routes>
-      <Route path="/" element={<App />} />
-      <Route path="login" element={<Login />} />
-      <Route path="register" element={<Register />} />
-      <Route path="AudioUploadForm" element={<AudioUploadForm />} />
-      <Route path="home" element={<HomePage />} />
-      <Route path="user" element={<User />} />
-      <Route path="admin" element={<Admin />} />
-    </Routes>
-  </BrowserRouter>,
+        <Routes>
+            <Route path="/" element={<App/>}/>
+            <Route path="login" element={<Login/>}/>
+            <Route path="register" element={<Register/>}/>
+            <Route path="home" element={<HomePage/>}/>
+            <Route path="user" element={<User/>}/>
+            <Route path="admin" element={<Admin/>}>
+                <Route path="AudioManage" element={<AudioManage/>}/>
+                <Route path="TextManage" element={<TextManage/>}/>
+                <Route path="StickerManage" element={<StickerManage/>}/>
+                <Route path="EffectManage" element={<EffectManage/>}/>
+                <Route path="FilterManage" element={<FilterManage/>}/>
+            </Route>
+        </Routes>
+    </BrowserRouter>,
 );
 
 // const home = ReactDOM.createRoot(document.getElementById('home'));
