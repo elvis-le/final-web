@@ -10,8 +10,8 @@ services:
       - .:/app
     ports:
       - "8000:8000"
-    depends_on:
-      - db
+    environment:
+      - DATABASE_URL=postgresql://postgres.btfptkpngrtnnqweftvx:LNQKhanh1509@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
 
   frontend:
     build:
@@ -22,15 +22,3 @@ services:
     ports:
       - "3000:3000"
 
-  db:
-    image: postgres:15
-    volumes:
-      - postgres_data:/var/lib/postgresql/data/
-    environment:
-      POSTGRES_DB: postgres
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: LNQKhanh1509@
-      POSTGRES_HOST_AUTH_METHOD: trust
-
-volumes:
-  postgres_data:

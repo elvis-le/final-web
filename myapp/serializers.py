@@ -1,23 +1,68 @@
-from django.urls import path, include
 from rest_framework import serializers
-from .models import Users, Project, Video, VideoEdit
+from .models import User, Project, Video, Audio, Text, Sticker, Effect, Filter, EditSession, Role
 
-class UsersSerializer(serializers.ModelSerializer):
+class UserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Users
-        fields = ['id', 'username', 'email', 'birth_date', 'sex', 'address']
+        model = User
+        fields = ['id', 'email', 'password', 'username', 'role', 'birth_date', 'sex', 'address', 'is_delete', 'created_at', 'updated_at']
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
 
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            email=validated_data['email'],
+            username=validated_data['username'],
+            password=validated_data['password'],
+            role=validated_data.get('role', 'user'),
+            birth_date=validated_data.get('birth_date', None),
+            sex=validated_data.get('sex', None),
+            address=validated_data.get('address', None),
+            is_delete=validated_data.get('is_delete', False)
+        )
+        return user
 
 class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
-        fields = ['id', 'user', 'title', 'description', 'created_at', 'updated_at']
+        fields = ['id', 'user', 'name', 'is_delete', 'created_at', 'updated_at']
+
 class VideoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Video
-        fields = ['id', 'project', 'title', 'description', 'file_url', 'created_at', 'updated_at']
+        fields = ['id', 'project', 'video_url', 'name', 'status', 'is_delete', 'created_at', 'updated_at']
 
-class VideoEditSerializer(serializers.ModelSerializer):
+class AudioSerializer(serializers.ModelSerializer):
     class Meta:
-        model = VideoEdit
-        fields = ['id', 'video', 'created_at', 'updated_at']
+        model = Audio
+        fields = ['id', 'audio_file', 'name', 'artist', 'duration', 'category', 'is_delete', 'created_at', 'updated_at']
+
+class TextSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Text
+        fields = ['id', 'text_file', 'content', 'color', 'font', 'stroke_color', 'stroke_width', 'duration', 'fontsize', 'transparent', 'category', 'is_delete', 'created_at', 'updated_at']
+
+class StickerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Sticker
+        fields = ['id', 'sticker_file', 'name', 'category', 'is_delete', 'created_at', 'updated_at']
+
+class EffectSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Effect
+        fields = ['id', 'name', 'category', 'effect_file', 'is_delete', 'created_at', 'updated_at']
+
+class FilterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Filter
+        fields = ['id', 'name', 'category', 'filter_file', 'is_delete', 'created_at', 'updated_at']
+
+class EditSessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EditSession
+        fields = ['id', 'user', 'video', 'actions', 'created_at', 'updated_at']
+
+class RoleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Role
+        fields = ['id', 'role_name']

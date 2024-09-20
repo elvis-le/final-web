@@ -61,6 +61,9 @@
     --effect-frame: rgb(105,105,105);
     --thumb-color: #222222;
     --edit-frame: rgba(36,36,37,1);
+    --primary-color: #308df8;
+--background-color: #1f1f27;
+--form-background: #2b2b34;
     /*Z-index*/
     --z-fixed: 100;
     /*Font-style*/
@@ -79,8 +82,6 @@
     box-sizing: border-box; }
 
 body {
-    margin: 0px;
-    padding: 0px;
     overflow: hidden;
     font-size: var(--normal-font-size);
     position: relative;
