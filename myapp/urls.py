@@ -9,6 +9,11 @@ urlpatterns = [
     path('merge_videos/', views.merge_videos, name='merge_videos'),
     path('add_audio_to_video/', views.add_audio_to_video, name='add_audio_to_video'),
     path('add_sticker_to_video/', views.add_sticker_to_video, name='add_sticker_to_video'),
+    path('upload_video/', views.upload_video, name='upload_video'),
+    path('video/<str:project>/', views.get_videos, name='get_videos'),
+    path('save_edit_session/', views.save_edit_session, name='save_edit_session'),
+    path('edit_session/<int:project_id>/', views.get_edit_session, name='get_edit_session'),
+    path('validate_token/', views.validate_token, name='validate_token'),
 
     path('register_user/', views.register_user, name='register_user'),
     path('login_user/', views.login_user, name='login_user'),

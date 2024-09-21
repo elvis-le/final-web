@@ -22,18 +22,86 @@ import os
 import json
 import logging
 
+
 def home(request):
     return render(request, 'home.html')
 
-@csrf_exempt
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def upload_video(request):
-    if request.method == 'POST':
-        video_file = request.FILES['video']
-        video = Video.objects.create(video_file=video_file)
-        return JsonResponse({'success': True, 'video_id': video.id})
-    return JsonResponse({'success': False})
+    try:
+        serializer = VideoSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        else:
+            return JsonResponse({'error': serializer.errors}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_videos(request, project):
+    try:
+        videos = Video.objects.filter(project=project, is_delete=False)
+        if not videos.exists():
+            return JsonResponse({'message': 'No videos found for this project'}, status=404)
+
+        serializer = VideoSerializer(videos, many=True)
+        return Response(serializer.data)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def save_edit_session(request):
+    user = request.user
+    project_id = request.data.get('project_id')
+    actions = request.data.get('actions')
+
+    edit_session, created = EditSession.objects.get_or_create(user=user, project_id=project_id)
+
+    if not created:
+        edit_session.actions = actions
+        edit_session.save()
+
+    return Response({'message': 'Edit session saved successfully'}, status=200)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_edit_session(request, project_id):
+    try:
+        logger.info(f"Fetching edit session for project {project_id}")
+        user = request.user
+        project = Project.objects.get(id=project_id)
+        edit_session = EditSession.objects.filter(user=user, project=project).first()
+
+        if edit_session:
+            serializer = EditSessionSerializer(edit_session)
+            logger.info(f"Edit session found for project {project_id}")
+            return Response(serializer.data, status=200)
+        else:
+            logger.info(f"No edit session found for project {project_id}")
+            return Response({'message': 'No edit session found for this project', 'actions': {}}, status=200)
+    except Project.DoesNotExist:
+        logger.error(f"Project {project_id} does not exist")
+        return Response({'error': 'Project does not exist'}, status=404)
+    except Exception as e:
+        logger.error(f"Error fetching edit session: {e}")
+        return Response({'error': str(e)}, status=500)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def validate_token(request):
+    return Response({"message": "Token is valid"}, status=200)
+
 
 logger = logging.getLogger(__name__)
+
 
 @csrf_exempt
 def cut_video(request):
@@ -71,7 +139,10 @@ def cut_video(request):
             return JsonResponse({'message': f'Error while processing video: {str(e)}'}, status=500)
     return JsonResponse({'message': 'Invalid request method'}, status=400)
 
+
 change_settings({"IMAGEMAGICK_BINARY": "/usr/bin/convert"})
+
+
 @csrf_exempt
 def add_text_to_video(request):
     if request.method == 'POST':
@@ -84,7 +155,8 @@ def add_text_to_video(request):
 
             video = VideoFileClip(video_file.temporary_file_path())
 
-            text_clip = TextClip(text_to_add, fontsize=70, color='white').set_position(('center', 'bottom')).set_duration(video.duration)
+            text_clip = TextClip(text_to_add, fontsize=70, color='white').set_position(
+                ('center', 'bottom')).set_duration(video.duration)
 
             video_with_text = CompositeVideoClip([video, text_clip])
 
@@ -96,6 +168,7 @@ def add_text_to_video(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid request method'}, status=400)
+
 
 @csrf_exempt
 def merge_videos(request):
@@ -114,6 +187,7 @@ def merge_videos(request):
         return JsonResponse({'merged_video_url': f'/media/merged_video.mp4'})
 
     return JsonResponse({'error': 'Invalid request'}, status=400)
+
 
 @csrf_exempt
 def add_audio_to_video(request):
@@ -147,6 +221,7 @@ def add_audio_to_video(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid request method'}, status=400)
+
 
 @csrf_exempt
 def add_sticker_to_video(request):
@@ -190,12 +265,14 @@ def add_sticker_to_video(request):
 
     return JsonResponse({'error': 'Invalid request method'}, status=400)
 
+
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
     return {
         'refresh': str(refresh),
         'access': str(refresh.access_token),
     }
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -224,6 +301,7 @@ def login_user(request):
     else:
         return Response({'error': 'Invalid email or password'}, status=status.HTTP_400_BAD_REQUEST)
 
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
@@ -241,6 +319,7 @@ def register_user(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout_user(request):
@@ -254,6 +333,7 @@ def logout_user(request):
     except Exception as e:
         return Response({"error": str(e)}, status=400)
 
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_user_projects(request):
@@ -261,6 +341,7 @@ def get_user_projects(request):
     projects = Project.objects.filter(user=user, is_delete=False)
     serializer = ProjectSerializer(projects, many=True)
     return Response({'projects': serializer.data}, status=200)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -276,6 +357,7 @@ def create_project(request):
     serializer = ProjectSerializer(project)
     return Response({'project': serializer.data}, status=201)
 
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def upload_audio(request):
@@ -289,6 +371,7 @@ def upload_audio(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_all_audios(request):
@@ -296,12 +379,14 @@ def get_all_audios(request):
     serializer = AudioSerializer(audios, many=True)
     return Response(serializer.data)
 
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_audios(request, category):
     audios = Audio.objects.filter(category=category, is_delete=False)
     serializer = AudioSerializer(audios, many=True)
     return Response(serializer.data)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -315,18 +400,23 @@ def upload_text(request):
             return JsonResponse({'error': serializer.errors}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_all_texts(request):
     texts = Text.objects.filter(is_delete=False)
     serializer = TextSerializer(texts, many=True)
     return Response(serializer.data)
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_texts(request, category):
     texts = Text.objects.filter(category=category, is_delete=False)
     serializer = TextSerializer(texts, many=True)
     return Response(serializer.data)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -340,6 +430,8 @@ def upload_sticker(request):
             return JsonResponse({'error': serializer.errors}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_all_stickers(request):
@@ -347,12 +439,14 @@ def get_all_stickers(request):
     serializer = StickerSerializer(stickers, many=True)
     return Response(serializer.data)
 
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_stickers(request, category):
     stickers = Sticker.objects.filter(category=category, is_delete=False)
     serializer = StickerSerializer(stickers, many=True)
     return Response(serializer.data)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -366,6 +460,8 @@ def upload_effect(request):
             return JsonResponse({'error': serializer.errors}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_all_effects(request):
@@ -373,12 +469,14 @@ def get_all_effects(request):
     serializer = EffectSerializer(effects, many=True)
     return Response(serializer.data)
 
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_effects(request, category):
     effects = Effect.objects.filter(category=category, is_delete=False)
     serializer = EffectSerializer(effects, many=True)
     return Response(serializer.data)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -392,6 +490,8 @@ def upload_filter(request):
             return JsonResponse({'error': serializer.errors}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_all_filters(request):
@@ -399,10 +499,10 @@ def get_all_filters(request):
     serializer = FilterSerializer(filters, many=True)
     return Response(serializer.data)
 
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_filters(request, category):
     filters = Filter.objects.filter(category=category, is_delete=False)
     serializer = FilterSerializer(filters, many=True)
     return Response(serializer.data)
-

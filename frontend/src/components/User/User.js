@@ -90,11 +90,18 @@ useEffect(() => {
     );
 
     console.log("Project created successfully:", response.data.project);
+    const projectId = response.data.project.id;
+    localStorage.setItem('current_project_id', projectId);
 
     navigate('/home');
   } catch (error) {
     console.error("Error creating project:", error.response?.data || error.message);
   }
+};
+
+  const handleSelectProject = (projectId) => {
+    localStorage.setItem('current_project_id', projectId);
+    navigate('/home');
 };
 
   return (
@@ -123,7 +130,7 @@ useEffect(() => {
           ) : (
               <div className="projects-grid">
                 {projects.map((project) => (
-                    <div key={project.id} className="project-card">
+                    <div key={project.id} className="project-card" onClick={() => handleSelectProject(project.id)}>
                       <img src={imgTest} alt={`Project ${project.name}`}/>
                       <span>{project.name}</span>
                       <span>{new Date(project.created_at).toLocaleDateString()}</span>

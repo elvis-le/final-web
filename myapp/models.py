@@ -52,6 +52,7 @@ class Video(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     video_url = models.URLField(max_length=500, null=False)
     name = models.CharField(max_length=255)
+    duration = models.FloatField(null=True, blank=True)
     status = models.CharField(max_length=50, choices=(('Unedited', 'Unedited'), ('Edited', 'Edited')), default='Unedited')
     is_delete = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -62,6 +63,7 @@ class Video(models.Model):
 
 class Audio(models.Model):
     audio_file = models.URLField(max_length=500)
+    image = models.URLField(max_length=500, default='https://btfptkpngrtnnqweftvx.supabase.co/storage/v1/object/public/audio_files/image/oweiIPFVGAAIVCmcAIV4eAaK5FeGcLQe5AqzJ1.jpeg')
     name = models.CharField(max_length=255, default='Default Audio')
     artist = models.CharField(max_length=255, blank=True)
     duration = models.FloatField(null=True, blank=True)
@@ -76,6 +78,7 @@ class Audio(models.Model):
 
 class Text(models.Model):
     text_file = models.URLField(max_length=500)
+    image = models.URLField(max_length=500, default='https://btfptkpngrtnnqweftvx.supabase.co/storage/v1/object/public/audio_files/image/oweiIPFVGAAIVCmcAIV4eAaK5FeGcLQe5AqzJ1.jpeg')
     content = models.TextField()
     color = models.CharField(max_length=255, default='white')
     fontsize = models.IntegerField(default=100)
@@ -95,7 +98,9 @@ class Text(models.Model):
 
 class Sticker(models.Model):
     sticker_file = models.URLField(max_length=500)
+    image = models.URLField(max_length=500, default='https://btfptkpngrtnnqweftvx.supabase.co/storage/v1/object/public/audio_files/image/oweiIPFVGAAIVCmcAIV4eAaK5FeGcLQe5AqzJ1.jpeg')
     name = models.CharField(max_length=255, default='Default Sticker')
+    duration = models.FloatField(null=True, blank=True)
     category = models.CharField(max_length=50, choices=(('trending', 'Trending'), ('easter_holiday', 'Easter Holiday'), ('fun', 'Fun'), ('troll_face', 'Troll Face'), ('gaming', 'Gaming'), ('emoji', 'Emoji')))
     is_delete = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -107,6 +112,8 @@ class Sticker(models.Model):
 
 class Effect(models.Model):
     name = models.CharField(max_length=255, default='Default Effect')
+    image = models.URLField(max_length=500, default='https://btfptkpngrtnnqweftvx.supabase.co/storage/v1/object/public/audio_files/image/oweiIPFVGAAIVCmcAIV4eAaK5FeGcLQe5AqzJ1.jpeg')
+    duration = models.FloatField(null=True, blank=True)
     category = models.CharField(max_length=50, choices=(
         ('trending', 'Trending'),
         ('pro', 'Pro'),
@@ -134,6 +141,8 @@ class Effect(models.Model):
 
 class Filter(models.Model):
     name = models.CharField(max_length=255, default='Default Filter')
+    image = models.URLField(max_length=500, default='https://btfptkpngrtnnqweftvx.supabase.co/storage/v1/object/public/audio_files/image/oweiIPFVGAAIVCmcAIV4eAaK5FeGcLQe5AqzJ1.jpeg')
+    duration = models.FloatField(null=True, blank=True)
     category = models.CharField(
         max_length=50,
         choices=(
@@ -156,13 +165,13 @@ class Filter(models.Model):
 
 class EditSession(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    video = models.ForeignKey(Video, on_delete=models.CASCADE)
-    actions = models.JSONField(blank=True)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, default=1)
+    actions = models.JSONField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Edit session for {self.video.name} by {self.user.username}"
+        return f"Edit session for {self.project.name} by {self.user.username}"
 
 
 class Role(models.Model):
