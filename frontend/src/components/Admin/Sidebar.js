@@ -1,7 +1,7 @@
 import React from 'react';
 import { FaChartBar, FaUsers, FaVideo, FaMusic, FaFont, FaStickerMule, FaMagic, FaFilter } from 'react-icons/fa';
 import axios from "axios";
-import {useNavigate} from "react-router-dom";
+import {useNavigate, Link } from "react-router-dom";
 
 const Sidebar = ({ onOptionSelect }) => {
 
@@ -46,14 +46,14 @@ const Sidebar = ({ onOptionSelect }) => {
                 <span className="status-online">Online</span>
             </div>
             <ul className="sidebar-menu">
-                <li onClick={() => onOptionSelect('users')}><FaUsers/> <span>Users</span></li>
-                <li onClick={() => onOptionSelect('projects')}><FaChartBar/> <span>Projects</span></li>
-                <li onClick={() => onOptionSelect('videos')}><FaVideo/> <span>Videos</span></li>
-                <li onClick={() => onOptionSelect('audio')}><FaMusic/> <span>Audio</span></li>
-                <li onClick={() => onOptionSelect('text')}><FaFont/> <span>Text</span></li>
-                <li onClick={() => onOptionSelect('stickers')}><FaStickerMule/> <span>Stickers</span></li>
-                <li onClick={() => onOptionSelect('effects')}><FaMagic/> <span>Effects</span></li>
-                <li onClick={() => onOptionSelect('filters')}><FaFilter/> <span>Filters</span></li>
+                <li><Link className="link" to="/admin/users" onClick={() => onOptionSelect('users')}><FaUsers/> <span>Users</span></Link></li>
+                <li><Link className="link" to="/admin/projects" onClick={() => onOptionSelect('projects')}><FaChartBar/> <span>Projects</span></Link></li>
+                <li><Link className="link" to="/admin/videos" onClick={() => onOptionSelect('videos')}><FaVideo/> <span>Videos</span></Link></li>
+                <li><Link className="link" to="/admin/audio" onClick={() => onOptionSelect('audio')}><FaMusic/> <span>Audio</span></Link></li>
+                <li><Link className="link" to="/admin/text" onClick={() => onOptionSelect('text')}><FaFont/> <span>Text</span></Link></li>
+                <li><Link className="link" to="/admin/stickers" onClick={() => onOptionSelect('stickers')}><FaStickerMule/> <span>Stickers</span></Link></li>
+                <li><Link className="link" to="/admin/effects" onClick={() => onOptionSelect('effects')}><FaMagic/> <span>Effects</span></Link></li>
+                <li><Link className="link" to="/admin/filters" onClick={() => onOptionSelect('filters')}><FaFilter/> <span>Filters</span></Link></li>
                 <button onClick={handleLogout} className="logout-btn">
                     Log out
                 </button>

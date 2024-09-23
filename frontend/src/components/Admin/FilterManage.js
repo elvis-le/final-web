@@ -13,18 +13,19 @@ import {
 } from '@mui/material'
 import axios from 'axios';
 import {supabase} from '../../supabaseClient';
+import {v4 as uuidv4} from "uuid";
 
 const FilterManage = () => {
-    const [filterFile, setFilterFile] = useState(null);
+    const [imageFile, setImageFile] = useState(null);
     const [name, setName] = useState('');
     const [category, setCategory] = useState('');
     const [isCreate, setIsCreate] = useState(false);
     const [filterData, setFilterData] = useState([]);
+    const [config, setConfig] = useState({});
             const token = localStorage.getItem('access_token');
 
     const categories = [
         { value: 'featured', label: 'Featured' },
-{ value: 'pro', label: 'Pro' },
 { value: 'life', label: 'Life' },
 { value: 'scenery', label: 'Scenery' },
 { value: 'movies', label: 'Movies' },
@@ -52,60 +53,69 @@ const FilterManage = () => {
     const handleSwitch = () => {
         setIsCreate(!isCreate);
     };
-    const handleFileChange = (e) => {
-        setFilterFile(e.target.files[0]);
+
+function handleJsonChange(event) {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const fileContent = event.target.result;
+        setConfig(fileContent);
     };
+    reader.readAsText(file);
+  } else {
+    console.error("Invalid file input");
+  }
+}
+    const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    setImageFile(file);
+};
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!filterFile) {
-            alert("Please upload an filter file");
-            return;
-        }
 
         try {
-            const {data, error} = await supabase
-                .storage
-                .from('filter_files')
-                .upload(`${category}/${filterFile.name}`, filterFile);
+            const random = uuidv4();
 
-            if (error) {
-                throw error;
-            }
+    const { data: imageUploadData, error: imageUploadError } = await supabase
+        .storage
+        .from('filter_files')
+        .upload(`${category}/${random}_${imageFile.name}`, imageFile);
 
-            const {data: publicURL} = supabase
-                .storage
-                .from('filter_files')
-                .getPublicUrl(`${category}/${filterFile.name}`);
+    if (imageUploadError) throw imageUploadError;
 
-            if (!publicURL) {
-                alert('Failed to get public URL');
-                return;
-            }
+    const { data: imagePublicURL } = supabase
+        .storage
+        .from('filter_files')
+        .getPublicUrl(`${category}/${random}_${imageFile.name}`);
 
-            const formData = new FormData();
-            formData.append('filter_file', publicURL.publicUrl);
-            formData.append('name', name);
-            formData.append('category', category);
+    if (!imagePublicURL) throw new Error('Failed to get public image URL');
 
+    const formData = new FormData();
+    formData.append('image', imagePublicURL.publicUrl);
+    formData.append('name', name);
+    formData.append('category', category);
+    formData.append('config', config);
 
-            const response = await axios.post('http://localhost:8000/myapp/upload_filter/', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                    Authorization: `Bearer ${token}`,
-                },
-            });
+    const response = await axios.post('http://localhost:8000/myapp/upload_filter/', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+            Authorization: `Bearer ${token}`,
+        },
+    });
 
-            if (response.status === 201) {
-                alert('File uploaded and saved successfully!');
-            } else {
-                alert('Failed to save filter details to database');
-            }
+    if (response.status === 201) {
+        alert('Files uploaded and saved successfully!');
+    } else {
+        alert('Failed to save filter and image details to database');
+    }
 
-        } catch (error) {
-            console.error('Error uploading file:', error.message);
-            alert('Error uploading file');
-        }
+} catch (error) {
+    console.error('Error uploading files:', error.message);
+    alert('Error uploading files');
+}
+
     };
 
     return (
@@ -139,10 +149,14 @@ const FilterManage = () => {
                             ))}
                         </TextField>
                         <Button variant="contained" component="label" fullWidth style={{marginTop: '15px'}}>
-                            Upload Filter File
-                            <input type="file" hidden onChange={handleFileChange} accept="filter/*"/>
+    Upload Config File (JSON)
+    <input type="file" hidden onChange={handleJsonChange} accept="application/json"/>
+</Button>
+                        <Button variant="contained" component="label" fullWidth style={{marginTop: '15px'}}>
+                            Upload Image File
+                            <input type="file" hidden onChange={handleImageChange} accept="image/*"/>
                         </Button>
-                        {filterFile && <p>File: {filterFile.name}</p>}
+                        {imageFile && <img src={URL.createObjectURL(imageFile)} alt="Selected Image" width="100"/>}
                         <Button type="submit" variant="contained" color="primary" fullWidth style={{marginTop: '20px'}}>
                             Add Filter
                         </Button>
@@ -157,10 +171,9 @@ const FilterManage = () => {
                         <Table>
                             <TableHead>
                                 <TableRow>
+                                    <TableCell>Image</TableCell>
                                     <TableCell>Name</TableCell>
-                                    <TableCell>Artist</TableCell>
                                     <TableCell>Category</TableCell>
-                                    <TableCell>Filter File</TableCell>
                                     <TableCell>Created At</TableCell>
                                     <TableCell>Updated At</TableCell>
                                     <TableCell>Action</TableCell>
@@ -169,10 +182,9 @@ const FilterManage = () => {
                             <TableBody>
                                 {filterData.map((filter) => (
                                     <TableRow key={filter.id}>
+                                        <TableCell><img src={filter.image}/></TableCell>
                                         <TableCell>{filter.name}</TableCell>
-                                        <TableCell>{filter.artist}</TableCell>
                                         <TableCell>{filter.category}</TableCell>
-                                        <TableCell><a href={filter.filter_file}>File link</a></TableCell>
                                         <TableCell>{new Date(filter.created_at).toLocaleString()}</TableCell>
                                         <TableCell>{new Date(filter.updated_at).toLocaleString()}</TableCell>
                                         <TableCell>

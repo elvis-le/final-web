@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import User, Project, Video, Audio, Text, Sticker, Effect, Filter, EditSession, Role
 
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -40,22 +41,23 @@ class AudioSerializer(serializers.ModelSerializer):
 class TextSerializer(serializers.ModelSerializer):
     class Meta:
         model = Text
-        fields = ['id', 'text_file', 'image', 'content', 'color', 'font', 'stroke_color', 'stroke_width', 'duration', 'fontsize', 'transparent', 'category', 'is_delete', 'created_at', 'updated_at']
+        fields = ['id', 'image', 'content', 'style', 'category', 'is_delete', 'created_at', 'updated_at']
 
 class StickerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sticker
-        fields = ['id', 'sticker_file', 'image', 'name', 'duration', 'category', 'is_delete', 'created_at', 'updated_at']
+        fields = ['id', 'sticker_file', 'name', 'duration', 'category', 'is_delete', 'created_at', 'updated_at']
+
 
 class EffectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Effect
-        fields = ['id', 'name', 'image', 'duration', 'category', 'effect_file', 'is_delete', 'created_at', 'updated_at']
+        fields = ['id', 'name', 'image', 'duration', 'category', 'config', 'is_delete', 'created_at', 'updated_at']
 
 class FilterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Filter
-        fields = ['id', 'name', 'image', 'duration', 'category', 'filter_file', 'is_delete', 'created_at', 'updated_at']
+        fields = ['id', 'name', 'image', 'category', 'config', 'intensity', 'is_delete', 'created_at', 'updated_at']
 
 class EditSessionSerializer(serializers.ModelSerializer):
     class Meta:

@@ -77,17 +77,11 @@ class Audio(models.Model):
 
 
 class Text(models.Model):
-    text_file = models.URLField(max_length=500)
     image = models.URLField(max_length=500, default='https://btfptkpngrtnnqweftvx.supabase.co/storage/v1/object/public/audio_files/image/oweiIPFVGAAIVCmcAIV4eAaK5FeGcLQe5AqzJ1.jpeg')
     content = models.TextField()
-    color = models.CharField(max_length=255, default='white')
-    fontsize = models.IntegerField(default=100)
-    font = models.CharField(max_length=255, default='Arial')
-    stroke_color = models.CharField(max_length=255, default='white')
-    stroke_width = models.IntegerField(default=2)
-    duration = models.IntegerField(default=5)
+    style = models.JSONField(null=True, blank=True)
     transparent = models.BooleanField(default=True)
-    category = models.CharField(max_length=50, choices=(('default', 'Default'), ('trending', 'Trending'), ('pro', 'Pro'), ('basic', 'Basic'), ('multicolor', 'Multicolor')))
+    category = models.CharField(max_length=50, choices=(('default', 'Default'), ('trending', 'Trending'), ('basic', 'Basic'), ('multicolor', 'Multicolor')))
     is_delete = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -98,7 +92,6 @@ class Text(models.Model):
 
 class Sticker(models.Model):
     sticker_file = models.URLField(max_length=500)
-    image = models.URLField(max_length=500, default='https://btfptkpngrtnnqweftvx.supabase.co/storage/v1/object/public/audio_files/image/oweiIPFVGAAIVCmcAIV4eAaK5FeGcLQe5AqzJ1.jpeg')
     name = models.CharField(max_length=255, default='Default Sticker')
     duration = models.FloatField(null=True, blank=True)
     category = models.CharField(max_length=50, choices=(('trending', 'Trending'), ('easter_holiday', 'Easter Holiday'), ('fun', 'Fun'), ('troll_face', 'Troll Face'), ('gaming', 'Gaming'), ('emoji', 'Emoji')))
@@ -109,45 +102,38 @@ class Sticker(models.Model):
     def __str__(self):
         return self.name
 
-
 class Effect(models.Model):
     name = models.CharField(max_length=255, default='Default Effect')
     image = models.URLField(max_length=500, default='https://btfptkpngrtnnqweftvx.supabase.co/storage/v1/object/public/audio_files/image/oweiIPFVGAAIVCmcAIV4eAaK5FeGcLQe5AqzJ1.jpeg')
     duration = models.FloatField(null=True, blank=True)
     category = models.CharField(max_length=50, choices=(
         ('trending', 'Trending'),
-        ('pro', 'Pro'),
         ('nightclub', 'Nightclub'),
         ('lens', 'Lens'),
         ('retro', 'Retro'),
         ('tv', 'TV'),
         ('star', 'Star'),
         ('trending_body', 'Trending Body'),
-        ('pro_body', 'Pro Body'),
         ('mood_body', 'Mood Body'),
         ('mask_body', 'Mask Body'),
         ('selfie_body', 'Selfie Body'),
-        ('dark_body', 'Dark Body'),
-        ('image_body', 'Image Body'),
     ))
-    effect_file = models.URLField(max_length=500)
+    config = models.JSONField(null=True, blank=True)
     is_delete = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.name
+        return f"{self.name} - {self.category}"
 
 
 class Filter(models.Model):
     name = models.CharField(max_length=255, default='Default Filter')
     image = models.URLField(max_length=500, default='https://btfptkpngrtnnqweftvx.supabase.co/storage/v1/object/public/audio_files/image/oweiIPFVGAAIVCmcAIV4eAaK5FeGcLQe5AqzJ1.jpeg')
-    duration = models.FloatField(null=True, blank=True)
     category = models.CharField(
         max_length=50,
         choices=(
             ('featured', 'Featured'),
-            ('pro', 'Pro'),
             ('life', 'Life'),
             ('scenery', 'Scenery'),
             ('movies', 'Movies'),
@@ -155,7 +141,8 @@ class Filter(models.Model):
             ('style', 'Style'),
         )
     )
-    filter_file = models.URLField(max_length=500)
+    config = models.JSONField(null=True, blank=True)
+    intensity = models.FloatField(null=True, blank=True, default=1.0)
     is_delete = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -13,31 +13,29 @@ import {
 } from '@mui/material'
 import axios from 'axios';
 import {supabase} from '../../supabaseClient';
+import {v4 as uuidv4} from "uuid";
 
 const EffectManage = () => {
-    const [effectFile, setEffectFile] = useState(null);
+    const [imageFile, setImageFile] = useState(null);
     const [name, setName] = useState('');
-    const [category, setCategory] = useState('');
     const [isCreate, setIsCreate] = useState(false);
     const [effectData, setEffectData] = useState([]);
+    const [category, setCategory] = useState('');
+    const [config, setConfig] = useState({});
 
-            const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('access_token');
 
     const categories = [
-        { value: 'trending', label: 'Trending' },
-{ value: 'pro', label: 'Pro' },
-{ value: 'nightclub', label: 'Nightclub' },
-{ value: 'lens', label: 'Lens' },
-{ value: 'retro', label: 'Retro' },
-{ value: 'tv', label: 'TV' },
-{ value: 'star', label: 'Star' },
-{ value: 'trending_body', label: 'Trending Body' },
-{ value: 'pro_body', label: 'Pro Body' },
-{ value: 'mood_body', label: 'Mood Body' },
-{ value: 'mask_body', label: 'Mask Body' },
-{ value: 'selfie_body', label: 'Selfie Body' },
-{ value: 'dark_body', label: 'Dark Body' },
-{ value: 'image_body', label: 'Image Body' }
+        {value: 'trending', label: 'Trending'},
+        {value: 'nightclub', label: 'Nightclub'},
+        {value: 'lens', label: 'Lens'},
+        {value: 'retro', label: 'Retro'},
+        {value: 'tv', label: 'TV'},
+        {value: 'star', label: 'Star'},
+        {value: 'trending_body', label: 'Trending Body'},
+        {value: 'mood_body', label: 'Mood Body'},
+        {value: 'mask_body', label: 'Mask Body'},
+        {value: 'selfie_body', label: 'Selfie Body'},
     ];
 
     useEffect(() => {
@@ -60,42 +58,50 @@ const EffectManage = () => {
     const handleSwitch = () => {
         setIsCreate(!isCreate);
     };
-    const handleFileChange = (e) => {
-        setEffectFile(e.target.files[0]);
+function handleJsonChange(event) {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const fileContent = event.target.result;
+        setConfig(fileContent);
+    };
+    reader.readAsText(file);
+  } else {
+    console.error("Invalid file input");
+  }
+}
+
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        setImageFile(file);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!effectFile) {
-            alert("Please upload an effect file");
-            return;
-        }
 
         try {
-            const {data, error} = await supabase
+            const random = uuidv4();
+
+            const {data: imageUploadData, error: imageUploadError} = await supabase
                 .storage
                 .from('effect_files')
-                .upload(`${category}/${effectFile.name}`, effectFile);
+                .upload(`${category}/${random}_${imageFile.name}`, imageFile);
 
-            if (error) {
-                throw error;
-            }
+            if (imageUploadError) throw imageUploadError;
 
-            const {data: publicURL} = supabase
+            const {data: imagePublicURL} = supabase
                 .storage
                 .from('effect_files')
-                .getPublicUrl(`${category}/${effectFile.name}`);
+                .getPublicUrl(`${category}/${random}_${imageFile.name}`);
 
-            if (!publicURL) {
-                alert('Failed to get public URL');
-                return;
-            }
+            if (!imagePublicURL) throw new Error('Failed to get public image URL');
 
             const formData = new FormData();
-            formData.append('effect_file', publicURL.publicUrl);
+            formData.append('image', imagePublicURL.publicUrl);
             formData.append('name', name);
             formData.append('category', category);
-
+            formData.append('config', config);
 
             const response = await axios.post('http://localhost:8000/myapp/upload_effect/', formData, {
                 headers: {
@@ -105,9 +111,9 @@ const EffectManage = () => {
             });
 
             if (response.status === 201) {
-                alert('File uploaded and saved successfully!');
+                alert('Files uploaded and saved successfully!');
             } else {
-                alert('Failed to save effect details to database');
+                alert('Failed to save effect and image details to database');
             }
 
         } catch (error) {
@@ -120,7 +126,7 @@ const EffectManage = () => {
         <>
             {isCreate ? (
                 <>
-                    <form onSubmit={handleSubmit} style={{maxWidth: '400px', margin: '0 auto'}}>
+                    <form onSubmit={handleSubmit} style={{maxWidth: '400px', height: "fit-content", margin: '0 auto'}}>
                         <TextField
                             label="Effect Name"
                             variant="outlined"
@@ -147,10 +153,15 @@ const EffectManage = () => {
                             ))}
                         </TextField>
                         <Button variant="contained" component="label" fullWidth style={{marginTop: '15px'}}>
-                            Upload Effect File
-                            <input type="file" hidden onChange={handleFileChange} accept="effect/*"/>
+    Upload Config File (JSON)
+    <input type="file" hidden onChange={handleJsonChange} accept="application/json"/>
+</Button>
+
+                        <Button variant="contained" component="label" fullWidth style={{marginTop: '15px'}}>
+                            Upload Image File
+                            <input type="file" hidden onChange={handleImageChange} accept="image/*"/>
                         </Button>
-                        {effectFile && <p>File: {effectFile.name}</p>}
+                        {imageFile && <img src={URL.createObjectURL(imageFile)} alt="Selected Image" width="100"/>}
                         <Button type="submit" variant="contained" color="primary" fullWidth style={{marginTop: '20px'}}>
                             Add Effect
                         </Button>
@@ -165,10 +176,9 @@ const EffectManage = () => {
                         <Table>
                             <TableHead>
                                 <TableRow>
+                                    <TableCell>Image</TableCell>
                                     <TableCell>Name</TableCell>
-                                    <TableCell>Artist</TableCell>
                                     <TableCell>Category</TableCell>
-                                    <TableCell>Effect File</TableCell>
                                     <TableCell>Created At</TableCell>
                                     <TableCell>Updated At</TableCell>
                                     <TableCell>Action</TableCell>
@@ -177,10 +187,9 @@ const EffectManage = () => {
                             <TableBody>
                                 {effectData.map((effect) => (
                                     <TableRow key={effect.id}>
+                                        <TableCell><img src={effect.image}/></TableCell>
                                         <TableCell>{effect.name}</TableCell>
-                                        <TableCell>{effect.artist}</TableCell>
                                         <TableCell>{effect.category}</TableCell>
-                                        <TableCell><a href={effect.effect_file}>File link</a></TableCell>
                                         <TableCell>{new Date(effect.created_at).toLocaleString()}</TableCell>
                                         <TableCell>{new Date(effect.updated_at).toLocaleString()}</TableCell>
                                         <TableCell>

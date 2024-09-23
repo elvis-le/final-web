@@ -13,16 +13,18 @@ import {
 } from '@mui/material'
 import axios from 'axios';
 import {supabase} from '../../supabaseClient';
+import {v4 as uuidv4} from "uuid";
 
 const AudioManage = () => {
     const [audioFile, setAudioFile] = useState(null);
+    const [imageFile, setImageFile] = useState(null);
     const [name, setName] = useState('');
     const [artist, setArtist] = useState('');
     const [category, setCategory] = useState('');
     const [isCreate, setIsCreate] = useState(false);
     const [audioData, setAudioData] = useState([]);
     const [audioDuration, setAudioDuration] = useState('');
-            const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('access_token');
 
     const categories = [
         {value: 'vlog', label: 'Vlog'},
@@ -55,19 +57,29 @@ const AudioManage = () => {
         fetchAudioData();
     }, []);
 
+    const formatTime = (seconds) => {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = Math.floor(seconds % 60);
+        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    };
     const handleSwitch = () => {
         setIsCreate(!isCreate);
     };
     const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    setAudioFile(file);
+        const file = e.target.files[0];
+        setAudioFile(file);
 
-    const audio = new Audio(URL.createObjectURL(file));
-    audio.addEventListener('loadedmetadata', () => {
-        const duration = audio.duration;
-        console.log('Audio duration:', duration);
-        setAudioDuration(duration);
-    });
+        const audio = new Audio(URL.createObjectURL(file));
+        audio.addEventListener('loadedmetadata', () => {
+            const duration = audio.duration;
+            console.log('Audio duration:', duration);
+            setAudioDuration(formatTime(duration));
+        });
+    };
+
+    const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    setImageFile(file);
 };
 
     const handleSubmit = async (e) => {
@@ -78,27 +90,36 @@ const AudioManage = () => {
         }
 
         try {
-            const {data, error} = await supabase
+            const random = uuidv4();
+            const {data: audioUploadData, error: audioUploadError} = await supabase
                 .storage
                 .from('audio_files')
-                .upload(`${category}/${audioFile.name}`, audioFile);
+                .upload(`${category}/${random}_${audioFile.name}`, audioFile);
 
-            if (error) {
-                throw error;
-            }
+            if (audioUploadError) throw audioUploadError;
 
-            const {data: publicURL} = supabase
+            const {data: audioPublicURL} = supabase
                 .storage
                 .from('audio_files')
-                .getPublicUrl(`${category}/${audioFile.name}`);
+                .getPublicUrl(`${category}/${random}_${audioFile.name}`);
 
-            if (!publicURL) {
-                alert('Failed to get public URL');
-                return;
-            }
+            if (!audioPublicURL) throw new Error('Failed to get public audio URL');
+
+            const {data: imageUploadData, error: imageUploadError} = await supabase
+                .storage
+                .from('audio_files')
+                .upload(`${category}/${random}_${imageFile.name}`, imageFile);
+
+            if (imageUploadError) throw imageUploadError;
+
+            const {data: imagePublicURL} = supabase
+                .storage
+                .from('audio_files')
+                .getPublicUrl(`${category}/${random}_${imageFile.name}`);
 
             const formData = new FormData();
-            formData.append('audio_file', publicURL.publicUrl);
+            formData.append('audio_file', audioPublicURL.publicUrl);
+            formData.append('image', imagePublicURL.publicUrl);
             formData.append('name', name);
             formData.append('artist', artist);
             formData.append('duration', audioDuration);
@@ -163,9 +184,14 @@ const AudioManage = () => {
                             ))}
                         </TextField>
                         <Button variant="contained" component="label" fullWidth style={{marginTop: '15px'}}>
+                            Upload Image File
+                            <input type="file" hidden onChange={handleImageChange} accept="image/*"/>
+                        </Button>
+                        <Button variant="contained" component="label" fullWidth style={{marginTop: '15px'}}>
                             Upload Audio File
                             <input type="file" hidden onChange={handleFileChange} accept="audio/*"/>
                         </Button>
+                        {imageFile && <img src={URL.createObjectURL(imageFile)} alt="Selected Image" width="100"/>}
                         {audioFile && <p>File: {audioFile.name}</p>}
                         <Button type="submit" variant="contained" color="primary" fullWidth style={{marginTop: '20px'}}>
                             Add Audio
@@ -181,6 +207,7 @@ const AudioManage = () => {
                         <Table>
                             <TableHead>
                                 <TableRow>
+                                    <TableCell>Image</TableCell>
                                     <TableCell>Name</TableCell>
                                     <TableCell>Artist</TableCell>
                                     <TableCell>Category</TableCell>
@@ -193,6 +220,7 @@ const AudioManage = () => {
                             <TableBody>
                                 {audioData.map((audio) => (
                                     <TableRow key={audio.id}>
+                                        <TableCell><img src={audio.image}/></TableCell>
                                         <TableCell>{audio.name}</TableCell>
                                         <TableCell>{audio.artist}</TableCell>
                                         <TableCell>{audio.category}</TableCell>

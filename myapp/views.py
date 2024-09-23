@@ -14,13 +14,15 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import AllowAny
-
+from PIL import Image
+from io import BytesIO
 from final_web.settings import supabase
 from .serializers import *
 from rest_framework import status
 import os
 import json
 import logging
+import requests
 
 
 def home(request):
@@ -421,8 +423,24 @@ def get_texts(request, category):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def upload_sticker(request):
+    sticker_url = request.data.get('sticker_file')
+
+    if not sticker_url:
+        return JsonResponse({'error': 'No sticker URL provided'}, status=400)
     try:
-        serializer = StickerSerializer(data=request.data)
+        response = requests.get(sticker_url)
+        response.raise_for_status()
+
+        sticker_file = BytesIO(response.content)
+
+        with Image.open(sticker_file) as img:
+            duration = 0
+            for frame in range(0, img.n_frames):
+                img.seek(frame)
+                duration += (img.info['duration']) / 1000
+        data = request.data.copy()
+        data['duration'] = duration
+        serializer = StickerSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=201)
@@ -446,7 +464,6 @@ def get_stickers(request, category):
     stickers = Sticker.objects.filter(category=category, is_delete=False)
     serializer = StickerSerializer(stickers, many=True)
     return Response(serializer.data)
-
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

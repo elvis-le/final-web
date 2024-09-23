@@ -30,7 +30,6 @@ const HomePage = () => {
     const [timelinesText, setTimelinesText] = useState([]);
     const [textFiles, setTextFiles] = useState({
         trending: [],
-        pro: [],
         basic: [],
         multicolor: [],
     });
@@ -68,26 +67,21 @@ const HomePage = () => {
     const [timelinesEffect, setTimelinesEffect] = useState([]);
     const [effectFiles, setEffectFiles] = useState({
         trending: [],
-        pro: [],
         nightclub: [],
         lens: [],
         retro: [],
         tv: [],
         star: [],
         trending_body: [],
-        pro_body: [],
         mood_body: [],
         mask_body: [],
         selfie_body: [],
-        dark_body: [],
-        image_body: [],
     });
 
     const [selectedFilter, setSelectedFilter] = useState({});
     const [timelinesFilter, setTimelinesFilter] = useState([]);
     const [filterFiles, setFilterFiles] = useState({
         featured: [],
-        pro: [],
         life: [],
         scenery: [],
         movies: [],
@@ -247,7 +241,6 @@ const refreshToken = localStorage.getItem("refresh_token");
     const [activeTextOption, setActiveTextOption] = useState({
         addText: true,
         trendingEffect: false,
-        proEffect: false,
         basicEffect: false,
         multicolorEffect: false,
 
@@ -257,7 +250,6 @@ const refreshToken = localStorage.getItem("refresh_token");
         setActiveTextOption({
             addText: false,
             trendingEffect: false,
-            proEffect: false,
             basicEffect: false,
             multicolorEffect: false,
             [option]: true,
@@ -287,44 +279,35 @@ const refreshToken = localStorage.getItem("refresh_token");
 
     const [activeEffectOption, setActiveEffectOption] = useState({
         trendingVideoEffect: true,
-        proVideoEffect: false,
         nightclubVideoEffect: false,
         lensVideoEffect: false,
         retroVideoEffect: false,
         tvVideoEffect: false,
         starVideoEffect: false,
         trendingBodyEffect: false,
-        proBodyEffect: false,
         moodBodyEffect: false,
         maskBodyEffect: false,
         selfieBodyEffect: false,
-        darkBodyEffect: false,
-        imageBodyEffect: false,
     });
 
     const handleMenuEffectOptionClick = (option) => {
         setActiveEffectOption({
             trendingVideoEffect: false,
-            proVideoEffect: false,
             nightclubVideoEffect: false,
             lensVideoEffect: false,
             retroVideoEffect: false,
             tvVideoEffect: false,
             starVideoEffect: false,
             trendingBodyEffect: false,
-            proBodyEffect: false,
             moodBodyEffect: false,
             maskBodyEffect: false,
             selfieBodyEffect: false,
-            darkBodyEffect: false,
-            imageBodyEffect: false,
             [option]: true,
         });
     };
 
     const [activeFilterOption, setActiveFilterOption] = useState({
         featuredFilter: true,
-        proFilter: false,
         lifeFilter: false,
         sceneryFilter: false,
         moviesFilter: false,
@@ -335,7 +318,6 @@ const refreshToken = localStorage.getItem("refresh_token");
     const handleMenuFilterOptionClick = (option) => {
         setActiveFilterOption({
             featuredFilter: false,
-            proFilter: false,
             lifeFilter: false,
             sceneryFilter: false,
             moviesFilter: false,
@@ -394,7 +376,7 @@ const refreshToken = localStorage.getItem("refresh_token");
                     formData.append('project', projectId);
                     formData.append('video_url', publicURL.publicUrl);
                     formData.append('name', cleanFileName);
-                    formData.append('duration', videoElement.duration);
+                    formData.append('duration', formatTime(videoElement.duration));
 const response = await axios.post('http://localhost:8000/myapp/upload_video/', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
@@ -1134,7 +1116,6 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
         fetchDataByCategory('laugh', setAudioFiles, 'audio');
 
         fetchDataByCategory('trending', setTextFiles, 'text');
-        fetchDataByCategory('pro', setTextFiles, 'text');
         fetchDataByCategory('basic', setTextFiles, 'text');
         fetchDataByCategory('multicolor', setTextFiles, 'text');
 
@@ -1146,22 +1127,17 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
         fetchDataByCategory('emoji', setStickerFiles, 'sticker');
 
         fetchDataByCategory('trending', setEffectFiles, 'effect');
-        fetchDataByCategory('pro', setEffectFiles, 'effect');
         fetchDataByCategory('nightclub', setEffectFiles, 'effect');
         fetchDataByCategory('lens', setEffectFiles, 'effect');
         fetchDataByCategory('retro', setEffectFiles, 'effect');
         fetchDataByCategory('tv', setEffectFiles, 'effect');
         fetchDataByCategory('star', setEffectFiles, 'effect');
         fetchDataByCategory('trending_body', setEffectFiles, 'effect');
-        fetchDataByCategory('pro_body', setEffectFiles, 'effect');
         fetchDataByCategory('mood_body', setEffectFiles, 'effect');
         fetchDataByCategory('mask_body', setEffectFiles, 'effect');
         fetchDataByCategory('selfie_body', setEffectFiles, 'effect');
-        fetchDataByCategory('dark_body', setEffectFiles, 'effect');
-        fetchDataByCategory('image_body', setEffectFiles, 'effect');
 
         fetchDataByCategory('featured', setFilterFiles, 'filter');
-        fetchDataByCategory('pro', setFilterFiles, 'filter');
         fetchDataByCategory('life', setFilterFiles, 'filter');
         fetchDataByCategory('scenery', setFilterFiles, 'filter');
         fetchDataByCategory('movies', setFilterFiles, 'filter');
@@ -2187,10 +2163,6 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                                       id="trending-effect"
                                                       title="Trending"
                                                       onClick={() => handleMenuTextOptionClick('trendingEffect')}> Trending </MenuItem>
-                                            <MenuItem className={`pro-effect dropdown-item
-                                ${activeTextOption.proEffect ? 'active' : ''}`}
-                                                      id="pro-effect" title="Pro"
-                                                      onClick={() => handleMenuTextOptionClick('proEffect')}> Pro </MenuItem>
                                             <MenuItem className={`basic-effect dropdown-item
                                 ${activeTextOption.basicEffect ? 'active' : ''}`}
                                                       id="basic-effect" title="Basic"
@@ -2276,35 +2248,6 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                                         </div>
                                                     </div>
                                                 ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                }
-                                {activeTextOption.proEffect &&
-                                    <div className="pro-effect-wrapper effect-option"
-                                         id="pro-effect-wrapper">
-                                        <h3>Pro</h3>
-                                        <div className="list-file-pro-effect-wrapper list-text-file-wrapper">
-                                            <div className="list-file-pro-effect list-text-file">
-                                                {textFiles.pro.map((text, index) => (
-                                                    <div className="file-pro-effect text-file">
-                                                        <div className="file">
-                                                            <img src={text.image} alt="Description"/>
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                 height="24"
-                                                                 viewBox="0 0 24 24" fill="none"
-                                                                 stroke="currentColor" strokeWidth="2"
-                                                                 strokeLinecap="round"
-                                                                 strokeLinejoin="round"
-                                                                 className="lucide lucide-circle-plus">
-                                                                <circle cx="12" cy="12" r="10"/>
-                                                                <path d="M8 12h8"/>
-                                                                <path d="M12 8v8"/>
-                                                            </svg>
-                                                        </div>
-                                                    </div>
-                                                ))}
-
                                             </div>
                                         </div>
                                     </div>
@@ -2626,11 +2569,6 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                                 title="Trending"
                                                 onClick={() => handleMenuEffectOptionClick('trendingVideoEffect')}> Trending </MenuItem>
                                             <MenuItem
-                                                className={`pro-video-effect dropdown-item ${activeEffectOption.proVideoEffect ? 'active' : ''}`}
-                                                id="pro-video-effect"
-                                                title="Pro"
-                                                onClick={() => handleMenuEffectOptionClick('proVideoEffect')}> Pro </MenuItem>
-                                            <MenuItem
                                                 className={`nightclub-video-effect dropdown-item ${activeEffectOption.nightclubVideoEffect ? 'active' : ''}`}
                                                 id="nightclub-video-effect"
                                                 title="Nightclub"
@@ -2665,11 +2603,6 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                                 title="Trending"
                                                 onClick={() => handleMenuEffectOptionClick('trendingBodyEffect')}> Trending </MenuItem>
                                             <MenuItem
-                                                className={`pro-body-effect dropdown-item ${activeEffectOption.proBodyEffect ? 'active' : ''}`}
-                                                id="pro-body-effect"
-                                                title="Pro"
-                                                onClick={() => handleMenuEffectOptionClick('proBodyEffect')}> Pro </MenuItem>
-                                            <MenuItem
                                                 className={`mood-body-effect dropdown-item ${activeEffectOption.moodBodyEffect ? 'active' : ''}`}
                                                 id="mood-body-effect"
                                                 title="Mood"
@@ -2684,16 +2617,6 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                                 id="selfie-body-effect"
                                                 title="Selfie"
                                                 onClick={() => handleMenuEffectOptionClick('selfieBodyEffect')}> Selfie </MenuItem>
-                                            <MenuItem
-                                                className={`dark-body-effect dropdown-item ${activeEffectOption.darkBodyEffect ? 'active' : ''}`}
-                                                id="dark-body-effect"
-                                                title="Dark"
-                                                onClick={() => handleMenuEffectOptionClick('darkBodyEffect')}> Dark </MenuItem>
-                                            <MenuItem
-                                                className={`image-body-effect dropdown-item ${activeEffectOption.imageBodyEffect ? 'active' : ''}`}
-                                                id="image-body-effect"
-                                                title="Image"
-                                                onClick={() => handleMenuEffectOptionClick('imageBodyEffect')}> Image </MenuItem>
                                         </SubMenu>
                                     </Menu>
                                 </Sidebar>;
@@ -2719,35 +2642,6 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-trending-effect list-effect-file">
                                                 {effectFiles.trending.map((effect, index) => (
                                                     <div className="file-trending-effect effect-file">
-                                                        <div className="file">
-                                                            <img src={effect.image} alt="Description"/>
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                 height="24"
-                                                                 viewBox="0 0 24 24" fill="none"
-                                                                 stroke="currentColor" strokeWidth="2"
-                                                                 strokeLinecap="round"
-                                                                 strokeLinejoin="round"
-                                                                 className="lucide lucide-circle-plus">
-                                                                <circle cx="12" cy="12" r="10"/>
-                                                                <path d="M8 12h8"/>
-                                                                <path d="M12 8v8"/>
-                                                            </svg>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                }
-                                {activeEffectOption.proVideoEffect &&
-                                    <div className="pro-video-effect-wrapper effect-option"
-                                         id="pro-video-effect-wrapper"
-                                    >
-                                        <h3>Pro</h3>
-                                        <div className="list-file-pro-video-effect-wrapper list-effect-file-wrapper">
-                                            <div className="list-file-pro-effect list-effect-file">
-                                                {effectFiles.pro.map((effect, index) => (
-                                                    <div className="file-pro-effect effect-file">
                                                         <div className="file">
                                                             <img src={effect.image} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
@@ -2941,34 +2835,6 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                         </div>
                                     </div>
                                 }
-                                {activeEffectOption.proBodyEffect &&
-                                    <div className="pro-body-effect-wrapper effect-option"
-                                         id="pro-body-effect-wrapper">
-                                        <h3>pro</h3>
-                                        <div className="list-file-pro-body-effect-wrapper list-effect-file-wrapper">
-                                            <div className="list-file-pro-effect list-effect-file">
-                                                {effectFiles.pro_body.map((effect, index) => (
-                                                    <div className="file-pro-effect effect-file">
-                                                        <div className="file">
-                                                            <img src={effect.image} alt="Description"/>
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                 height="24"
-                                                                 viewBox="0 0 24 24" fill="none"
-                                                                 stroke="currentColor" strokeWidth="2"
-                                                                 strokeLinecap="round"
-                                                                 strokeLinejoin="round"
-                                                                 className="lucide lucide-circle-plus">
-                                                                <circle cx="12" cy="12" r="10"/>
-                                                                <path d="M8 12h8"/>
-                                                                <path d="M12 8v8"/>
-                                                            </svg>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                }
                                 {activeEffectOption.moodBodyEffect &&
                                     <div className="mood-body-effect-wrapper effect-option"
                                          id="mood-body-effect-wrapper">
@@ -3053,62 +2919,6 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                         </div>
                                     </div>
                                 }
-                                {activeEffectOption.darkBodyEffect &&
-                                    <div className="dark-body-effect-wrapper effect-option"
-                                         id="dark-body-effect-wrapper">
-                                        <h3>dark</h3>
-                                        <div className="list-file-dark-body-effect-wrapper list-effect-file-wrapper">
-                                            <div className="list-file-dark-effect list-effect-file">
-                                                {effectFiles.dark_body.map((effect, index) => (
-                                                    <div className="file-dark-effect effect-file">
-                                                        <div className="file">
-                                                            <img src={effect.image} alt="Description"/>
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                 height="24"
-                                                                 viewBox="0 0 24 24" fill="none"
-                                                                 stroke="currentColor" strokeWidth="2"
-                                                                 strokeLinecap="round"
-                                                                 strokeLinejoin="round"
-                                                                 className="lucide lucide-circle-plus">
-                                                                <circle cx="12" cy="12" r="10"/>
-                                                                <path d="M8 12h8"/>
-                                                                <path d="M12 8v8"/>
-                                                            </svg>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                }
-                                {activeEffectOption.imageBodyEffect &&
-                                    <div className="image-body-effect-wrapper effect-option"
-                                         id="image-body-effect-wrapper">
-                                        <h3>image</h3>
-                                        <div className="list-file-image-body-effect-wrapper list-effect-file-wrapper">
-                                            <div className="list-file-image-effect list-effect-file">
-                                                {effectFiles.image_body.map((effect, index) => (
-                                                    <div className="file-image-effect effect-file">
-                                                        <div className="file">
-                                                            <img src={effect.image} alt="Description"/>
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                 height="24"
-                                                                 viewBox="0 0 24 24" fill="none"
-                                                                 stroke="currentColor" strokeWidth="2"
-                                                                 strokeLinecap="round"
-                                                                 strokeLinejoin="round"
-                                                                 className="lucide lucide-circle-plus">
-                                                                <circle cx="12" cy="12" r="10"/>
-                                                                <path d="M8 12h8"/>
-                                                                <path d="M12 8v8"/>
-                                                            </svg>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                }
                             </div>
                         </div>
                     }
@@ -3125,11 +2935,6 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                                 id="featured-filter"
                                                 title="Featured"
                                                 onClick={() => handleMenuFilterOptionClick('featuredFilter')}> Featured </MenuItem>
-                                            <MenuItem
-                                                className={`pro-filter dropdown-item ${activeFilterOption.proFilter ? 'active' : ''}`}
-                                                id="pro-filter"
-                                                title="Pro"
-                                                onClick={() => handleMenuFilterOptionClick('proFilter')}> Pro </MenuItem>
                                             <MenuItem
                                                 className={`life-filter dropdown-item ${activeFilterOption.lifeFilter ? 'active' : ''}`}
                                                 id="life-filter"
@@ -3180,34 +2985,6 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-featured-effect list-filter-file">
                                                 {filterFiles.featured.map((filter, index) => (
                                                     <div className="file-featured-effect filter-file">
-                                                        <div className="file">
-                                                            <img src={filter.image} alt="Description"/>
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                 height="24"
-                                                                 viewBox="0 0 24 24" fill="none"
-                                                                 stroke="currentColor" strokeWidth="2"
-                                                                 strokeLinecap="round"
-                                                                 strokeLinejoin="round"
-                                                                 className="lucide lucide-circle-plus">
-                                                                <circle cx="12" cy="12" r="10"/>
-                                                                <path d="M8 12h8"/>
-                                                                <path d="M12 8v8"/>
-                                                            </svg>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                }
-                                {activeFilterOption.proFilter &&
-                                    <div className="pro-filter-wrapper effect-option"
-                                         id="pro-filter-wrapper">
-                                        <h3>pro</h3>
-                                        <div className="list-file-pro-filter-wrapper list-filter-file-wrapper">
-                                            <div className="list-file-pro-effect list-filter-file">
-                                                {filterFiles.pro.map((filter, index) => (
-                                                    <div className="file-pro-effect filter-file">
                                                         <div className="file">
                                                             <img src={filter.image} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"

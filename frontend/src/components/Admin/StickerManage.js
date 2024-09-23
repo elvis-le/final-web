@@ -13,13 +13,16 @@ import {
 } from '@mui/material'
 import axios from 'axios';
 import {supabase} from '../../supabaseClient';
+import {v4 as uuidv4} from 'uuid';
 
 const StickerManage = () => {
     const [stickerFile, setStickerFile] = useState(null);
+    const [imageFile, setImageFile] = useState(null);
     const [name, setName] = useState('');
     const [category, setCategory] = useState('');
     const [isCreate, setIsCreate] = useState(false);
     const [stickerData, setStickerData] = useState([]);
+    const [stickerDuration, setStickerDuration] = useState('');
     const token = localStorage.getItem('access_token');
 
     const categories = [
@@ -55,6 +58,7 @@ const StickerManage = () => {
         setStickerFile(e.target.files[0]);
     };
 
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!stickerFile) {
@@ -63,49 +67,44 @@ const StickerManage = () => {
         }
 
         try {
-            const {data, error} = await supabase
-                .storage
-                .from('sticker_files')
-                .upload(`${category}/${stickerFile.name}`, stickerFile);
+            const random = uuidv4();
+    const { data: stickerUploadData, error: stickerUploadError } = await supabase
+        .storage
+        .from('sticker_files')
+        .upload(`${category}/${random}_${stickerFile.name}`, stickerFile);
 
-            if (error) {
-                throw error;
-            }
+    if (stickerUploadError) throw stickerUploadError;
 
-            const {data: publicURL} = supabase
-                .storage
-                .from('sticker_files')
-                .getPublicUrl(`${category}/${stickerFile.name}`);
+    const { data: stickerPublicURL } = supabase
+        .storage
+        .from('sticker_files')
+        .getPublicUrl(`${category}/${random}_${stickerFile.name}`);
 
-            if (!publicURL) {
-                alert('Failed to get public URL');
-                return;
-            }
+    if (!stickerPublicURL) throw new Error('Failed to get public sticker URL');
 
-            const formData = new FormData();
-            formData.append('sticker_file', publicURL.publicUrl);
-            formData.append('name', name);
-            formData.append('category', category);
+    const formData = new FormData();
+    formData.append('sticker_file', stickerPublicURL.publicUrl);
+    formData.append('name', name);
+    formData.append('category', category);
 
+    const response = await axios.post('http://localhost:8000/myapp/upload_sticker/', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+            Authorization: `Bearer ${token}`,
+        },
+    });
 
+    if (response.status === 201) {
+        alert('Files uploaded and saved successfully!');
+    } else {
+        alert('Failed to save sticker and image details to database');
+    }
 
-            const response = await axios.post('http://localhost:8000/myapp/upload_sticker/', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                    Authorization: `Bearer ${token}`,
-                },
-            });
+} catch (error) {
+    console.error('Error uploading files:', error.message);
+    alert('Error uploading files');
+}
 
-            if (response.status === 201) {
-                alert('File uploaded and saved successfully!');
-            } else {
-                alert('Failed to save sticker details to database');
-            }
-
-        } catch (error) {
-            console.error('Error uploading file:', error.message);
-            alert('Error uploading file');
-        }
     };
 
     return (
@@ -142,6 +141,7 @@ const StickerManage = () => {
                             Upload Sticker File
                             <input type="file" hidden onChange={handleFileChange} accept="sticker/*"/>
                         </Button>
+                        {imageFile && <img src={URL.createObjectURL(imageFile)} alt="Selected Image" width="100"/>}
                         {stickerFile && <p>File: {stickerFile.name}</p>}
                         <Button type="submit" variant="contained" color="primary" fullWidth style={{marginTop: '20px'}}>
                             Add Sticker
@@ -157,6 +157,7 @@ const StickerManage = () => {
                         <Table>
                             <TableHead>
                                 <TableRow>
+                                    <TableCell>Image</TableCell>
                                     <TableCell>Name</TableCell>
                                     <TableCell>Artist</TableCell>
                                     <TableCell>Category</TableCell>
@@ -169,10 +170,10 @@ const StickerManage = () => {
                             <TableBody>
                                 {stickerData.map((sticker) => (
                                     <TableRow key={sticker.id}>
+                                        <TableCell><img src={sticker.sticker_file}/></TableCell>
                                         <TableCell>{sticker.name}</TableCell>
                                         <TableCell>{sticker.artist}</TableCell>
                                         <TableCell>{sticker.category}</TableCell>
-                                        <TableCell><a href={sticker.sticker_file}>File link</a></TableCell>
                                         <TableCell>{new Date(sticker.created_at).toLocaleString()}</TableCell>
                                         <TableCell>{new Date(sticker.updated_at).toLocaleString()}</TableCell>
                                         <TableCell>

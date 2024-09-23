@@ -28,7 +28,7 @@ root.render(
             <Route path="register" element={<Register/>}/>
             <Route path="home" element={<HomePage/>}/>
             <Route path="user" element={<User/>}/>
-            <Route path="admin" element={<Admin/>}>
+            <Route path="admin/*" element={<Admin/>}>
                 <Route path="AudioManage" element={<AudioManage/>}/>
                 <Route path="TextManage" element={<TextManage/>}/>
                 <Route path="StickerManage" element={<StickerManage/>}/>

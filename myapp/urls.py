@@ -34,8 +34,8 @@ urlpatterns = [
     path('get_all_stickers/', views.get_all_stickers, name='get_all_stickers'),
     path('sticker/<str:category>/', views.get_stickers, name='get_stickers'),
 
-    path('upload_sticker/', views.upload_sticker, name='upload_sticker'),
-    path('get_all_stickers/', views.get_all_stickers, name='get_all_stickers'),
+    path('upload_effect/', views.upload_effect, name='upload_effect'),
+    path('get_all_effects/', views.get_all_effects, name='get_all_effects'),
     path('effect/<str:category>/', views.get_effects, name='get_effects'),
 
     path('upload_filter/', views.upload_filter, name='upload_filter'),

@@ -13,9 +13,11 @@ import {
 } from '@mui/material'
 import axios from 'axios';
 import {supabase} from '../../supabaseClient';
+import {v4 as uuidv4} from "uuid";
 
 const TextManage = () => {
     const [textFile, setTextFile] = useState(null);
+    const [imageFile, setImageFile] = useState(null);
     const [name, setName] = useState('');
     const [content, setContent] = useState('');
     const [color, setColor] = useState('');
@@ -23,12 +25,12 @@ const TextManage = () => {
     const [category, setCategory] = useState('');
     const [isCreate, setIsCreate] = useState(false);
     const [textData, setTextData] = useState([]);
+    const [style, setStyle] = useState({});
             const token = localStorage.getItem('access_token');
 
     const categories = [
         { value: 'default', label: 'Default' },
 { value: 'trending', label: 'Trending' },
-{ value: 'pro', label: 'Pro' },
 { value: 'basic', label: 'Basic' },
 { value: 'multicolor', label: 'Multicolor' }
     ];
@@ -53,43 +55,48 @@ const TextManage = () => {
     const handleSwitch = () => {
         setIsCreate(!isCreate);
     };
-    const handleFileChange = (e) => {
-        setTextFile(e.target.files[0]);
+
+    function handleJsonChange(event) {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const fileContent = event.target.result;
+        setStyle(fileContent);
     };
+    reader.readAsText(file);
+  } else {
+    console.error("Invalid file input");
+  }
+}
+
+    const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    setImageFile(file);
+};
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!textFile) {
-            alert("Please upload an text file");
-            return;
-        }
 
         try {
-            const {data, error} = await supabase
+            const random = uuidv4();
+            const {data: imageUploadData, error: imageUploadError} = await supabase
                 .storage
                 .from('text_files')
-                .upload(`${category}/${textFile.name}`, textFile);
+                .upload(`${category}/${random}_${imageFile.name}`, imageFile);
 
-            if (error) {
-                throw error;
-            }
+            if (imageUploadError) throw imageUploadError;
 
-            const {data: publicURL} = supabase
+            const {data: imagePublicURL} = supabase
                 .storage
                 .from('text_files')
-                .getPublicUrl(`${category}/${textFile.name}`);
-
-            if (!publicURL) {
-                alert('Failed to get public URL');
-                return;
-            }
+                .getPublicUrl(`${category}/${random}_${imageFile.name}`);
 
             const formData = new FormData();
-            formData.append('text_file', publicURL.publicUrl);
+            formData.append('image', imagePublicURL.publicUrl);
             formData.append('content', content);
-            formData.append('color', color);
-            formData.append('stroke_color', strokeColor);
             formData.append('category', category);
+            formData.append('style', style);
 
 
             const response = await axios.post('http://localhost:8000/myapp/upload_text/', formData, {
@@ -126,24 +133,6 @@ const TextManage = () => {
                             required
                         />
                         <TextField
-                            label="Text Color"
-                            variant="outlined"
-                            fullWidth
-                            margin="normal"
-                            value={color}
-                            onChange={(e) => setColor(e.target.value)}
-                            required
-                        />
-                        <TextField
-                            label="Text Stroke Color"
-                            variant="outlined"
-                            fullWidth
-                            margin="normal"
-                            value={strokeColor}
-                            onChange={(e) => setStrokeColor(e.target.value)}
-                            required
-                        />
-                        <TextField
                             select
                             label="Category"
                             variant="outlined"
@@ -160,10 +149,14 @@ const TextManage = () => {
                             ))}
                         </TextField>
                         <Button variant="contained" component="label" fullWidth style={{marginTop: '15px'}}>
-                            Upload Text File
-                            <input type="file" hidden onChange={handleFileChange} accept="text/*"/>
+    Upload Config File (JSON)
+    <input type="file" hidden onChange={handleJsonChange} accept="application/json"/>
+</Button>
+                        <Button variant="contained" component="label" fullWidth style={{marginTop: '15px'}}>
+                            Upload Image File
+                            <input type="file" hidden onChange={handleImageChange} accept="image/*"/>
                         </Button>
-                        {textFile && <p>File: {textFile.name}</p>}
+                        {imageFile && <img src={URL.createObjectURL(imageFile)} alt="Selected Image" width="100"/>}
                         <Button type="submit" variant="contained" color="primary" fullWidth style={{marginTop: '20px'}}>
                             Add Text
                         </Button>
@@ -189,6 +182,7 @@ const TextManage = () => {
                             <TableBody>
                                 {textData.map((text) => (
                                     <TableRow key={text.id}>
+                                        <TableCell><img src={text.image}/></TableCell>
                                         <TableCell>{text.content}</TableCell>
                                         <TableCell>{text.category}</TableCell>
                                         <TableCell><a href={text.text_file}>File link</a></TableCell>
