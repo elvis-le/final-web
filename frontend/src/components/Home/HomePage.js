@@ -4,38 +4,57 @@ import logo from '../../assets/images/file.png';
 import {NavLink, Outlet, Link, useNavigate} from "react-router-dom";
 import {Menu, MenuItem, Sidebar, SubMenu} from "react-pro-sidebar";
 import imgTest from '../../assets/images/Nitro_Wallpaper_01_3840x2400.jpg';
-import imgTest1
-    from '../../assets/images/cach-chen-chu-vao-anh-them-hieu-ung-trong-photoshop-bangabc-800x450-Photoroom.png';
+import rainbow from '../../assets/images/rainbow.jpg';
 import axios from 'axios';
 import ReactPlayer from 'react-player';
 import {v4 as uuidv4} from 'uuid';
 import {supabase} from '../../supabaseClient';
+import {Stage, Layer, Rect, Text, Image, Circle, Group} from "react-konva";
+import Konva from 'konva';
 
 const HomePage = () => {
     const [isLogin, setIsLogin] = useState(true);
-  const navigate = useNavigate();
+    const navigate = useNavigate();
 
     const videoRef = useRef(null);
     const [videoFile, setVideoFile] = useState(null);
+    const [playVideo, setPlayVideo] = useState(false);
     const [videoUrl, setVideoUrl] = useState(null);
+    const [duration, setDuration] = useState(0);
+    const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+    const [accumulatedTime, setAccumulatedTime] = useState(0);
+    const [isPlayingNext, setIsPlayingNext] = useState(false);
+    const [currentTimelineIndex, setCurrentTimelineIndex] = useState(0);
+    const [totalDuration, setTotalDuration] = useState(0);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [elapsedTime, setElapsedTime] = useState(0);
+    const [timelineDuration, setTimelineDuration] = useState(0);
+    const [timestamps, setTimestamps] = useState([])
+    const [videoDuration, setVideoDuration] = useState(0);
+
 
     const [listVideo, setListVideo] = useState([]);
-    const [timestamps, setTimestamps] = useState([]);
     const [timelines, setTimelines] = useState([]);
 
     const [selectedVideo, setSelectedVideo] = useState({});
     const [timelineVideos, setTimelineVideos] = useState([]);
+    const [videoPosition, setVideoPosition] = useState({x: 0, y: 0});
+    const [editVideo, setEditVideo] = useState(false)
 
     const [selectedText, setSelectedText] = useState({});
     const [timelinesText, setTimelinesText] = useState([]);
+    const [textPosition, setTextPosition] = useState({x: 50, y: 50});
     const [textFiles, setTextFiles] = useState({
+        default: [],
         trending: [],
         basic: [],
         multicolor: [],
     });
+    const [editText, setEditText] = useState(false)
 
     const [selectedAudio, setSelectedAudio] = useState({});
     const [timelinesAudio, setTimelinesAudio] = useState([]);
+    const [audioPosition, setAudioPosition] = useState({x: 0, y: 0});
     const [audioFiles, setAudioFiles] = useState({
         vlog: [],
         tourism: [],
@@ -49,11 +68,11 @@ const HomePage = () => {
         horrified: [],
         laugh: [],
     });
+    const [editAudio, setEditAudio] = useState(false)
 
     const [selectedSticker, setSelectedSticker] = useState({});
     const [timelinesSticker, setTimelinesSticker] = useState([]);
     const [stickerPosition, setStickerPosition] = useState({x: 0, y: 0});
-    const [stickerUrl, setStickerUrl] = useState("");
     const [stickerFiles, setStickerFiles] = useState({
         trending: [],
         easter_holiday: [],
@@ -62,9 +81,11 @@ const HomePage = () => {
         gaming: [],
         emoji: [],
     });
+    const [editSticker, setEditSticker] = useState(false)
 
     const [selectedEffect, setSelectedEffect] = useState({});
     const [timelinesEffect, setTimelinesEffect] = useState([]);
+    const [effectPosition, setEffectPosition] = useState({x: 0, y: 0});
     const [effectFiles, setEffectFiles] = useState({
         trending: [],
         nightclub: [],
@@ -77,9 +98,11 @@ const HomePage = () => {
         mask_body: [],
         selfie_body: [],
     });
+    const [editEffect, setEditEffect] = useState(false)
 
     const [selectedFilter, setSelectedFilter] = useState({});
     const [timelinesFilter, setTimelinesFilter] = useState([]);
+    const [filterPosition, setFilterPosition] = useState({x: 0, y: 0});
     const [filterFiles, setFilterFiles] = useState({
         featured: [],
         life: [],
@@ -88,28 +111,94 @@ const HomePage = () => {
         retro: [],
         style: [],
     });
+    const [editFilter, setEditFilter] = useState(false)
 
     const [draggableText, setDraggableText] = useState({
         content: "Your draggable text here",
         position: {x: 0, y: 0},
     });
 
-    const [playVideo, setPlayVideo] = useState(false);
     const [isShowVideoBasic, setShowVideoBasic] = useState(true);
 
-    const [currentTime, setCurrentTime] = useState(0);
     const [widthTime, setWidthTime] = useState(0);
     const [startTime, setStartTime] = useState(0);
     const [endTime, setEndTime] = useState(0);
-    const [duration, setDuration] = useState(0);
     const [durationTimeLine, setDurationTimeLine] = useState(0);
     const [textToAdd, setTextToAdd] = useState('');
-    const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
-    const [accumulatedTime, setAccumulatedTime] = useState(0);
+    const videoWidth = 424;
+    const videoHeight = 240;
 
     const token = localStorage.getItem('access_token');
-const refreshToken = localStorage.getItem("refresh_token");
+    const refreshToken = localStorage.getItem("refresh_token");
     const projectId = localStorage.getItem('current_project_id');
+
+    const [isResizing, setIsResizing] = useState(false);
+    const [resizingInfo, setResizingInfo] = useState({});
+    const [stickerImages, setStickerImages] = useState({});
+    const [scaleValue, setScaleValue] = useState(94);
+    const [scaleValueWidth, setScaleValueWidth] = useState(94);
+    const [scaleValueHeight, setScaleValueHeight] = useState(94); 
+    const [positionX, setPositionX] = useState(50);  
+    const [positionY, setPositionY] = useState(50);  
+    const [rotateValue, setRotateValue] = useState(0); 
+    const [opacity, setOpacity] = useState(94); 
+    const [blendMode, setBlendMode] = useState("default");
+    const [stabilizeLevel, setStabilizeLevel] = useState("recommended");
+    const [blurValue, setBlurValue] = useState(94); 
+    const [blendValue, setBlendValue] = useState(94); 
+    const [direction, setDirection] = useState("both"); 
+    const [speed, setSpeed] = useState("once");
+    const [canvasOption, setCanvasOption] = useState('none'); 
+    const [colorValue, setColorValue] = useState('#ff0000');
+    const [customRemovalValue, setCustomRemovalValue] = useState(94);
+    const [voiceValue, setVoiceValue] = useState(0);
+    const [speedValue, setSpeedValue] = useState(1);
+
+
+    const audioRefs = useRef({});
+
+    const effectHandlers = {
+        blur: (config) => {
+            return {
+                filter: `blur(${config.default}px)`,
+                transform: ''
+            };
+        },
+        flash_black: (config) => {
+            return {
+                filter: '',
+                transform: `translate(0, 0)`
+            };
+        },
+        film_roll: (config) => {
+            const scrollSpeed = config.scroll_speed.default;
+            return {
+                filter: '',
+                transform: `translate${config.direction.default === 'vertical' ? 'Y' : 'X'}(${scrollSpeed}px)`
+            };
+        },
+        lens_zoom: (config) => {
+            const zoomLevel = config.zoom_level.default;
+            return {
+                filter: '',
+                transform: `scale(${zoomLevel})`
+            };
+        },
+    };
+
+    const filterHandlers = {
+        applyFilter: (config) => {
+            const contrast = config.contrast?.default ?? 1;
+            const brightness = config.brightness?.default ?? 1;
+            const saturation = config.saturation?.default ?? 1;
+            const hueShift = config.color_tone?.hue_shift?.default ?? 0;
+            return `contrast(${contrast}) brightness(${brightness}) hue-rotate(${hueShift}deg) saturate(${saturation})`;
+        },
+    };
+
+    let isDragging = false;
+
+    const allVideos = timelineVideos.flatMap(timeline => timeline.videos);
 
     const fetchDataByCategory = async (category, setData, endpoint) => {
         try {
@@ -129,28 +218,28 @@ const refreshToken = localStorage.getItem("refresh_token");
     };
 
     const fetchVideo = async (project, setData) => {
-    try {
-        const response = await axios.get(`http://localhost:8000/myapp/video/${project}/`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+        try {
+            const response = await axios.get(`http://localhost:8000/myapp/video/${project}/`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
 
-        if (response.status === 200) {
-            const videos = response.data;
-            if (Array.isArray(videos) && videos.length > 0) {
-                setData(videos);
+            if (response.status === 200) {
+                const videos = response.data;
+                if (Array.isArray(videos) && videos.length > 0) {
+                    setData(videos);
+                } else {
+                    console.error("No video");
+                    setData([]);
+                }
             } else {
-                console.error("No video");
-                setData([]);
+                console.error(`Lỗi server: ${response.status}`);
             }
-        } else {
-            console.error(`Lỗi server: ${response.status}`);
+        } catch (error) {
+            console.error(`Lỗi khi lấy video cho dự án ${project}:`, error);
         }
-    } catch (error) {
-        console.error(`Lỗi khi lấy video cho dự án ${project}:`, error);
-    }
-};
+    };
 
     const handleEffectClick = () => {
         if (videoRef.current) {
@@ -163,6 +252,20 @@ const refreshToken = localStorage.getItem("refresh_token");
             }
         }
     };
+
+    const [editVideoOption, setEditVideoOption] = useState({
+        video: true,
+        animation: false,
+    });
+
+    const handleMenuVideoOptionClick = (option) => {
+        setEditVideoOption({
+            video: false,
+            animation: false,
+            [option]: true,
+        });
+    };
+
 
     const [activeWrapper, setActiveWrapper] = useState({
         import: true,
@@ -345,11 +448,12 @@ const refreshToken = localStorage.getItem("refresh_token");
         const file = e.target.files[0];
 
         try {
+            const random = uuidv4();
             const cleanFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '');
             const {data, error} = await supabase
                 .storage
                 .from('video_files')
-                .upload(`${projectId}/${cleanFileName}`, file);
+                .upload(`${projectId}/${random}_${cleanFileName}`, file);
 
             if (error) {
                 throw error;
@@ -358,7 +462,7 @@ const refreshToken = localStorage.getItem("refresh_token");
             const {data: publicURL} = supabase
                 .storage
                 .from('video_files')
-                .getPublicUrl(`${projectId}/${cleanFileName}`);
+                .getPublicUrl(`${projectId}/${random}_${cleanFileName}`);
 
             if (!publicURL) {
                 alert('Failed to get public URL');
@@ -372,48 +476,47 @@ const refreshToken = localStorage.getItem("refresh_token");
                 videoElement.src = videoURL;
 
                 videoElement.addEventListener('loadedmetadata', async () => {
-            const formData = new FormData();
+                    const formData = new FormData();
                     formData.append('project', projectId);
                     formData.append('video_url', publicURL.publicUrl);
                     formData.append('name', cleanFileName);
-                    formData.append('duration', formatTime(videoElement.duration));
-const response = await axios.post('http://localhost:8000/myapp/upload_video/', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                    Authorization: `Bearer ${token}`,
-                },
-            });
+                    formData.append('duration', videoElement.duration);
+                    const response = await axios.post('http://localhost:8000/myapp/upload_video/', formData, {
+                        headers: {
+                            'Content-Type': 'multipart/form-data',
+                            Authorization: `Bearer ${token}`,
+                        },
+                    });
 
-                fetchVideo(projectId, setListVideo);
-            if (response.status === 201) {
-                alert('File uploaded and saved successfully!');
-            } else {
-                alert('Failed to save video details to database');
-            }
+                    fetchVideo(projectId, setListVideo);
+                    if (response.status === 201) {
+                        alert('File uploaded and saved successfully!');
+                    } else {
+                        alert('Failed to save video details to database');
+                    }
                 });
 
             } else if (file) {
-            const formData = new FormData();
+                const formData = new FormData();
                 formData.append('project', projectId);
                 formData.append('video_url', publicURL.publicUrl);
                 formData.append('name', cleanFileName);
                 formData.append('duration', 5);
                 const response = await axios.post('http://localhost:8000/myapp/upload_video/', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                    Authorization: `Bearer ${token}`,
-                },
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                        Authorization: `Bearer ${token}`,
+                    },
 
-            });
+                });
 
                 fetchVideo(projectId, setListVideo);
-            if (response.status === 201) {
-                alert('File uploaded and saved successfully!');
-            } else {
-                alert('Failed to save video details to database');
+                if (response.status === 201) {
+                    alert('File uploaded and saved successfully!');
+                } else {
+                    alert('Failed to save video details to database');
+                }
             }
-            }
-
 
 
         } catch (error) {
@@ -427,24 +530,36 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
         setVideoUrl(url);
         setCurrentTime(0);
         setDuration(time);
-        if (videoRef.current) {
-            videoRef.current.load();
-        }
+    };
+
+    const getCenteredPosition = (width, height) => {
+        const x = (videoWidth - width) / 2;
+        const y = (videoHeight - height) / 2;
+        return {x, y};
     };
 
     const handleDrop = (e, timelineIndex = null) => {
         e.preventDefault();
+        const dropZone = document.querySelector('.timeline-dropzone');
+        dropZone.classList.remove('drag-over');
+        const type = e.dataTransfer.getData("type");
+        const content = e.dataTransfer.getData("text/plain");
+
 
         const videoUrl = e.dataTransfer.getData("videoUrl");
         const fileName = e.dataTransfer.getData("fileName");
         const text = e.dataTransfer.getData("text/plain");
+        const effect = e.dataTransfer.getData("text/plain");
+        const filter = e.dataTransfer.getData("text/plain");
         const audioUrl = e.dataTransfer.getData("audioUrl");
         const stickerUrl = e.dataTransfer.getData("stickerUrl");
 
         if (videoUrl && fileName) {
+            setVideoUrl(videoUrl);
+            setCurrentTime(0);
             handleDropVideo(e, timelineIndex);
-        } else if (text) {
-            handleDropText(e, timelineIndex);
+        } else if (stickerUrl) {
+            handleDropSticker(e, timelineIndex);
         } else if (audioUrl) {
             let foundAudio = null;
 
@@ -463,36 +578,58 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
             } else {
                 console.error("Audio not found");
             }
-        } else if (stickerUrl) {
-            handleDropSticker(e, timelineIndex);
+        } else if (type === "text") {
+            handleDropText(e, timelineIndex);
+        } else if (type === "effect") {
+            handleDropEffect(e, timelineIndex);
+        } else if (type === "filter") {
+            handleDropFilter(e, timelineIndex);
         }
     };
 
     const handleDragStart = (e, item, timelineIndex, type) => {
-    const idKey = type === "video" ? "videoId" : type === "text" ? "textId" : type === "sticker" ? "stickerId" : "audioId";
-    const urlKey = type === "video" ? "videoUrl" : type === "text" ? "text/plain" : type === "sticker" ? "stickerUrl" : "audioUrl";
+        if (isResizing) {
+            e.preventDefault();
+            return;
+        }
+        const idKey = type === "video" ? "videoId" : type === "text" ? "textId" : type === "sticker" ? "stickerId" : type === "effect" ? "effectId" : type === "filter" ? "filterId" : "audioId";
+        const urlKey = type === "video" ? "videoUrl" : type === "text" ? "text/plain" : type === "sticker" ? "stickerUrl" : type === "effect" ? "text/plain" : type === "filter" ? "text/plain" : "audioUrl";
 
-    if (type === "video") {
-        e.dataTransfer.setData(urlKey, item.video_url|| item.url);
-    } else {
-        e.dataTransfer.setData(urlKey, type === "text" ? item.content : item.url);
-    e.dataTransfer.setData("image", item.image || null);
-    }
+        if (type === "video") {
+            e.dataTransfer.setData(urlKey, item.video_url || item.url);
+        } else if (type === "audio") {
+            e.dataTransfer.setData(urlKey, item.audio_file || item.url);
+        } else if (type === "sticker") {
+            e.dataTransfer.setData(urlKey, item.sticker_file || item.url);
+        } else if (type === "text") {
+            e.dataTransfer.setData("type", "text");
+            e.dataTransfer.setData(urlKey, item.content || item.url);
+            e.dataTransfer.setData("style", JSON.stringify(item.style));
+        } else if (type === "effect") {
+            e.dataTransfer.setData("type", "effect");
+            e.dataTransfer.setData("config", JSON.stringify(item.config));
+        } else if (type === "filter") {
+            e.dataTransfer.setData("type", "filter");
+            e.dataTransfer.setData("config", JSON.stringify(item.config));
+        } else {
+            e.dataTransfer.setData(urlKey, type === "text" ? item.content : item.url);
+        }
+        e.dataTransfer.setData("image", item.image || null);
+        e.dataTransfer.setData("fileName", item.name || item.fileName);
+        e.dataTransfer.setData(idKey, item.id || uuidv4());
+        e.dataTransfer.setData("instanceId", item.instanceId || uuidv4());
+        e.dataTransfer.setData("duration", item.duration || 5);
 
-    e.dataTransfer.setData("fileName", item.name || item.fileName);
-    e.dataTransfer.setData(idKey, item.id || uuidv4());
-    e.dataTransfer.setData("instanceId", item.instanceId || uuidv4());
-
-    if (type === "video") {
-        setSelectedVideo({...item, timelineIndex});
-    } else if (type === "text") {
-        setSelectedText({...item, timelineIndex});
-    } else if (type === "audio") {
-        setSelectedAudio({...item, timelineIndex});
-    } else if (type === "sticker") {
-        setSelectedSticker({...item, timelineIndex});
-    }
-};
+        const selectedHandlers = {
+            "video": setSelectedVideo,
+            "text": setSelectedText,
+            "audio": setSelectedAudio,
+            "sticker": setSelectedSticker,
+            "effect": setSelectedEffect,
+            "filter": setSelectedFilter,
+        };
+        selectedHandlers[type]?.({...item, timelineIndex});
+    };
 
     const handleDropVideo = (e, timelineIndex = null) => {
         e.preventDefault();
@@ -501,35 +638,45 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
         const videoId = e.dataTransfer.getData("videoId");
         const instanceId = e.dataTransfer.getData("instanceId");
         const video = listVideo.find(video => video.video_url === videoUrl);
-    const videoDuration = video.duration;
-    console.log({timelines});
+        const duration = video.duration;
 
-    if (!video) {
-        console.error("Video not found in listVideo.");
-        return;
-    }
+
+        const totalTimelineDuration = Math.max(totalDuration, 30);
+        const segmentWidth = (duration / totalTimelineDuration) * 100;
+
+        setWidthTime(widthTime + segmentWidth);
+        setTimelineDuration(duration);
+        setTimestamps(generateTimestamps(totalTimelineDuration));
+
+        if (!video) {
+            console.error("Video not found in listVideo.");
+            return;
+        }
 
         const dropX = e.clientX - e.target.getBoundingClientRect().left;
         const timelineWidth = e.target.clientWidth;
         const dropPositionPercentage = (dropX / timelineWidth) * 100;
 
-        setTimelines((prevTimelines) => {
-            const updatedTimelines = [...prevTimelines];
+        const startTime = (dropPositionPercentage / 100) * 30;
+        const endTime = startTime + duration;
+
+        setTimelineVideos((prevTimelineVideos) => {
+            const updatedTimelineVideos = [...prevTimelineVideos];
 
             const newVideoSegment = {
                 instanceId: instanceId,
                 id: videoId,
                 url: videoUrl,
                 fileName,
-                duration: videoDuration,
                 position: dropPositionPercentage,
-                width: videoDuration * 10,
+                width: segmentWidth,
+                startTime: startTime,
+                duration: duration,
+                endTime: endTime
             };
-            console.log({selectedVideo})
-            console.log({timelineIndex})
 
             if (selectedVideo.timelineIndex === timelineIndex) {
-                updatedTimelines[timelineIndex].videos = updatedTimelines[timelineIndex].videos.map(video => {
+                updatedTimelineVideos[timelineIndex].videos = updatedTimelineVideos[timelineIndex].videos.map(video => {
                     if (video.instanceId === selectedVideo.instanceId) {
                         return {
                             ...video,
@@ -543,25 +690,30 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
             } else if (selectedVideo.timelineIndex !== null &&
                 selectedVideo.timelineIndex !== undefined &&
                 selectedVideo.timelineIndex !== timelineIndex &&
-                updatedTimelines[selectedVideo.timelineIndex]) {
+                updatedTimelineVideos[selectedVideo.timelineIndex]) {
 
                 if (selectedVideo.timelineIndex !== null && selectedVideo.timelineIndex !== undefined) {
-                    updatedTimelines[selectedVideo.timelineIndex].videos = updatedTimelines[selectedVideo.timelineIndex].videos.filter(video => video.instanceId !== selectedVideo.instanceId);
+                    updatedTimelineVideos[selectedVideo.timelineIndex].videos = updatedTimelineVideos[selectedVideo.timelineIndex].videos.filter(video => video.instanceId !== selectedVideo.instanceId);
                 }
-                if (updatedTimelines[selectedVideo.timelineIndex].videos.length === 0) {
-                    delete updatedTimelines[selectedVideo.timelineIndex];
+                if (updatedTimelineVideos[selectedVideo.timelineIndex].videos.length === 0) {
+                    delete updatedTimelineVideos[selectedVideo.timelineIndex];
                 }
             }
 
             if (timelineIndex === null) {
-                updatedTimelines.push({
+                updatedTimelineVideos.push({
                     videos: [newVideoSegment],
                 });
-            } else if (updatedTimelines[timelineIndex] && !updatedTimelines[timelineIndex].videos.some(video => video.instanceId === selectedVideo.instanceId)) {
-                updatedTimelines[timelineIndex].videos.push(newVideoSegment);
+            } else if (updatedTimelineVideos[timelineIndex] && !updatedTimelineVideos[timelineIndex].videos.some(video => video.instanceId === selectedVideo.instanceId)) {
+                updatedTimelineVideos[timelineIndex].videos.push(newVideoSegment);
             }
 
-            return updatedTimelines;
+            if (updatedTimelineVideos.length > 0 && updatedTimelineVideos[0].videos.length > 0) {
+                updatedTimelineVideos[0].videos[0].position = 0;
+                updatedTimelineVideos[0].videos[0].startTime = 0;
+                updatedTimelineVideos[0].videos[0].endTime = duration;
+            }
+            return updatedTimelineVideos;
         });
     };
 
@@ -572,10 +724,25 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
         const textId = e.dataTransfer.getData("textId");
         const instanceId = e.dataTransfer.getData("instanceId");
         const image = e.dataTransfer.getData("image");
+        const style = JSON.parse(e.dataTransfer.getData("style"));
+        const duration = 5;
 
         const dropX = e.clientX - e.target.getBoundingClientRect().left;
         const timelineWidth = e.target.clientWidth;
         const dropPositionPercentage = (dropX / timelineWidth) * 100;
+
+        const startTime = (dropPositionPercentage / 100) * 30;
+        const endTime = startTime + duration;
+
+        const totalTimelineDuration = Math.max(totalDuration, 30);
+        const segmentWidth = (duration / totalTimelineDuration) * 100;
+
+        const x = (videoWidth / 2) - (style?.fontSize ? parseInt(style.fontSize) * content.length / 2 : 8 * content.length / 2);
+        const y = (videoHeight / 2) - (style?.fontSize ? parseInt(style.fontSize) / 2 : 8);
+
+        console.log("x", x)
+        console.log("y", y)
+
 
         setTimelinesText((prevTimelinesText) => {
             const updatedTimelinesText = [...prevTimelinesText];
@@ -586,7 +753,13 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                 image,
                 content,
                 position: dropPositionPercentage,
-                width: content.length * 5,
+                width: segmentWidth,
+                style: style,
+                startTime: startTime,
+                duration: duration,
+                endTime: endTime,
+                x: x,
+                y: y,
             };
 
             if (selectedText.timelineIndex === timelineIndex) {
@@ -595,9 +768,10 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                         return {
                             ...text,
                             position: dropPositionPercentage,
+                            startTime: startTime,
+                            endTime: endTime
                         };
                     }
-
                     return text;
                 });
 
@@ -634,6 +808,7 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
         const audioId = e.dataTransfer.getData("audioId");
         const instanceId = e.dataTransfer.getData("instanceId");
         const image = e.dataTransfer.getData("image");
+        const duration = parseFloat(e.dataTransfer.getData("duration"));
 
         if (!audio) {
             console.error("Audio not found in audioFiles");
@@ -643,6 +818,13 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
         const dropX = e.clientX - e.target.getBoundingClientRect().left;
         const timelineWidth = e.target.clientWidth;
         const dropPositionPercentage = (dropX / timelineWidth) * 100;
+
+        const totalTimelineDuration = Math.max(totalDuration, 30);
+        const segmentWidth = (duration / totalTimelineDuration) * 100;
+
+
+        const startTime = (dropPositionPercentage / 100) * 30;
+        const endTime = startTime + duration;
 
         setTimelinesAudio((prevTimelinesAudio) => {
             const updatedTimelinesAudio = [...prevTimelinesAudio];
@@ -654,7 +836,10 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                 fileName,
                 image,
                 position: dropPositionPercentage,
-                width: audio.duration * 10,
+                width: segmentWidth,
+                startTime: startTime,
+                duration: duration,
+                endTime: endTime
             };
 
             if (selectedAudio.timelineIndex === timelineIndex) {
@@ -663,6 +848,8 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                         return {
                             ...audio,
                             position: dropPositionPercentage,
+                            startTime: startTime,
+                            endTime: endTime
                         };
                     }
                     return audio;
@@ -685,7 +872,7 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                 updatedTimelinesAudio.push({
                     audios: [newAudioSegment],
                 });
-            } else {
+            } else if (updatedTimelinesAudio[timelineIndex] && !updatedTimelinesAudio[timelineIndex].audios.some(audio => audio.instanceId === selectedAudio.instanceId)) {
                 updatedTimelinesAudio[timelineIndex].audios.push(newAudioSegment);
             }
 
@@ -698,63 +885,249 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
 
         const stickerUrl = e.dataTransfer.getData("stickerUrl");
         const stickerId = e.dataTransfer.getData("stickerId");
-        const sticker = {id: stickerId, url: stickerUrl};
+        const duration = 5;
+
+        
+        const img = new window.Image();
+        img.src = stickerUrl;
+
+        img.onload = () => {
+            const stickerWidth = img.width;
+            const stickerHeight = img.height;
+
+            
+            const x = (videoWidth / 2) - (stickerWidth / 2);
+            const y = (videoHeight / 2) - (stickerHeight / 2);
+
+            
+            const dropX = e.clientX - e.target.getBoundingClientRect().left;
+            const timelineWidth = e.target.clientWidth;
+            const dropPositionPercentage = (dropX / timelineWidth) * 100;
+
+            const startTime = (dropPositionPercentage / 100) * 30;
+            const endTime = startTime + duration;
+
+            const totalTimelineDuration = Math.max(totalDuration, 30);
+            const segmentWidth = (duration / totalTimelineDuration) * 100;
+
+            
+            setStickerPosition({x: x, y: y});
+
+            setTimelinesSticker((prevTimelinesStickers) => {
+                const updatedTimelinesStickers = [...prevTimelinesStickers];
+
+                const newStickerSegment = {
+                    id: stickerId,
+                    url: stickerUrl,
+                    position: dropPositionPercentage,
+                    width: segmentWidth,
+                    startTime: startTime,
+                    duration: duration,
+                    endTime: endTime,
+                    x: x, 
+                    y: y  
+                };
+
+                if (selectedSticker.timelineIndex === timelineIndex) {
+                    updatedTimelinesStickers[timelineIndex].stickers = updatedTimelinesStickers[timelineIndex].stickers.map(sticker => {
+                        if (sticker.id === selectedSticker.id) {
+                            return {
+                                ...sticker,
+                                position: dropPositionPercentage,
+                                startTime: startTime,
+                                endTime: endTime
+                            };
+                        }
+
+                        return sticker;
+                    });
+
+                } else if (selectedSticker.timelineIndex !== null &&
+                    selectedSticker.timelineIndex !== undefined &&
+                    selectedSticker.timelineIndex !== timelineIndex &&
+                    updatedTimelinesStickers[selectedSticker.timelineIndex]) {
+
+                    if (selectedSticker.timelineIndex !== null && selectedSticker.timelineIndex !== undefined) {
+                        updatedTimelinesStickers[selectedSticker.timelineIndex].stickers = updatedTimelinesStickers[selectedSticker.timelineIndex].stickers.filter(v => v.id !== selectedSticker.id);
+                    }
+                    if (updatedTimelinesStickers[selectedSticker.timelineIndex].stickers.length === 0) {
+                        delete updatedTimelinesStickers[selectedSticker.timelineIndex];
+                    }
+                }
+
+
+                if (timelineIndex === null) {
+                    updatedTimelinesStickers.push({
+                        stickers: [newStickerSegment],
+                    });
+                } else if (updatedTimelinesStickers[timelineIndex] && !updatedTimelinesStickers[timelineIndex].stickers.some(sticker => sticker.id === selectedSticker.id)) {
+                    updatedTimelinesStickers[timelineIndex].stickers.push(newStickerSegment);
+                }
+
+                return updatedTimelinesStickers;
+            });
+
+        };
+
+        img.onerror = () => {
+            console.error("Error loading sticker image");
+        };
+    };
+
+
+    const handleDropEffect = (e, timelineIndex = null) => {
+        e.preventDefault();
+
+        const effectId = e.dataTransfer.getData("effectId");
+        const instanceId = e.dataTransfer.getData("instanceId");
+        const config = JSON.parse(e.dataTransfer.getData("config"));
+        const duration = 5;
+        const image = e.dataTransfer.getData("image");
 
         const dropX = e.clientX - e.target.getBoundingClientRect().left;
-        const dropY = e.clientY - e.target.getBoundingClientRect().top;
         const timelineWidth = e.target.clientWidth;
         const dropPositionPercentage = (dropX / timelineWidth) * 100;
 
-        setStickerPosition({x: dropX, y: dropY});
-        setTimelinesSticker((prevTimelinesStickers) => {
-            const updatedTimelinesStickers = [...prevTimelinesStickers];
+        const startTime = (dropPositionPercentage / 100) * 30;
+        const endTime = startTime + duration;
 
-            const newStickerSegment = {
-                id: stickerId,
-                url: stickerUrl,
+        const totalTimelineDuration = Math.max(totalDuration, 30);
+        const segmentWidth = (duration / totalTimelineDuration) * 100;
+
+        setTimelinesEffect((prevTimelinesEffect) => {
+            const updatedTimelinesEffect = [...prevTimelinesEffect];
+
+            const newEffectSegment = {
+                instanceId: instanceId,
+                id: effectId,
+                config: config,
+                image: image,
                 position: dropPositionPercentage,
+                width: segmentWidth,
+                startTime: startTime,
+                duration: duration,
+                endTime: endTime
             };
 
-            if (selectedSticker.timelineIndex === timelineIndex) {
-                updatedTimelinesStickers[timelineIndex].stickers = updatedTimelinesStickers[timelineIndex].stickers.map(sticker => {
-                    if (sticker.id === selectedSticker.id) {
+            if (selectedEffect.timelineIndex === timelineIndex) {
+                updatedTimelinesEffect[timelineIndex].effects = updatedTimelinesEffect[timelineIndex].effects.map(effect => {
+                    if (effect.instanceId === selectedEffect.instanceId) {
                         return {
-                            ...sticker,
+                            ...effect,
                             position: dropPositionPercentage,
+                            startTime: startTime,
+                            endTime: endTime
                         };
                     }
-
-                    return sticker;
+                    return effect;
                 });
+            } else if (selectedEffect.timelineIndex !== null &&
+                selectedEffect.timelineIndex !== undefined &&
+                selectedEffect.timelineIndex !== timelineIndex &&
+                updatedTimelinesEffect[selectedEffect.timelineIndex]) {
 
-            } else if (selectedSticker.timelineIndex !== null &&
-                selectedSticker.timelineIndex !== undefined &&
-                selectedSticker.timelineIndex !== timelineIndex &&
-                updatedTimelinesStickers[selectedSticker.timelineIndex]) {
+                updatedTimelinesEffect[selectedEffect.timelineIndex].effects = updatedTimelinesEffect[selectedEffect.timelineIndex].effects.filter(effect => effect.instanceId !== selectedEffect.instanceId);
 
-                if (selectedSticker.timelineIndex !== null && selectedSticker.timelineIndex !== undefined) {
-                    updatedTimelinesStickers[selectedSticker.timelineIndex].stickers = updatedTimelinesStickers[selectedSticker.timelineIndex].stickers.filter(v => v.id !== selectedSticker.id);
-                }
-                if (updatedTimelinesStickers[selectedSticker.timelineIndex].stickers.length === 0) {
-                    delete updatedTimelinesStickers[selectedSticker.timelineIndex];
+                if (updatedTimelinesEffect[selectedEffect.timelineIndex].effects.length === 0) {
+                    delete updatedTimelinesEffect[selectedEffect.timelineIndex];
                 }
             }
-
 
             if (timelineIndex === null) {
-                updatedTimelinesStickers.push({
-                    stickers: [newStickerSegment],
+                updatedTimelinesEffect.push({
+                    effects: [newEffectSegment],
                 });
-            } else if (updatedTimelinesStickers[timelineIndex] && !updatedTimelinesStickers[timelineIndex].stickers.some(sticker => sticker.id === selectedSticker.id)) {
-                updatedTimelinesStickers[timelineIndex].stickers.push(newStickerSegment);
+            } else if (updatedTimelinesEffect[timelineIndex] && !updatedTimelinesEffect[timelineIndex].effects.some(effect => effect.instanceId === selectedEffect.instanceId)) {
+                updatedTimelinesEffect[timelineIndex].effects.push(newEffectSegment);
             }
 
-            return updatedTimelinesStickers;
+            return updatedTimelinesEffect;
+        });
+    };
+
+    const handleDropFilter = (e, timelineIndex = null) => {
+        e.preventDefault();
+
+        const filterId = e.dataTransfer.getData("filterId");
+        const instanceId = e.dataTransfer.getData("instanceId");
+        const config = JSON.parse(e.dataTransfer.getData("config"));
+        const duration = 5;
+        const image = e.dataTransfer.getData("image");
+
+        const dropX = e.clientX - e.target.getBoundingClientRect().left;
+        const timelineWidth = e.target.clientWidth;
+        const dropPositionPercentage = (dropX / timelineWidth) * 100;
+
+        const startTime = (dropPositionPercentage / 100) * 30;
+        const endTime = startTime + duration;
+
+        const totalTimelineDuration = Math.max(totalDuration, 30);
+        const segmentWidth = (duration / totalTimelineDuration) * 100;
+
+        setTimelinesFilter((prevTimelinesFilter) => {
+            const updatedTimelinesFilter = [...prevTimelinesFilter];
+
+            const newFilterSegment = {
+                instanceId: instanceId,
+                id: filterId,
+                config: config,
+                image: image,
+                position: dropPositionPercentage,
+                width: segmentWidth,
+                startTime: startTime,
+                duration: duration,
+                endTime: endTime
+            };
+
+            if (selectedFilter.timelineIndex === timelineIndex) {
+                updatedTimelinesFilter[timelineIndex].filters = updatedTimelinesFilter[timelineIndex].filters.map(filter => {
+                    if (filter.instanceId === selectedFilter.instanceId) {
+                        return {
+                            ...filter,
+                            position: dropPositionPercentage,
+                            startTime: startTime,
+                            endTime: endTime
+                        };
+                    }
+                    return filter;
+                });
+            } else if (selectedFilter.timelineIndex !== null &&
+                selectedFilter.timelineIndex !== undefined &&
+                selectedFilter.timelineIndex !== timelineIndex &&
+                updatedTimelinesFilter[selectedFilter.timelineIndex]) {
+
+                updatedTimelinesFilter[selectedFilter.timelineIndex].filters = updatedTimelinesFilter[selectedFilter.timelineIndex].filters.filter(filter => filter.instanceId !== selectedFilter.instanceId);
+
+                if (updatedTimelinesFilter[selectedFilter.timelineIndex].filters.length === 0) {
+                    delete updatedTimelinesFilter[selectedFilter.timelineIndex];
+                }
+            }
+
+            if (timelineIndex === null) {
+                updatedTimelinesFilter.push({
+                    filters: [newFilterSegment],
+                });
+            } else if (updatedTimelinesFilter[timelineIndex] && !updatedTimelinesFilter[timelineIndex].filters.some(filter => filter.instanceId === selectedFilter.instanceId)) {
+                updatedTimelinesFilter[timelineIndex].filters.push(newFilterSegment);
+            }
+
+            return updatedTimelinesFilter;
         });
     };
 
     const handleDragOver = (e) => {
         e.preventDefault();
+        const element = e.target;
+        if (element && element.classList) {
+            const dropZone = document.querySelector('.timeline-dropzone');
+            dropZone.classList.add('drag-over');
+        }
+
+    };
+
+    const handleDragLeave = (e) => {
+        const dropZone = document.querySelector('.timeline-dropzone');
+        dropZone.classList.remove('drag-over');
     };
 
     const handleProgress = (progress) => {
@@ -763,46 +1136,6 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
 
     const handleDuration = (duration) => {
         setDuration(duration);
-    };
-
-    const handleVideoEnd = () => {
-        if (currentVideoIndex + 1 < timelineVideos.length) {
-            setAccumulatedTime(accumulatedTime + timelineVideos[currentVideoIndex].duration);
-            setCurrentVideoIndex((prevIndex) => {
-                const nextIndex = prevIndex + 1;
-                return nextIndex < timelineVideos.length ? nextIndex : 0;
-            });
-        } else {
-            setAccumulatedTime(0);
-            setCurrentTime(0);
-            setCurrentVideoIndex(0);
-            if (videoRef.current) {
-                videoRef.current.pause();
-                videoRef.current.currentTime = 0;
-
-                videoRef.current.oncanplay = () => {
-                    videoRef.current.play();
-                    videoRef.current.oncanplay = null;
-                };
-            }
-        }
-    };
-
-    const handleSeek = (e) => {
-        const seekTime = (e.target.value / 100) * durationTimeLine;
-        let accumulated = 0;
-
-        for (let i = 0; i < timelineVideos.length; i++) {
-            if (accumulated + timelineVideos[i].duration >= seekTime) {
-                setCurrentVideoIndex(i);
-                const timeInCurrentVideo = seekTime - accumulated;
-                videoRef.current.currentTime = timeInCurrentVideo;
-                setCurrentTime(timeInCurrentVideo);
-                setAccumulatedTime(accumulated);
-                break;
-            }
-            accumulated += timelineVideos[i].duration;
-        }
     };
 
     const handleSubmit = async (e) => {
@@ -843,11 +1176,11 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
 
         const formData = new FormData();
 
-        const fetchResponse = await fetch(selectedVideo.url);
+        const fetchResponse = await fetch('https://btfptkpngrtnnqweftvx.supabase.co/storage/v1/object/public/video_files/1/DLPanda.com.7338365652207537435.mp4');
         const blob = await fetchResponse.blob();
 
         formData.append('file', blob, 'video.mp4');
-        formData.append('text', textToAdd);
+        formData.append('text', "default");
 
         const response = await fetch('http://localhost:8000/myapp/add_text_to_video/', {
             method: 'POST',
@@ -878,73 +1211,81 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
     const handleExport = async () => {
         const formData = new FormData();
 
-        timelines.map((timeline, index) => (
-            (timeline.videos.map((file, i) => {
-                    const videoUrl = file.url;
-                    const fileName = file.fileName;
-                    const videoDuration = file.fileTime;
-                    const segmentWidth = file.duration;
-                    setTimelineVideos(prevList => [
-                        ...prevList,
-                        {url: videoUrl, fileName, duration: videoDuration, width: segmentWidth},
-                    ]);
-                }
-            ))
-        ))
+        formData.append('total_duration', totalDuration);
 
-        for (const video of timelineVideos) {
-            const response = await fetch(video.url);
-            const blob = await response.blob();
-            formData.append('videos', blob, video.fileName);
+        if (timelineVideos.length > 0) {
+            for (const timeline of timelineVideos) {
+                for (const video of timeline.videos) {
+                    formData.append('videos', JSON.stringify(video));
+                }
+            }
         }
 
+
+        if (timelinesAudio.length > 0) {
+            for (const timeline of timelinesAudio) {
+                for (const audio of timeline.audios) {
+                    formData.append('audios', JSON.stringify(audio));
+                }
+            }
+        }
+
+        if (timelinesText.length > 0) {
+            for (const timeline of timelinesText) {
+                for (const text of timeline.texts) {
+                    formData.append('texts', JSON.stringify(text));
+                }
+            }
+        }
+
+
+        if (timelinesSticker.length > 0) {
+            for (const timeline of timelinesSticker) {
+                for (const sticker of timeline.stickers) {
+                    formData.append('stickers', JSON.stringify(sticker));
+                }
+            }
+        }
+
+
+        if (timelinesEffect.length > 0) {
+            for (const timeline of timelinesEffect) {
+                for (const effect of timeline.effects) {
+                    formData.append('effects', JSON.stringify(effect));
+                }
+            }
+        }
+
+        if (timelinesFilter.length > 0) {
+            for (const timeline of timelinesFilter) {
+                for (const filter of timeline.filters) {
+                    formData.append('filters', JSON.stringify(filter));
+                }
+            }
+        }
+
+
         try {
-            const response = await fetch('http://localhost:8000/myapp/merge_videos/', {
-                method: 'POST',
-                body: formData,
+            const response = await axios.post('http://localhost:8000/myapp/export_video/', formData, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
             });
 
-            if (response.ok) {
-                const data = await response.json();
-                const videoUrl = `http://localhost:8000${data.merged_video_url}`;
-
-                try {
-                    const videoResponse = await fetch(videoUrl);
-                    const videoBlob = await videoResponse.blob();
-
-                    const videoObjectURL = URL.createObjectURL(videoBlob);
-
-                    const link = document.createElement('a');
-                    link.href = videoObjectURL;
-                    link.download = 'merged_video.mp4';
-
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-
-                    URL.revokeObjectURL(videoObjectURL);
-                } catch (error) {
-                    console.error('Error fetching or downloading video:', error);
-                }
+            if (response.status === 200) {
+                const videoUrl = `http://localhost:8000${response.data.merged_video_url}`;
+                const link = document.createElement('a');
+                link.href = videoUrl;
+                link.download = 'exported_video.mp4';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
             } else {
-                console.error('Failed to fetch the merged video URL.');
+                console.error('Error exporting video');
             }
         } catch (error) {
             console.error('Error:', error);
         }
-    };
-
-    const generateTimestamps = (totalDuration, interval = 5) => {
-        const timestamps = [];
-        const duration = Math.max(totalDuration, 30);
-
-        for (let i = 0; i <= duration; i += interval) {
-            const minutes = Math.floor(i / 60).toString().padStart(2, '0');
-            const seconds = (i % 60).toString().padStart(2, '0');
-            timestamps.push(`${minutes}:${seconds}`);
-        }
-
-        return timestamps;
     };
 
     const handleAudioChange = (e) => {
@@ -1018,132 +1359,737 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
     };
 
     const handleSaveEditSession = async () => {
-    const actions = {
-        videos: timelines,
-        texts: timelinesText,
-        stickers: timelinesSticker,
-        audios: timelinesAudio,
-        effects: timelinesEffect,
-    };
+        const actions = {
+            videos: timelineVideos,
+            texts: timelinesText,
+            stickers: timelinesSticker,
+            audios: timelinesAudio,
+            effects: timelinesEffect,
+            filters: timelinesFilter,
+        };
 
-    const response = await axios.post('http://localhost:8000/myapp/save_edit_session/', {
-        project_id: projectId,
-        actions: actions,
-    }, {
-        headers: {
-            'Authorization': `Bearer ${token}`,
-        },
-    });
-
-    if (response.status === 200) {
-        navigate('/user');
-    } else {
-        console.error('Failed to save changes');
-    }
-};
-
-    const loadEditSession = async () => {
-    try {
-        const response = await axios.get(`http://localhost:8000/myapp/edit_session/${projectId}/`, {
+        const response = await axios.post('http://localhost:8000/myapp/save_edit_session/', {
+            project_id: projectId,
+            actions: actions,
+        }, {
             headers: {
                 'Authorization': `Bearer ${token}`,
             },
         });
 
         if (response.status === 200) {
-            const { actions, message } = response.data;
-
-            if (message) {
-                console.log(message);
-                setTimelines([]);
-                setTimelinesText([]);
-                setTimelinesSticker([]);
-                setTimelinesAudio([]);
-                setTimelinesEffect([]);
-            } else {
-                setTimelines(actions.videos || []);
-                setTimelinesText(actions.texts || []);
-                setTimelinesSticker(actions.stickers || []);
-                setTimelinesAudio(actions.audios || []);
-                setTimelinesEffect(actions.effects || []);
-            }
+            navigate('/user');
         } else {
-            console.error('Failed to load edit session');
+            console.error('Failed to save changes');
         }
-    } catch (error) {
-        console.error('Error loading edit session:', error);
-    }
-};
-
-    useEffect(() => {
-    const checkTokenValidity = async () => {
-      try {
-        await axios.get("http://localhost:8000/myapp/validate_token/", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setIsLogin(true);
-      } catch (error) {
-        if (error.response && error.response.status === 401) {
-          try {
-            const response = await axios.post("http://localhost:8000/myapp/token/refresh/", {
-              refresh: refreshToken,
-            });
-            localStorage.setItem("access_token", response.data.access);
-            setIsLogin(true);
-          } catch (refreshError) {
-            navigate("/login");
-          }
-        } else {
-          navigate("/login");
-        }
-      }
     };
-    checkTokenValidity();
-  }, [navigate]);
+
+    const loadEditSession = async () => {
+        try {
+            const response = await axios.get(`http://localhost:8000/myapp/edit_session/${projectId}/`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (response.status === 200) {
+                const {actions, message} = response.data;
+
+                if (message) {
+                    setTimelineVideos([]);
+                    setTimelinesText([]);
+                    setTimelinesSticker([]);
+                    setTimelinesAudio([]);
+                    setTimelinesEffect([]);
+                    setTimelinesFilter([]);
+                } else {
+                    setTimelineVideos(actions.videos || []);
+                    setTimelinesText(actions.texts || []);
+                    setTimelinesSticker(actions.stickers || []);
+                    setTimelinesAudio(actions.audios || []);
+                    setTimelinesEffect(actions.effects || []);
+                    setTimelinesFilter(actions.filters || []);
+                }
+            } else {
+                console.error('Failed to load edit session');
+            }
+        } catch (error) {
+            console.error('Error loading edit session:', error);
+        }
+    };
+    const handleDragEnd = (e, index, type) => {
+        const x = (e.target.x() / videoWidth) * 100;
+        const y = (e.target.y() / videoHeight) * 100;
+
+        if (type === "audio") {
+            setTimelinesAudio((prev) => {
+                const updated = [...prev];
+                updated[index].position = {x, y};
+                return updated;
+            });
+        } else if (type === "text") {
+            setTimelinesText((prev) => {
+                const updated = [...prev];
+                updated[index].position = {x, y};
+                return updated;
+            });
+        } else if (type === "effect") {
+            setTimelinesEffect((prev) => {
+                const updated = [...prev];
+                updated[index].position = {x, y};
+                return updated;
+            });
+        } else if (type === "sticker") {
+            setTimelinesSticker((prev) => {
+                const updated = [...prev];
+                updated[index].position = {x, y};
+                return updated;
+            });
+        } else if (type === "filter") {
+            setTimelinesFilter((prev) => {
+                const updated = [...prev];
+                updated[index].position = {x, y};
+                return updated;
+            });
+        }
+    };
+
+    const generateTimestamps = (totalDuration, interval = 5) => {
+        const timestamps = [];
+        const duration = Math.max(totalDuration, 30);
+        for (let i = 0; i <= duration; i += interval) {
+            const minutes = Math.floor(i / 60).toString().padStart(2, '0');
+            const seconds = (i % 60).toString().padStart(2, '0');
+            timestamps.push(`${minutes}:${seconds}`);
+        }
+        return timestamps;
+    };
+
+    const calculateLeftValue = (index, totalSegments) => {
+        return `${(index / (totalSegments - 1)) * 100}%`;
+    };
+
+    const handleVideoEnd = () => {
+        if (currentVideoIndex + 1 < allVideos.length) {
+            setAccumulatedTime(accumulatedTime + allVideos[currentVideoIndex].duration);
+            setCurrentVideoIndex((prevIndex) => {
+                const nextIndex = prevIndex + 1;
+                return nextIndex < allVideos.length ? nextIndex : 0;
+            });
+        } else {
+            setAccumulatedTime(0);
+            setCurrentTime(0);
+            setCurrentVideoIndex(0);
+            if (videoRef.current) {
+                videoRef.current.pause();
+                videoRef.current.currentTime = 0;
+
+                videoRef.current.oncanplay = () => {
+                    videoRef.current.play();
+                    videoRef.current.oncanplay = null;
+                };
+            }
+        }
+    };
+
+    const calculateTotalDuration = () => {
+        if (timelineVideos.length === 0) return 0;
+
+        const sortedVideos = [...timelineVideos].sort((a, b) => a.position - b.position);
+        let totalDuration = 0;
+        let lastEndTime = 0;
+
+
+        sortedVideos.forEach((timeline) => {
+
+            if (timeline && Array.isArray(timeline.videos) && timeline.videos.length > 0) {
+                timeline.videos.forEach((video) => {
+                    const videoStart = (video.position / 100) * 30;
+                    const videoEnd = videoStart + video.duration;
+
+                    if (videoStart < lastEndTime) {
+                        const overlapTime = lastEndTime - videoStart;
+                        totalDuration += video.duration - overlapTime;
+                    } else {
+                        const gapTime = videoStart - lastEndTime;
+                        totalDuration += gapTime + video.duration;
+                    }
+
+                    lastEndTime = videoEnd;
+                });
+            }
+        });
+
+
+        return totalDuration;
+    };
+
+    const handleSeek = (e) => {
+        const seekTime = (e.target.value / 100) * duration;
+        const value = e.target.value;
+        videoRef.current.currentTime = seekTime;
+        setCurrentTime(seekTime);
+
+    };
+
+    const calculateTimeFromPosition = (position, totalWidth) => {
+        const duration = Math.max(totalDuration, 30);
+        return (position / 100) * duration;
+    };
+
+    const handleResizeStart = (e, timelineIndex, itemIndex, type, direction) => {
+        e.preventDefault();
+        isDragging = false;
+        setIsResizing(true);
+        setResizingInfo({timelineIndex, itemIndex, type, direction});
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+    };
+
+    const handleMouseMove = (e) => {
+        isDragging = true;
+        if (isResizing && resizingInfo.timelineIndex !== null) {
+            const timelineWidth = e.target ? e.target.clientWidth : 0;
+            if (timelineWidth === 0) return;
+
+            const dropX = e.clientX - e.target.getBoundingClientRect().left;
+            const newPosition = Math.max(0, (dropX / timelineWidth) * 100);
+            const {timelineIndex, itemIndex, type, direction} = resizingInfo;
+
+            switch (type) {
+                case "video":
+                    setTimelineVideos((prevVideos) => {
+                        const updatedVideos = [...prevVideos];
+                        const video = updatedVideos[timelineIndex].videos[itemIndex];
+
+                        if (direction === "right") {
+                            const newWidth = Math.max(0, newPosition - video.position);
+                            video.width = newWidth;
+                            video.endTime = calculateTimeFromPosition(video.position + video.width, timelineWidth);
+                            video.duration = video.endTime - video.startTime;
+
+                        } else if (direction === "left") {
+                            const delta = video.position - newPosition;
+                            if (video.width + delta > 0) {
+                                video.position = Math.max(0, newPosition);
+                                video.width = Math.max(0, video.width + delta);
+                            }
+                            if (itemIndex === 0) {
+                                video.startTime = 0;
+                                video.position = 0;
+                            } else {
+                                video.startTime = calculateTimeFromPosition(video.position, timelineWidth);
+                            }
+                            video.endTime = calculateTimeFromPosition(video.position + video.width, timelineWidth);
+                            video.duration = video.endTime - video.startTime;
+                        }
+                        return updatedVideos;
+                    });
+                    break;
+
+                case "text":
+                    setTimelinesText((prevText) => {
+                        const updatedText = [...prevText];
+                        const text = updatedText[timelineIndex].texts[itemIndex];
+
+                        if (direction === "right") {
+                            const newWidth = Math.max(0, newPosition - text.position);
+                            text.width = newWidth;
+                            text.endTime = calculateTimeFromPosition(text.position + text.width, timelineWidth);
+                            text.duration = text.endTime - text.startTime;
+                        } else if (direction === "left") {
+                            const delta = text.position - newPosition;
+                            if (text.width + delta > 0) {
+                                text.position = Math.max(0, newPosition);
+                                text.width = Math.max(0, text.width + delta);
+                            }
+                            text.startTime = calculateTimeFromPosition(text.position, timelineWidth);
+                            text.endTime = calculateTimeFromPosition(text.position + text.width, timelineWidth);
+                            text.duration = text.endTime - text.startTime;
+                        }
+
+                        return updatedText;
+                    });
+                    break;
+
+                case "audio":
+                    setTimelinesAudio((prevAudio) => {
+                        const updatedAudio = [...prevAudio];
+                        const audio = updatedAudio[timelineIndex].audios[itemIndex];
+
+                        if (direction === "right") {
+                            const newWidth = Math.max(0, newPosition - audio.position);
+                            audio.width = newWidth;
+                            audio.endTime = calculateTimeFromPosition(audio.position + audio.width, timelineWidth);
+                            audio.duration = audio.endTime - audio.startTime;
+                        } else if (direction === "left") {
+                            const delta = audio.position - newPosition;
+                            if (audio.width + delta > 0) {
+                                audio.position = Math.max(0, newPosition);
+                                audio.width = Math.max(0, audio.width + delta);
+                                audio.startTime = calculateTimeFromPosition(audio.position, timelineWidth);
+                                audio.endTime = calculateTimeFromPosition(audio.position + audio.width, timelineWidth);
+                                audio.duration = audio.endTime - audio.startTime;
+                            }
+                        }
+
+                        return updatedAudio;
+                    });
+                    break;
+
+                case "sticker":
+                    setTimelinesSticker((prevSticker) => {
+                        const updatedSticker = [...prevSticker];
+                        const sticker = updatedSticker[timelineIndex].stickers[itemIndex];
+
+                        if (direction === "right") {
+                            const newWidth = Math.max(0, newPosition - sticker.position);
+                            sticker.width = newWidth;
+                            sticker.endTime = calculateTimeFromPosition(sticker.position + sticker.width, timelineWidth);
+                            sticker.duration = sticker.endTime - sticker.startTime;
+                        } else if (direction === "left") {
+                            const delta = sticker.position - newPosition;
+                            if (sticker.width + delta > 0) {
+                                sticker.position = Math.max(0, newPosition);
+                                sticker.width = Math.max(0, sticker.width + delta);
+                                sticker.startTime = calculateTimeFromPosition(sticker.position, timelineWidth);
+                                sticker.endTime = calculateTimeFromPosition(sticker.position + sticker.width, timelineWidth);
+                                sticker.duration = sticker.endTime - sticker.startTime;
+                            }
+                        }
+
+                        return updatedSticker;
+                    });
+                    break;
+
+                case "effect":
+                    setTimelinesEffect((prevEffect) => {
+                        const updatedEffect = [...prevEffect];
+                        const effect = updatedEffect[timelineIndex].effects[itemIndex];
+
+                        if (direction === "right") {
+                            const newWidth = Math.max(0, newPosition - effect.position);
+                            effect.width = newWidth;
+                            effect.endTime = calculateTimeFromPosition(effect.position + effect.width, timelineWidth);
+                            effect.duration = effect.endTime - effect.startTime;
+                        } else if (direction === "left") {
+                            const delta = effect.position - newPosition;
+                            if (effect.width + delta > 0) {
+                                effect.position = Math.max(0, newPosition);
+                                effect.width = Math.max(0, effect.width + delta);
+                                effect.startTime = calculateTimeFromPosition(effect.position, timelineWidth);
+                                effect.endTime = calculateTimeFromPosition(effect.position + effect.width, timelineWidth);
+                                effect.duration = effect.endTime - effect.startTime;
+                            }
+                        }
+
+                        return updatedEffect;
+                    });
+                    break;
+
+                case "filter":
+                    setTimelinesFilter((prevFilter) => {
+                        const updatedFilter = [...prevFilter];
+                        const filter = updatedFilter[timelineIndex].filters[itemIndex];
+
+                        if (direction === "right") {
+                            const newWidth = Math.max(0, newPosition - filter.position);
+                            filter.width = newWidth;
+                            filter.endTime = calculateTimeFromPosition(filter.position + filter.width, timelineWidth);
+                            filter.duration = filter.endTime - filter.startTime;
+                        } else if (direction === "left") {
+                            const delta = filter.position - newPosition;
+                            if (filter.width + delta > 0) {
+                                filter.position = Math.max(0, newPosition);
+                                filter.width = Math.max(0, filter.width + delta);
+                                filter.startTime = calculateTimeFromPosition(filter.position, timelineWidth);
+                                filter.endTime = calculateTimeFromPosition(filter.position + filter.width, timelineWidth);
+                                filter.duration = filter.endTime - filter.startTime;
+                            }
+                        }
+
+                        return updatedFilter;
+                    });
+                    break;
+
+                default:
+                    break;
+            }
+        }
+    };
+
+    const handleMouseUp = () => {
+        setIsResizing(false);
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    const handleClick = (item, type) => {
+        switch (type) {
+            case "video":
+                setEditVideo(!editVideo)
+                break;
+
+            case "text":
+                setEditText(!editText)
+                break;
+
+            case "audio":
+                setEditAudio(!editAudio)
+                break;
+
+            case "sticker":
+                setEditSticker(!editSticker)
+                break;
+
+            case "effect":
+                setEditEffect(!editEffect)
+                break;
+
+            case "filter":
+                setEditFilter(!editFilter)
+                break;
+
+            default:
+                break;
+        }
+    };
+
+    const handleDoubleClick = (item, type) => {
+        console.log(`Clicked on: ${item.fileName || item.content || item.url}`);
+    };
+
+    const updateSliderValue = (value) => {
+        setScaleValue(value);
+    };
+
+    const updateSliderWidthValue = (value) => {
+        setScaleValueWidth(value);
+    };
+
+    const updateSliderHeightValue = (value) => {
+        setScaleValueHeight(value);
+    };
+
+    const updateVoiceValue = (value) => {
+        setVoiceValue(value);
+    };
+
+    const updateSpeedValue = (value) => {
+        setSpeedValue(value);
+    };
+
+    const updatePositionX = (value) => {
+        setPositionX(value);
+    };
+
+    const updatePositionY = (value) => {
+        setPositionY(value);
+    };
+
+    const updateRotate = (value) => {
+        setRotateValue(value);
+    };
+
+    
+    const updateSlider = (value) => {
+        let numericValue = parseInt(value.replace("%", ""), 10);
+        if (numericValue > 400) numericValue = 400;
+        if (numericValue < 1) numericValue = 1;
+        setScaleValue(numericValue);
+    };
+
+    const updateSliderWidth = (value) => {
+        let numericValue = parseInt(value.replace("%", ""), 10);
+        if (numericValue > 400) numericValue = 400;
+        if (numericValue < 1) numericValue = 1;
+        setScaleValueWidth(numericValue);
+    };
+
+    const updateSliderHeight = (value) => {
+        let numericValue = parseInt(value.replace("%", ""), 10);
+        if (numericValue > 400) numericValue = 400;
+        if (numericValue < 1) numericValue = 1;
+        setScaleValueHeight(numericValue);
+    };
+
+        const updateVoice = (value) => {
+        let numericValue = parseInt(value.replace("dB", ""), 10);
+        if (numericValue > 20) numericValue = 20;
+        if (numericValue < -60) numericValue = -60;
+        setVoiceValue(numericValue);
+    };
+
+         const updateSpeed = (value) => {
+        let numericValue = parseInt(value.replace("x", ""), 10);
+        if (numericValue > 100) numericValue = 100;
+        if (numericValue < 1) numericValue = 1;
+        setScaleValue(numericValue);
+    };
+
+    const handleStabilizeLevelChange = (e) => {
+        setStabilizeLevel(e.target.value);
+    };
+
+    const updateBlurValue = (value) => {
+        setBlurValue(value);
+    };
+
+    const updateBlendValue = (value) => {
+        setBlendValue(value);
+    };
+
+    const handleCanvasOptionChange = (e) => {
+        setCanvasOption(e.target.value);
+    };
+
+    const handleColorChange = (e) => {
+        setColorValue(e.target.value);
+    };
+
+    
+    const increaseSlider = () => {
+        if (scaleValue < 400) {
+            setScaleValue(prevValue => Math.min(prevValue + 1, 400));
+        }
+    };
+
+     const increaseSliderWidth = () => {
+        if (scaleValueWidth < 400) {
+            setScaleValueWidth(prevValue => Math.min(prevValue + 1, 400));
+        }
+    };
+
+      const increaseSliderHeight = () => {
+        if (scaleValueHeight < 400) {
+            setScaleValueHeight(prevValue => Math.min(prevValue + 1, 400));
+        }
+    };
+
+      const increaseVoice = () => {
+        if (scaleValue < 400) {
+            setVoiceValue(prevValue => Math.min(prevValue + 1, 400));
+        }
+    };
+
+      const increaseSpeed = () => {
+        if (scaleValue < 400) {
+            setSpeedValue(prevValue => Math.min(prevValue + 1, 400));
+        }
+    };
+
+    
+    const decreaseSlider = () => {
+        if (scaleValue > 1) {
+            setScaleValue(prevValue => Math.max(prevValue - 1, 1));
+        }
+    };
+
+    const decreaseSliderWidth = () => {
+        if (scaleValueWidth > 1) {
+            setScaleValueWidth(prevValue => Math.max(prevValue - 1, 1));
+        }
+    };
+
+    const decreaseSliderHeight = () => {
+        if (scaleValueHeight > 1) {
+            setScaleValueHeight(prevValue => Math.max(prevValue - 1, 1));
+        }
+    };
+
+    const decreaseVoice = () => {
+        if (scaleValue > 1) {
+            setVoiceValue(prevValue => Math.max(prevValue - 1, 1));
+        }
+    };
+
+    const decreaseSpeed = () => {
+        if (scaleValue > 1) {
+            setSpeedValue(prevValue => Math.max(prevValue - 1, 1));
+        }
+    };
+
+    const increasePositionX = () => {
+        setPositionX(prevValue => Math.min(prevValue + 1, 400));
+    };
+
+    const decreasePositionX = () => {
+        setPositionX(prevValue => Math.max(prevValue - 1, 1));
+    };
+
+    const increasePositionY = () => {
+        setPositionY(prevValue => Math.min(prevValue + 1, 400));
+    };
+
+    const decreasePositionY = () => {
+        setPositionY(prevValue => Math.max(prevValue - 1, 1));
+    };
+
+    const increaseRotate = () => {
+        setRotateValue(prevValue => Math.min(prevValue + 1, 360));
+    };
+
+    const decreaseRotate = () => {
+        setRotateValue(prevValue => Math.max(prevValue - 1, 0));
+    };
+
+    const updateOpacityValue = (value) => {
+        setOpacity(value);
+    };
+
+    const updateOpacity = (value) => {
+        let numericValue = parseInt(value.replace("%", ""), 10);
+        if (numericValue > 100) numericValue = 100;
+        if (numericValue < 0) numericValue = 0;
+        setOpacity(numericValue);
+    };
+
+    const increaseOpacity = () => {
+        if (opacity < 100) {
+            setOpacity(prevValue => Math.min(prevValue + 1, 100));
+        }
+    };
+
+    const decreaseOpacity = () => {
+        if (opacity > 0) {
+            setOpacity(prevValue => Math.max(prevValue - 1, 0));
+        }
+    };
+
+    const handleBlendModeChange = (e) => {
+        setBlendMode(e.target.value);
+    };
+
+    const increaseBlur = () => {
+        if (blurValue < 400) {
+            setBlurValue(prevValue => Math.min(prevValue + 1, 400));
+        }
+    };
+
+    const decreaseBlur = () => {
+        if (blurValue > 1) {
+            setBlurValue(prevValue => Math.max(prevValue - 1, 1));
+        }
+    };
+
+    const increaseBlend = () => {
+        if (blendValue < 400) {
+            setBlendValue(prevValue => Math.min(prevValue + 1, 400));
+        }
+    };
+
+    const decreaseBlend = () => {
+        if (blendValue > 1) {
+            setBlendValue(prevValue => Math.max(prevValue - 1, 1));
+        }
+    };
+
+    const handleDirectionChange = (e) => {
+        setDirection(e.target.value);
+    };
+
+    const handleSpeedChange = (e) => {
+        setSpeed(e.target.value);
+    };
+
+
+    const updateCustomRemovalValue = (value) => {
+        const numericValue = Math.min(Math.max(parseInt(value, 10), 1), 400);
+        setCustomRemovalValue(numericValue);
+    };
+
+    const updateCustomRemoval = (value) => {
+        let numericValue = parseInt(value.replace("%", ""), 10);
+        if (isNaN(numericValue)) numericValue = 94;
+        updateCustomRemovalValue(numericValue);
+    };
+
+    const increaseCustomRemoval = () => {
+        if (customRemovalValue < 400) {
+            setCustomRemovalValue(customRemovalValue + 1);
+        }
+    };
+
+    const decreaseCustomRemoval = () => {
+        if (customRemovalValue > 1) {
+            setCustomRemovalValue(customRemovalValue - 1);
+        }
+    };
+
+    function resetChromaKey() {
+        console.log("Chroma Key reset");
+    }
+
 
     useEffect(() => {
-        fetchVideo(projectId, setListVideo);
-        fetchDataByCategory('vlog', setAudioFiles, 'audio');
-        fetchDataByCategory('tourism', setAudioFiles, 'audio');
-        fetchDataByCategory('love', setAudioFiles, 'audio');
-        fetchDataByCategory('spring', setAudioFiles, 'audio');
-        fetchDataByCategory('beat', setAudioFiles, 'audio');
-        fetchDataByCategory('heal', setAudioFiles, 'audio');
-        fetchDataByCategory('warm', setAudioFiles, 'audio');
-        fetchDataByCategory('trend', setAudioFiles, 'audio');
-        fetchDataByCategory('revenue', setAudioFiles, 'audio');
-        fetchDataByCategory('horrified', setAudioFiles, 'audio');
-        fetchDataByCategory('laugh', setAudioFiles, 'audio');
+        if (isResizing) {
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+        } else {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        }
 
-        fetchDataByCategory('trending', setTextFiles, 'text');
-        fetchDataByCategory('basic', setTextFiles, 'text');
-        fetchDataByCategory('multicolor', setTextFiles, 'text');
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isResizing]);
 
-        fetchDataByCategory('trending', setStickerFiles, 'sticker');
-        fetchDataByCategory('easter_holiday', setStickerFiles, 'sticker');
-        fetchDataByCategory('fun', setStickerFiles, 'sticker');
-        fetchDataByCategory('troll_face', setStickerFiles, 'sticker');
-        fetchDataByCategory('gaming', setStickerFiles, 'sticker');
-        fetchDataByCategory('emoji', setStickerFiles, 'sticker');
+    useEffect(() => {
+        const checkTokenValidity = async () => {
+            try {
+                await axios.get("http://localhost:8000/myapp/validate_token/", {
+                    headers: {Authorization: `Bearer ${token}`},
+                });
+                setIsLogin(true);
+            } catch (error) {
+                if (error.response && error.response.status === 401) {
+                    try {
+                        const response = await axios.post("http://localhost:8000/myapp/token/refresh/", {
+                            refresh: refreshToken,
+                        });
+                        localStorage.setItem("access_token", response.data.access);
+                        setIsLogin(true);
+                    } catch (refreshError) {
+                        navigate("/login");
+                    }
+                } else {
+                    navigate("/login");
+                }
+            }
+        };
 
-        fetchDataByCategory('trending', setEffectFiles, 'effect');
-        fetchDataByCategory('nightclub', setEffectFiles, 'effect');
-        fetchDataByCategory('lens', setEffectFiles, 'effect');
-        fetchDataByCategory('retro', setEffectFiles, 'effect');
-        fetchDataByCategory('tv', setEffectFiles, 'effect');
-        fetchDataByCategory('star', setEffectFiles, 'effect');
-        fetchDataByCategory('trending_body', setEffectFiles, 'effect');
-        fetchDataByCategory('mood_body', setEffectFiles, 'effect');
-        fetchDataByCategory('mask_body', setEffectFiles, 'effect');
-        fetchDataByCategory('selfie_body', setEffectFiles, 'effect');
+        checkTokenValidity();
+    }, [token, refreshToken, setIsLogin]);
 
-        fetchDataByCategory('featured', setFilterFiles, 'filter');
-        fetchDataByCategory('life', setFilterFiles, 'filter');
-        fetchDataByCategory('scenery', setFilterFiles, 'filter');
-        fetchDataByCategory('movies', setFilterFiles, 'filter');
-        fetchDataByCategory('retro', setFilterFiles, 'filter');
-        fetchDataByCategory('style', setFilterFiles, 'filter');
-    }, []);
+    useEffect(() => {
+        const fetchAllData = async () => {
+            try {
+                await fetchVideo(projectId, setListVideo);
+
+                const audioCategories = ['vlog', 'tourism', 'love', 'spring', 'beat', 'heal', 'warm', 'trend', 'revenue', 'horrified', 'laugh'];
+                await Promise.all(audioCategories.map(category => fetchDataByCategory(category, setAudioFiles, 'audio')));
+
+                const textCategories = ['default', 'trending', 'basic', 'multicolor'];
+                await Promise.all(textCategories.map(category => fetchDataByCategory(category, setTextFiles, 'text')));
+
+                const stickerCategories = ['trending', 'easter_holiday', 'fun', 'troll_face', 'gaming', 'emoji'];
+                await Promise.all(stickerCategories.map(category => fetchDataByCategory(category, setStickerFiles, 'sticker')));
+
+                const effectCategories = ['trending', 'nightclub', 'lens', 'retro', 'tv', 'star', 'trending_body', 'mood_body', 'mask_body', 'selfie_body'];
+                await Promise.all(effectCategories.map(category => fetchDataByCategory(category, setEffectFiles, 'effect')));
+
+                const filterCategories = ['featured', 'life', 'scenery', 'movies', 'retro', 'style'];
+                await Promise.all(filterCategories.map(category => fetchDataByCategory(category, setFilterFiles, 'filter')));
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            }
+        };
+
+        fetchAllData();
+    }, [projectId]);
 
     useEffect(() => {
         loadEditSession();
@@ -1181,10 +2127,139 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
     }, []);
 
     useEffect(() => {
-        const totalDuration = timelineVideos.reduce((acc, video) => acc + video.duration, 0);
-        setDurationTimeLine(totalDuration);
-        setTimestamps(generateTimestamps(totalDuration, 5));
-    }, [timelineVideos]);
+        const videoElement = videoRef.current;
+        if (videoElement) {
+            const handleLoadedMetadata = () => {
+                const duration = videoElement.duration;
+                setVideoDuration(duration);
+            };
+
+            videoElement.addEventListener('loadedmetadata', handleLoadedMetadata);
+            return () => {
+                videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
+            };
+        }
+    }, [videoUrl]);
+
+    useEffect(() => {
+        const durationSum = allVideos.reduce((sum, video) => sum + video.duration, 0);
+        const newTimestamps = generateTimestamps(durationSum, 5);
+
+        if (JSON.stringify(newTimestamps) !== JSON.stringify(timestamps)) {
+            setTimestamps(newTimestamps);
+        }
+    }, [allVideos, timestamps]);
+
+    useEffect(() => {
+        const newTotalDuration = calculateTotalDuration();
+        if (newTotalDuration !== totalDuration) {
+            setTotalDuration(newTotalDuration);
+        }
+    }, [timelineVideos, totalDuration]);
+
+    useEffect(() => {
+        const videoElement = videoRef.current;
+
+
+        if (videoElement) {
+            const handlePause = () => {
+                Object.values(audioRefs.current).forEach((audioElement) => {
+                    audioElement.pause();
+                });
+            };
+
+            videoElement.addEventListener("pause", handlePause);
+
+
+            return () => {
+                videoElement.removeEventListener("pause", handlePause);
+            };
+        }
+    }, [timelinesAudio]);
+
+    useEffect(() => {
+        timelinesAudio.forEach((timeline) => {
+            timeline.audios.forEach((audioSegment) => {
+                if (!audioRefs.current[audioSegment.url]) {
+                    audioRefs.current[audioSegment.url] = new window.Audio(audioSegment.url);
+                }
+
+                const audioElement = audioRefs.current[audioSegment.url];
+
+                if (currentTime >= audioSegment.startTime && currentTime <= audioSegment.endTime) {
+                    if (audioElement.paused) {
+                        audioElement.play().catch(err => console.error("Error playing audio:", err));
+                    }
+                } else {
+                    if (!audioElement.paused) {
+                        audioElement.pause();
+                        audioElement.currentTime = 0;
+                    }
+                }
+            });
+        });
+
+
+        return () => {
+            timelinesAudio.forEach((timeline) => {
+                timeline.audios.forEach((audioSegment) => {
+                    const audioElement = new window.Audio(audioSegment.url);
+                    audioElement.pause();
+                    audioElement.currentTime = 0;
+                });
+            });
+        };
+    }, [currentTime, timelinesAudio]);
+
+    useEffect(() => {
+        const video = videoRef.current;
+
+
+        if (!video) return;
+
+
+        video.style.filter = 'none';
+        video.style.transform = 'none';
+        video.style.backgroundColor = '';
+        video.style.opacity = 1;
+
+        let combinedFilter = [];
+        let transformValue = '';
+
+        timelinesEffect.forEach((timeline) =>
+            timeline.effects.forEach((effectSegment) => {
+                if (currentTime >= effectSegment.startTime && currentTime <= effectSegment.endTime) {
+                    if (effectHandlers[effectSegment.config.name]) {
+                        const effectStyle = effectHandlers[effectSegment.config.name](effectSegment.config);
+                        if (effectStyle.transform) {
+                            transformValue += effectStyle.transform;
+                        }
+                        if (effectStyle.filter) {
+                            combinedFilter.push(effectStyle.filter);
+                        }
+                    }
+                }
+            })
+        );
+
+        timelinesFilter.forEach((timeline) =>
+            timeline.filters.forEach((filterSegment) => {
+                if (currentTime >= filterSegment.startTime && currentTime <= filterSegment.endTime) {
+                    const filterStyle = filterHandlers.applyFilter(filterSegment.config);
+                    combinedFilter.push(filterStyle);
+                }
+            })
+        );
+
+        if (combinedFilter.length > 0) {
+            video.style.filter = combinedFilter.join(' ');
+        }
+
+        if (transformValue) {
+            video.style.transform = transformValue;
+        }
+
+    }, [currentTime, timelinesEffect, timelinesFilter]);
 
     return (
         <body>
@@ -1201,7 +2276,7 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                 </div>
                 {isLogin ? (
                     <div className="profile-user" onClick={handleSaveEditSession}>
-                            <img src={logo} alt="User image"/>
+                        <img src={logo} alt="User image"/>
                     </div>
                 ) : (
                     <div className="login-btn">
@@ -1726,7 +2801,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
 
                                                 {audioFiles.spring.map((audio, index) => (
                                                     <div className="file-spring-music audio-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, audio, index, "audio")}>
                                                             <div className="file-image">
                                                                 <img src={audio.image}
                                                                      alt="Video Thumbnail"/>
@@ -1769,7 +2846,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-love-music list-audio-file">
                                                 {audioFiles.love.map((audio, index) => (
                                                     <div className="file-love-music audio-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, audio, index, "audio")}>
                                                             <div className="file-image">
                                                                 <img src={audio.image}
                                                                      alt="Video Thumbnail"/>
@@ -1812,7 +2891,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-beat-music list-audio-file">
                                                 {audioFiles.beat.map((audio, index) => (
                                                     <div className="file-beat-music audio-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, audio, index, "audio")}>
                                                             <div className="file-image">
                                                                 <img src={audio.image}
                                                                      alt="Video Thumbnail"/>
@@ -1855,7 +2936,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-heal-music list-audio-file">
                                                 {audioFiles.heal.map((audio, index) => (
                                                     <div className="file-heal-music audio-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, audio, index, "audio")}>
                                                             <div className="file-image">
                                                                 <img src={audio.image}
                                                                      alt="Video Thumbnail"/>
@@ -1898,7 +2981,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-warm-music list-audio-file">
                                                 {audioFiles.warm.map((audio, index) => (
                                                     <div className="file-warm-music audio-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, audio, index, "audio")}>
                                                             <div className="file-image">
                                                                 <img src={audio.image}
                                                                      alt="Video Thumbnail"/>
@@ -1942,7 +3027,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-trend-sound list-audio-file">
                                                 {audioFiles.trend.map((audio, index) => (
                                                     <div className="file-trend-sound audio-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, audio, index, "audio")}>
                                                             <div className="file-image">
                                                                 <img src={audio.image}
                                                                      alt="Video Thumbnail"/>
@@ -1973,37 +3060,6 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                                         </div>
                                                     </div>
                                                 ))}
-
-                                                <div className="file-vlog-music audio-file">
-                                                    <div className="file">
-                                                        <div className="file-image">
-                                                            <img src={logo}
-                                                                 alt="Video Thumbnail"/>
-                                                        </div>
-                                                        <div className="file-information">
-                                                            <span className="file-name">Goodbye</span>
-                                                            <span className="file-artist">finetune</span>
-                                                            <span className="file-time">04:26</span>
-                                                        </div>
-                                                        <div className="favorite-file">
-                                                            <label htmlFor="favorite-audio">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24" fill="none"
-                                                                     stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                                     className="lucide lucide-star">
-                                                                    <polygon
-                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                                                </svg>
-                                                            </label>
-                                                            <input type="checkbox" id="favorite-audio"
-                                                                   className="favorite-audio"
-                                                                   style={{display: 'none'}}/>
-                                                        </div>
-                                                    </div>
-                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -2017,7 +3073,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-revenue-sound list-audio-file">
                                                 {audioFiles.revenue.map((audio, index) => (
                                                     <div className="file-revenue-sound audio-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, audio, index, "audio")}>
                                                             <div className="file-image">
                                                                 <img src={audio.image}
                                                                      alt="Video Thumbnail"/>
@@ -2061,7 +3119,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-horrified-sound list-audio-file">
                                                 {audioFiles.horrified.map((audio, index) => (
                                                     <div className="file-horrified-sound audio-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, audio, index, "audio")}>
                                                             <div className="file-image">
                                                                 <img src={audio.image}
                                                                      alt="Video Thumbnail"/>
@@ -2105,7 +3165,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-laugh-sound list-audio-file">
                                                 {audioFiles.laugh.map((audio, index) => (
                                                     <div className="file-laugh-sound audio-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, audio, index, "audio")}>
                                                             <div className="file-image">
                                                                 <img src={audio.image}
                                                                      alt="Video Thumbnail"/>
@@ -2203,7 +3265,7 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                                                  cursor: "move",
                                                              }}
                                                              draggable="true"
-                                                             onDragStart={(e) => handleDragStart(e, draggableText, undefined, "text")}>
+                                                             onDragStart={(e) => handleDragStart(e, text, index, "text")}>
                                                             <label
                                                             >{draggableText.content}</label>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
@@ -2232,7 +3294,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-trending-effect list-text-file">
                                                 {textFiles.trending.map((text, index) => (
                                                     <div className="file-trending-effect text-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, text, index, "text")}>
                                                             <img src={text.image} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
@@ -2260,7 +3324,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-basic-effect list-text-file">
                                                 {textFiles.basic.map((text, index) => (
                                                     <div className="file-basic-effect text-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, text, index, "text")}>
                                                             <img src={text.image} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
@@ -2289,7 +3355,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-multicolor-effect list-text-file">
                                                 {textFiles.multicolor.map((text, index) => (
                                                     <div className="file-multicolor-effect text-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, text, index, "text")}>
                                                             <img src={text.image} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
@@ -2380,7 +3448,7 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                                         <div className="file"
                                                              draggable
                                                              onDragStart={(e) => handleDragStart(e, sticker, index, "sticker")}>
-                                                            <img src={sticker.url} alt="Description"/>
+                                                            <img src={sticker.sticker_file} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
                                                                  viewBox="0 0 24 24" fill="none"
@@ -2412,7 +3480,7 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                                         <div className="file"
                                                              draggable
                                                              onDragStart={(e) => handleDragStart(e, sticker, index, "sticker")}>
-                                                            <img src={sticker.url} alt="Description"/>
+                                                            <img src={sticker.sticker_file} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
                                                                  viewBox="0 0 24 24" fill="none"
@@ -2442,7 +3510,7 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                                         <div className="file"
                                                              draggable
                                                              onDragStart={(e) => handleDragStart(e, sticker, index, "sticker")}>
-                                                            <img src={sticker.url} alt="Description"/>
+                                                            <img src={sticker.sticker_file} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
                                                                  viewBox="0 0 24 24" fill="none"
@@ -2468,12 +3536,12 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                         <h3>Troll face</h3>
                                         <div className="list-file-troll-face-sticker-wrapper list-sticker-file-wrapper">
                                             <div className="list-file-troll-face-effect list-sticker-file">
-                                                {stickerFiles.trending.map((sticker, index) => (
+                                                {stickerFiles.troll_face.map((sticker, index) => (
                                                     <div className="file-troll-face-effect sticker-file">
                                                         <div className="file"
                                                              draggable
                                                              onDragStart={(e) => handleDragStart(e, sticker, index, "sticker")}>
-                                                            <img src={sticker.url} alt="Description"/>
+                                                            <img src={sticker.sticker_file} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
                                                                  viewBox="0 0 24 24" fill="none"
@@ -2498,12 +3566,12 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                         <h3>Gaming</h3>
                                         <div className="list-file-gaming-sticker-wrapper list-sticker-file-wrapper">
                                             <div className="list-file-gaming-effect list-sticker-file">
-                                                {stickerFiles.trending.map((sticker, index) => (
+                                                {stickerFiles.gaming.map((sticker, index) => (
                                                     <div className="file-gaming-effect sticker-file">
                                                         <div className="file"
                                                              draggable
                                                              onDragStart={(e) => handleDragStart(e, sticker, index, "sticker")}>
-                                                            <img src={sticker.url} alt="Description"/>
+                                                            <img src={sticker.sticker_file} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
                                                                  viewBox="0 0 24 24" fill="none"
@@ -2533,7 +3601,7 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                                         <div className="file"
                                                              draggable
                                                              onDragStart={(e) => handleDragStart(e, sticker, index, "sticker")}>
-                                                            <img src={sticker.url} alt="Sticker"/>
+                                                            <img src={sticker.sticker_file} alt="Sticker"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
                                                                  viewBox="0 0 24 24" fill="none"
@@ -2642,7 +3710,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-trending-effect list-effect-file">
                                                 {effectFiles.trending.map((effect, index) => (
                                                     <div className="file-trending-effect effect-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, effect, index, "effect")}>
                                                             <img src={effect.image} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
@@ -2672,7 +3742,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-nightclub-effect list-effect-file">
                                                 {effectFiles.nightclub.map((effect, index) => (
                                                     <div className="file-nightclub-effect effect-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, effect, index, "effect")}>
                                                             <img src={effect.image} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
@@ -2701,7 +3773,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-lens-effect list-effect-file">
                                                 {effectFiles.lens.map((effect, index) => (
                                                     <div className="file-lens-effect effect-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, effect, index, "effect")}>
                                                             <img src={effect.image} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
@@ -2729,7 +3803,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-retro-effect list-effect-file">
                                                 {effectFiles.retro.map((effect, index) => (
                                                     <div className="file-retro-effect effect-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, effect, index, "effect")}>
                                                             <img src={effect.image} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
@@ -2758,7 +3834,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-tv-effect list-effect-file">
                                                 {effectFiles.tv.map((effect, index) => (
                                                     <div className="file-tv-effect effect-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, effect, index, "effect")}>
                                                             <img src={effect.image} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
@@ -2786,7 +3864,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-star-effect list-effect-file">
                                                 {effectFiles.star.map((effect, index) => (
                                                     <div className="file-star-effect effect-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, effect, index, "effect")}>
                                                             <img src={effect.image} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
@@ -2815,7 +3895,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-trending-effect list-effect-file">
                                                 {effectFiles.trending_body.map((effect, index) => (
                                                     <div className="file-trending-effect effect-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, effect, index, "effect")}>
                                                             <img src={effect.image} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
@@ -2843,7 +3925,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-mood-effect list-effect-file">
                                                 {effectFiles.mood_body.map((effect, index) => (
                                                     <div className="file-mood-effect effect-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, effect, index, "effect")}>
                                                             <img src={effect.image} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
@@ -2871,7 +3955,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-mask-effect list-effect-file">
                                                 {effectFiles.mask_body.map((effect, index) => (
                                                     <div className="file-mask-effect effect-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, effect, index, "effect")}>
                                                             <img src={effect.image} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
@@ -2897,24 +3983,26 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                         <h3>selfie</h3>
                                         <div className="list-file-selfie-body-effect-wrapper list-effect-file-wrapper">
                                             <div className="list-file-selfie-effect list-effect-file">
-                                               {effectFiles.selfie_body.map((effect, index) => (
-                                                   <div className="file-selfie-effect effect-file">
-                                                       <div className="file">
-                                                           <img src={effect.image} alt="Description"/>
-                                                           <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                height="24"
-                                                                viewBox="0 0 24 24" fill="none"
-                                                                stroke="currentColor" strokeWidth="2"
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                                className="lucide lucide-circle-plus">
-                                                               <circle cx="12" cy="12" r="10"/>
-                                                               <path d="M8 12h8"/>
-                                                               <path d="M12 8v8"/>
-                                                           </svg>
-                                                       </div>
-                                                   </div>
-                                               ))}
+                                                {effectFiles.selfie_body.map((effect, index) => (
+                                                    <div className="file-selfie-effect effect-file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, effect, index, "effect")}>
+                                                            <img src={effect.image} alt="Description"/>
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                 height="24"
+                                                                 viewBox="0 0 24 24" fill="none"
+                                                                 stroke="currentColor" strokeWidth="2"
+                                                                 strokeLinecap="round"
+                                                                 strokeLinejoin="round"
+                                                                 className="lucide lucide-circle-plus">
+                                                                <circle cx="12" cy="12" r="10"/>
+                                                                <path d="M8 12h8"/>
+                                                                <path d="M12 8v8"/>
+                                                            </svg>
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
                                     </div>
@@ -2985,7 +4073,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-featured-effect list-filter-file">
                                                 {filterFiles.featured.map((filter, index) => (
                                                     <div className="file-featured-effect filter-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, filter, index, "filter")}>
                                                             <img src={filter.image} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
@@ -3013,7 +4103,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-life-effect list-filter-file">
                                                 {filterFiles.life.map((filter, index) => (
                                                     <div className="file-life-effect filter-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, filter, index, "filter")}>
                                                             <img src={filter.image} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
@@ -3041,7 +4133,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-scenery-effect list-filter-file">
                                                 {filterFiles.featured.map((filter, index) => (
                                                     <div className="file-scenery-effect filter-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, filter, index, "filter")}>
                                                             <img src={filter.image} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
@@ -3069,7 +4163,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-movies-effect list-filter-file">
                                                 {filterFiles.movies.map((filter, index) => (
                                                     <div className="file-movies-effect filter-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, filter, index, "filter")}>
                                                             <img src={filter.image} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
@@ -3097,7 +4193,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-retro-effect list-filter-file">
                                                 {filterFiles.retro.map((filter, index) => (
                                                     <div className="file-retro-effect filter-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, filter, index, "filter")}>
                                                             <img src={filter.image} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
@@ -3125,7 +4223,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                             <div className="list-file-style-effect list-filter-file">
                                                 {filterFiles.style.map((filter, index) => (
                                                     <div className="file-style-effect filter-file">
-                                                        <div className="file">
+                                                        <div className="file"
+                                                             draggable
+                                                             onDragStart={(e) => handleDragStart(e, filter, index, "filter")}>
                                                             <img src={filter.image} alt="Description"/>
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                  height="24"
@@ -3155,40 +4255,92 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                         <span>Player</span>
                     </div>
                     <div className="player-wrap">
-                        {timelineVideos.length > 0 ? (
-                            <video
-                                id="player"
-                                ref={videoRef}
-                                className="player-show"
-                                src={timelineVideos[currentVideoIndex]?.url || ''}
-                                onEnded={handleVideoEnd}
-                                onTimeUpdate={(e) => setCurrentTime(e.target.currentTime)}
-                                onLoadedMetadata={() => setDuration(videoRef.current.duration)}
-                            />
-                        ) : (
-                            <video
-                                id="player"
-                                className="player-show">
+                        <div id="canvas-cover"
+                             className="player-show">
+                            {timelineVideos.length > 0 ? (
+                                <video
+                                    id="player"
+                                    ref={videoRef}
+                                    width="100%"
+                                    height="100%"
+                                    src={allVideos[currentVideoIndex].url}
+                                    onEnded={handleVideoEnd}
+                                    onLoadedMetadata={() => setDuration(videoRef.current.duration)}
+                                />
+                            ) : (
+                                <video
+                                    id="player"
+                                    className="player-show">
+                                </video>
+                            )
+                            }
+                        </div>
 
-                            </video>
-                        )
-                        }
-                        {/*<video*/}
-                        {/*    id="player"*/}
-                        {/*    className="player-show"*/}
-                        {/*    ref={videoRef}*/}
-                        {/*    onTimeUpdate={() => setCurrentTime(videoRef.current.currentTime)}*/}
-                        {/*    onLoadedMetadata={() => setDuration(videoRef.current.duration)}*/}
-                        {/*>*/}
-                        {/*    {selectedVideo && <source src={selectedVideo.url} type="video/mp4"/>}*/}
-                        {/*</video>*/}
+                        <Stage width={videoWidth} height={videoHeight} style={{
+                            position: "absolute",
+                            top: "4rem",
+                            left: "43.4rem",
+                            width: "26.5rem",
+                            height: "15rem",
+                            pointerEvents: "none"
+                        }}>
+                            <Layer
+                                style={{
+                                    zIndex: 5,
+                                }}>
+                                {timelinesText.map((timeline) => (
+                                    timeline.texts.map((textSegment, index) => (
+                                        currentTime >= textSegment.startTime && currentTime <= textSegment.endTime ? (
+                                            <Text
+                                                key={`${index}`}
+                                                x={textSegment.x}
+                                                y={textSegment.y}
+                                                text={textSegment.content}
+                                                fontSize={textSegment.style && textSegment.style.fontSize ? parseInt(textSegment.style.fontSize) : 16}
+                                                fill={textSegment.style && textSegment.style.color ? textSegment.style.color : "black"}
+                                                fontStyle={textSegment.style && textSegment.style.fontWeight ? textSegment.style.fontWeight : "normal"}
+                                                stroke={textSegment.style && textSegment.style.strokeColor ? textSegment.style.strokeColor : null}
+                                                strokeWidth={textSegment.style && textSegment.style.strokeWidth ? parseInt(textSegment.style.strokeWidth) : 0}
+                                                shadowColor={textSegment.style && textSegment.style.textShadow ? "rgba(255, 223, 0, 0.8)" : null}
+                                                shadowBlur={textSegment.style && textSegment.style.textShadow ? 20 : 0}
+                                                shadowOffset={{x: 0, y: 0}}
+                                                draggable
+                                                onDragEnd={(e) => handleDragEnd(e, index, "text")}
+                                            />
+                                        ) : null
+                                    ))
+                                ))}
+                                {timelinesSticker.map((timeline) =>
+                                    timeline.stickers.map((stickerSegment, index) => {
+                                        if (currentTime >= stickerSegment.startTime && currentTime <= stickerSegment.endTime) {
+                                            const stickerImage = new window.Image();
+                                            stickerImage.src = stickerSegment.url;
 
+                                            return (
+                                                <Image
+                                                    key={`${index}`}
+                                                    x={stickerSegment.x}
+                                                    y={stickerSegment.y}
+                                                    width={100}
+                                                    height={100}
+                                                    image={stickerImage}
+                                                    draggable
+                                                    onDragEnd={(e) => handleDragEnd(e, index, "sticker")}
+                                                />
+                                            );
+                                        } else {
+                                            return null;
+                                        }
+                                    })
+                                )}
+                            </Layer>
+                        </Stage>
                         <div className="player-actions">
                             <div className="time-play-player">
                                 <span>{currentTime ? formatTime(accumulatedTime + currentTime) : "0:00"}</span>
                             </div>
                             <div className="time-player">
-                                <span>{durationTimeLine ? formatTime(durationTimeLine) : "0:00"}</span>
+                                <span>{totalDuration ? formatTime(totalDuration) : "0:00"}</span>
                             </div>
                             <div className="action-player">
                                 <button id="playPause" className="btn"
@@ -3243,310 +4395,151 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                 <div className="detail-wrapper">
                     <div className="detail-nav">
                         <nav className="detail-nav-type">
-                            <div className="detail-video detail-type">
-                                <div className="detail-wrap" id="video-video">
-                                    <button>Video</button>
+                            {editVideo &&
+                                <div className="detail-video detail-type">
+                                    <div className="detail-wrap" id="video-video"
+                                         onClick={() => handleMenuVideoOptionClick('video')}>
+                                        <button>Video</button>
+                                    </div>
+                                    <div className="detail-wrap" id="video-animation"
+                                         onClick={() => handleMenuVideoOptionClick('animation')}>
+                                        <button>Animation</button>
+                                    </div>
                                 </div>
-                                <div className="detail-wrap" id="video-audio">
-                                    <button>Audio</button>
+                            }
+                            {editAudio &&
+                                <div className="detail-audio detail-type">
+                                    <div className="detail-wrap">
+                                        <button>Basic</button>
+                                    </div>
+                                    <div className="detail-wrap">
+                                        <button>Voice changer</button>
+                                    </div>
+                                    <div className="detail-wrap">
+                                        <button>Speed</button>
+                                    </div>
                                 </div>
-                                <div className="detail-wrap" id="video-speed">
-                                    <button>Speed</button>
+                            }
+                            {editText &&
+                                <div className="detail-text detail-type">
+                                    <div className="detail-wrap">
+                                        <button>Text</button>
+                                    </div>
+                                    <div className="detail-wrap">
+                                        <button>Animation</button>
+                                    </div>
+                                    <div className="detail-wrap">
+                                        <button>Tracking</button>
+                                    </div>
+                                    <div className="detail-wrap">
+                                        <button>Text-to-speech</button>
+                                    </div>
                                 </div>
-                                <div className="detail-wrap" id="video-animation">
-                                    <button>Animation</button>
+                            }
+                            {editSticker &&
+                                <div className="detail-sticker detail-type">
+                                    <div className="detail-wrap">
+                                        <button>Sticker</button>
+                                    </div>
+                                    <div className="detail-wrap">
+                                        <button>Animation</button>
+                                    </div>
+                                    <div className="detail-wrap">
+                                        <button>Tracking</button>
+                                    </div>
                                 </div>
-                                <div className="detail-wrap" id="video-adjustment">
-                                    <button>Adjustment</button>
+                            }
+                            {editEffect &&
+                                <div className="detail-effect detail-type">
+                                    <div className="detail-wrap">
+                                        <button>Special effect</button>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="detail-audio detail-type" style={{display: 'none'}}>
-                                <div className="detail-wrap">
-                                    <button>Basic</button>
+                            }
+                            {editFilter &&
+                                <div className="detail-filter detail-type">
+                                    <div className="detail-wrap">
+                                        <button>Filter</button>
+                                    </div>
                                 </div>
-                                <div className="detail-wrap">
-                                    <button>Voice changer</button>
-                                </div>
-                                <div className="detail-wrap">
-                                    <button>Speed</button>
-                                </div>
-                            </div>
-                            <div className="detail-text detail-type" style={{display: 'none'}}>
-                                <div className="detail-wrap">
-                                    <button>Text</button>
-                                </div>
-                                <div className="detail-wrap">
-                                    <button>Animation</button>
-                                </div>
-                                <div className="detail-wrap">
-                                    <button>Tracking</button>
-                                </div>
-                                <div className="detail-wrap">
-                                    <button>Text-to-speech</button>
-                                </div>
-                            </div>
-                            <div className="detail-sticker detail-type" style={{display: 'none'}}>
-                                <div className="detail-wrap">
-                                    <button>Sticker</button>
-                                </div>
-                                <div className="detail-wrap">
-                                    <button>Animation</button>
-                                </div>
-                                <div className="detail-wrap">
-                                    <button>Tracking</button>
-                                </div>
-                            </div>
-                            <div className="detail-effect detail-type" style={{display: 'none'}}>
-                                <div className="detail-wrap">
-                                    <button>Special effect</button>
-                                </div>
-                            </div>
-                            <div className="detail-filter detail-type" style={{display: 'none'}}>
-                                <div className="detail-wrap">
-                                    <button>Filter</button>
-                                </div>
-                            </div>
+                            }
                         </nav>
                     </div>
-                    <div className="detail-option">
-                        <div className="detail-option-type">
-                            <div className="detail-option-video-type detail-option-wrapper">
-                                <div className="detail-option-video-video detail-option-wrap"
-                                     id="detail-option-video-video">
-                                    <button onClick={() => {
-                                        setShowVideoBasic(!isShowVideoBasic)
-                                    }} id="video-video-basic" className="edit-parameters-option active">Basic
-                                    </button>
-                                    <button id="video-video-removeBG" className="edit-parameters-option">Remove BG
-                                    </button>
-                                    <button id="video-video-mask" className="edit-parameters-option">Mask</button>
-                                    <button id="video-video-retouch" className="edit-parameters-option">Retouch
-                                    </button>
-                                </div>
-                                <div className="detail-option-video-audio detail-option-wrap"
-                                     id="detail-option-video-audio"
-                                     style={{display: 'none'}}>
-                                    <button id="video-audio-basic" className="edit-parameters-option">Basic</button>
-                                    <button id="video-audio-voiceChanger" className="edit-parameters-option">Voice
-                                        Changer
-                                    </button>
-                                </div>
-                                <div className="detail-option-video-speed detail-option-wrap"
-                                     id="detail-option-video-speed"
-                                     style={{display: 'none'}}>
-                                    <button id="video-speed-standard" className="edit-parameters-option">Standard
-                                    </button>
-                                    <button id="video-speed-curve" className="edit-parameters-option">Curve</button>
-                                </div>
-                                <div className="detail-option-video-animation detail-option-wrap"
-                                     id="detail-option-video-animation"
-                                     style={{display: 'none'}}>
-                                    <button id="video-animation-in" className="edit-parameters-option">In</button>
-                                    <button id="video-animation-out" className="edit-parameters-option">Out</button>
-                                    <button id="video-animation-combo" className="edit-parameters-option">Combo
-                                    </button>
-                                </div>
-                                <div className="detail-option-video-adjustment detail-option-wrap"
-                                     id="detail-option-video-adjustment" style={{display: 'none'}}>
-                                    <button id="video-adjustment-basic" className="edit-parameters-option">Basic
-                                    </button>
-                                    <button id="video-adjustment-hls" className="edit-parameters-option">HSL
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="detail-option-text-type detail-option-wrapper"
-                                 style={{display: 'none'}}>
-                                <div className="detail-option-text-text detail-option-wrap"
-                                     style={{display: 'none'}}>
-                                    <button>Basic</button>
-                                    <button>Bubble</button>
-                                    <button>Effects</button>
-                                </div>
-                                <div className="detail-option-text-animation detail-option-wrap"
-                                     style={{display: 'none'}}>
-                                    <button>In</button>
-                                    <button>Out</button>
-                                    <button>Loop</button>
-                                </div>
-                            </div>
-                            <div className="detail-option-effect-type detail-option-wrapper"
-                                 style={{display: 'none'}}>
-                                <div className="detail-option-effect-animation detail-option-wrap"
-                                     style={{display: 'none'}}>
-                                    <button>In</button>
-                                    <button>Out</button>
-                                    <button>Loop</button>
-                                </div>
-                            </div>
-                            <div className="break-line">
-                            </div>
-                        </div>
-                    </div>
                     <div className="detail-edit">
-                        <div className="detail-edit-video-type detail-edit-wrapper">
-                            <div className="detail-edit-video-video detail-edit-wrap">
-                                {isShowVideoBasic &&
-                                    <ul className="detail-edit-video-basic-wrap edit-parameters-wrap"
-                                        id="video-video-basic-option">
-                                        <li className="detail-edit-video-basic-transform">
-                                            <div className="dropdown">
-                                                <button id="btn-dropdown" className="btn-dropdown">
-                                                    <label>
-                                                        <input type="checkbox"
-                                                               className="basic-transform-slider-check uniform-slider-check"
-                                                               id="basic-transform-slider-check uniform-slider-check"/>
-                                                    </label>
-                                                    transform
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                         strokeWidth="2"
-                                                         strokeLinecap="round" strokeLinejoin="round"
-                                                         className="lucide lucide-chevron-right">
-                                                        <path d="m9 18 6-6-6-6"/>
-                                                    </svg>
-                                                </button>
-                                                <div id="dropdown-content" className="dropdown-content">
-                                                    <div className="slider-container">
-                                                        <label htmlFor="scale-slider">Scale</label>
-                                                        <input type="range" id="scale-slider" className="slider"
-                                                               min="1"
-                                                               max="400"
-                                                               value="94" onInput="updateSliderValue(this.value)"/>
-                                                        <input type="text" id="slider-value"
-                                                               className="slider-value"
-                                                               value="94%" onInput="updateSlider(this.value)"/>
-                                                        <div className="slider-buttons">
-                                                            <button className="slider-up"
-                                                                    onClick="increaseSlider()">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24"
-                                                                     fill="none" stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round"
-                                                                     strokeLinejoin="round"
-                                                                     className="lucide lucide-chevron-up">
-                                                                    <path d="m18 15-6-6-6 6"/>
-                                                                </svg>
-                                                            </button>
-                                                            <button className="slider-down"
-                                                                    onClick="decreaseSlider()">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24"
-                                                                     fill="none" stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round"
-                                                                     strokeLinejoin="round"
-                                                                     className="lucide lucide-chevron-down">
-                                                                    <path d="m6 9 6 6 6-6"/>
-                                                                </svg>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                    <div className="slider-container slider-width-container"
-                                                         style={{display: 'none'}}>
-                                                        <label htmlFor="scale-slider scale-width-slider">Scale
-                                                            width</label>
-                                                        <input type="range" id="scale-width-slider"
-                                                               className="slider"
-                                                               min="1"
-                                                               max="400"
-                                                               value="94" onInput="updateSliderValue(this.value)"/>
-                                                        <input type="text" id="slider-width-value"
-                                                               className="slider-value"
-                                                               value="94%" onInput="updateSlider(this.value)"/>
-                                                        <div className="slider-buttons slider-width-buttons">
+                        {editVideo &&
+                            <div className="detail-edit-video-type detail-edit-wrapper">
+                                <div className="detail-edit-video-video detail-edit-wrap">
+                                    {editVideoOption.video &&
+                                        <ul className="detail-edit-video-basic-wrap edit-parameters-wrap"
+                                            id="video-video-basic-option">
+                                            <Sidebar className="detail-edit-video detail-edit-video-basic-transform">
+                                                <Menu className="dropdown">
+                                                    <SubMenu title="Transform" label="Transform" id="btn-dropdown"
+                                                             className="btn-dropdown">
+                                                        <MenuItem className="slider-container">
+                                                            <label htmlFor="scale-slider">Scale</label>
+                                                            <input
+                                                                type="range"
+                                                                id="scale-slider"
+                                                                className="slider"
+                                                                min="1"
+                                                                max="400"
+                                                                value={scaleValue}
+                                                                onInput={(e) => updateSliderValue(e.target.value)}
+                                                            />
+                                                            <input
+                                                                type="text"
+                                                                id="slider-value"
+                                                                className="slider-value"
+                                                                value={`${scaleValue}%`}
+                                                                onInput={(e) => updateSlider(e.target.value)}
+                                                            />
+                                                            <div className="slider-buttons">
+                                                                <button className="slider-up"
+                                                                        onClick={() => increaseSlider()}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24"
+                                                                         fill="none" stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round"
+                                                                         strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-up">
+                                                                        <path d="m18 15-6-6-6 6"/>
+                                                                    </svg>
+                                                                </button>
+                                                                <button className="slider-down"
+                                                                        onClick={() => decreaseSlider()}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24"
+                                                                         fill="none" stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round"
+                                                                         strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-down">
+                                                                        <path d="m6 9 6 6 6-6"/>
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        </MenuItem>
+                                                        <MenuItem className="slider-container slider-width-container">
+                                                            <label htmlFor="scale-slider scale-width-slider">Scale
+                                                                width</label>
+                                                            <input type="range" id="scale-width-slider"
+                                                                   className="slider"
+                                                                   min="1"
+                                                                   max="400"
+                                                                   value={scaleValueWidth}
+                                                                   onInput={(e) => updateSliderWidthValue(e.target.value)}/>
+                                                            <input type="text" id="slider-width-value"
+                                                                   className="slider-value"
+                                                                   value={`${scaleValueWidth}%`}
+                                                                   onInput={(e) => updateSliderWidth(e.target.value)}/>
+                                                            <div className="slider-buttons slider-width-buttons">
                                                             <button className="slider-up slider-width-up"
-                                                                    onClick="increaseSlider()">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24"
-                                                                     fill="none" stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round"
-                                                                     strokeLinejoin="round"
-                                                                     className="lucide lucide-chevron-up">
-                                                                    <path d="m18 15-6-6-6 6"/>
-                                                                </svg>
-                                                            </button>
-                                                            <button className="slider-down slider-width-down"
-                                                                    onClick="decreaseSlider()">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24"
-                                                                     fill="none" stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round"
-                                                                     strokeLinejoin="round"
-                                                                     className="lucide lucide-chevron-down">
-                                                                    <path d="m6 9 6 6 6-6"/>
-                                                                </svg>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                    <div className="slider-container slider-height-container"
-                                                         style={{display: 'none'}}>
-                                                        <label htmlFor="scale-slider scale-height-slide">Scale
-                                                            height</label>
-                                                        <input type="range" id="scale-height-slider"
-                                                               className="slider"
-                                                               min="1"
-                                                               max="400"
-                                                               value="94" onInput="updateSliderValue(this.value)"/>
-                                                        <input type="text" id="slider-height-value"
-                                                               className="slider-value"
-                                                               value="94%" onInput="updateSlider(this.value)"/>
-                                                        <div className="slider-buttons slider-height-buttons">
-                                                            <button className="slider-up slider-height-up"
-                                                                    onClick="increaseSlider()">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24"
-                                                                     fill="none" stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round"
-                                                                     strokeLinejoin="round"
-                                                                     className="lucide lucide-chevron-up">
-                                                                    <path d="m18 15-6-6-6 6"/>
-                                                                </svg>
-                                                            </button>
-                                                            <button className="slider-down slider-height-down"
-                                                                    onClick="decreaseSlider()">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24"
-                                                                     fill="none" stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round"
-                                                                     strokeLinejoin="round"
-                                                                     className="lucide lucide-chevron-down">
-                                                                    <path d="m6 9 6 6 6-6"/>
-                                                                </svg>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                    <div className="uniform-slider">
-                                                        <span>Uniform scale</span>
-                                                        <label>
-                                                            <input type="checkbox" className="uniform-slider-check"
-                                                                   id="uniform-slider-check"/>
-                                                            <div className="slider-check"></div>
-                                                        </label>
-                                                    </div>
-                                                    <div className="slider-container position-video">
-                                                        <span>position</span>
-                                                        <div className="position-video position-x">
-                                                            <label htmlFor="position-x-value">X</label>
-                                                            <input type="text" id="position-x-value"
-                                                                   className="slider-value position-x-value"
-                                                                   value="94%"
-                                                                   onInput="updatePositionX(this.value)"/>
-                                                            <div className="slider-buttons position-x-buttons">
-                                                                <button className="slider-up position-x-up"
-                                                                        onClick="increasePositionX()">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg"
-                                                                         width="24"
+                                                                        onClick={() => increaseSliderWidth()}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                          height="24"
                                                                          viewBox="0 0 24 24"
                                                                          fill="none" stroke="currentColor"
@@ -3557,10 +4550,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                                                         <path d="m18 15-6-6-6 6"/>
                                                                     </svg>
                                                                 </button>
-                                                                <button className="slider-down position-x-down"
-                                                                        onClick="decreasePositionX()">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg"
-                                                                         width="24"
+                                                                <button className="slider-down slider-width-down"
+                                                                        onClick={() => decreaseSliderWidth()}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                          height="24"
                                                                          viewBox="0 0 24 24"
                                                                          fill="none" stroke="currentColor"
@@ -3572,18 +4564,24 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                                                     </svg>
                                                                 </button>
                                                             </div>
-                                                        </div>
-                                                        <div className="position-video position-y">
-                                                            <label htmlFor="position-y-value">Y</label>
-                                                            <input type="text" id="position-y-value"
-                                                                   className="slider-value position-y-value"
-                                                                   value="94"
-                                                                   onInput="updatePositionY(this.value)"/>
-                                                            <div className="slider-buttons position-y-buttons">
-                                                                <button className="slider-up position-y-up"
-                                                                        onClick="increasePositionY()">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg"
-                                                                         width="24"
+                                                        </MenuItem>
+                                                        <MenuItem className="slider-container slider-height-container">
+                                                            <label htmlFor="scale-slider scale-height-slide">Scale
+                                                                height</label>
+                                                            <input type="range" id="scale-height-slider"
+                                                                   className="slider"
+                                                                   min="1"
+                                                                   max="400"
+                                                                   value={scaleValueHeight}
+                                                                   onInput={(e) => updateSliderHeightValue(e.target.value)}/>
+                                                            <input type="text" id="slider-height-value"
+                                                                   className="slider-value"
+                                                                   value={`${scaleValueHeight}%`}
+                                                                   onInput={(e) => updateSliderHeight(e.target.value)}/>
+                                                            <div className="slider-buttons slider-height-buttons">
+                                                                <button className="slider-up slider-height-up"
+                                                                        onClick={() => increaseSliderHeight()}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                          height="24"
                                                                          viewBox="0 0 24 24"
                                                                          fill="none" stroke="currentColor"
@@ -3594,10 +4592,9 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                                                         <path d="m18 15-6-6-6 6"/>
                                                                     </svg>
                                                                 </button>
-                                                                <button className="slider-down position-y-down"
-                                                                        onClick="decreasePositionY()">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg"
-                                                                         width="24"
+                                                                <button className="slider-down slider-height-down"
+                                                                        onClick={() => decreaseSliderHeight()}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                          height="24"
                                                                          viewBox="0 0 24 24"
                                                                          fill="none" stroke="currentColor"
@@ -3609,1640 +4606,1156 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                                                                     </svg>
                                                                 </button>
                                                             </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="slider-container rotate-video">
-                                                        <span>rotate</span>
-                                                        <div className="position-video rotate">
-                                                            <label htmlFor="rotate-value">X</label>
-                                                            <input type="text" id="rotate-value"
-                                                                   className="slider-value rotate-value"
-                                                                   value="94%" onInput="updateRotate(this.value)"/>
-                                                            <div className="slider-buttons rotate-buttons">
-                                                                <button className="slider-up rotate-up"
-                                                                        onClick="increaseRotate()">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg"
-                                                                         width="24"
-                                                                         height="24"
-                                                                         viewBox="0 0 24 24"
-                                                                         fill="none" stroke="currentColor"
-                                                                         strokeWidth="2"
-                                                                         strokeLinecap="round"
-                                                                         strokeLinejoin="round"
+                                                        </MenuItem>
+                                                        <MenuItem className="uniform-slider">
+                                                            <span>Uniform scale</span>
+                                                            <label>
+                                                                <input type="checkbox" className="uniform-slider-check"
+                                                                       id="uniform-slider-check"/>
+                                                                <div className="slider-check"></div>
+                                                            </label>
+                                                        </MenuItem>
+                                                        <MenuItem className="slider-container position-video">
+                                                            <span>position</span>
+                                                            <div className="position-video position-x">
+                                                                <label htmlFor="position-x-value">X</label>
+                                                                <input type="text" id="position-x-value"
+                                                                       className="slider-value position-x-value"
+                                                                       value={`${positionX}%`}
+                                                                       onInput={(e) => updatePositionX(e.target.value)}/>
+                                                                <div className="slider-buttons position-x-buttons">
+                                                                    <button className="slider-up position-x-up"
+                                                                            onClick={() => increasePositionX()}>
+                                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                                             width="24"
+                                                                             height="24"
+                                                                             viewBox="0 0 24 24"
+                                                                             fill="none" stroke="currentColor"
+                                                                             strokeWidth="2"
+                                                                             strokeLinecap="round"
+                                                                             strokeLinejoin="round"
+                                                                             className="lucide lucide-chevron-up">
+                                                                            <path d="m18 15-6-6-6 6"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                    <button className="slider-down position-x-down"
+                                                                            onClick={() => decreasePositionX()}>
+                                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                                             width="24"
+                                                                             height="24"
+                                                                             viewBox="0 0 24 24"
+                                                                             fill="none" stroke="currentColor"
+                                                                             strokeWidth="2"
+                                                                             strokeLinecap="round"
+                                                                             strokeLinejoin="round"
+                                                                             className="lucide lucide-chevron-down">
+                                                                            <path d="m6 9 6 6 6-6"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            <div className="position-video position-y">
+                                                                <label htmlFor="position-y-value">Y</label>
+                                                                <input type="text" id="position-y-value"
+                                                                       className="slider-value position-y-value"
+                                                                       value={`${positionY}%`}
+                                                                       onInput={(e) => updatePositionY(e.target.value)}/>
+                                                                <div className="slider-buttons position-y-buttons">
+                                                                    <button className="slider-up position-y-up"
+                                                                            onClick={() => increasePositionY()}>
+                                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                                             width="24"
+                                                                             height="24"
+                                                                             viewBox="0 0 24 24"
+                                                                             fill="none" stroke="currentColor"
+                                                                             strokeWidth="2"
+                                                                             strokeLinecap="round"
+                                                                             strokeLinejoin="round"
+                                                                             className="lucide lucide-chevron-up">
+                                                                            <path d="m18 15-6-6-6 6"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                    <button className="slider-down position-y-down"
+                                                                            onClick={() => decreasePositionY()}>
+                                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                                             width="24"
+                                                                             height="24"
+                                                                             viewBox="0 0 24 24"
+                                                                             fill="none" stroke="currentColor"
+                                                                             strokeWidth="2"
+                                                                             strokeLinecap="round"
+                                                                             strokeLinejoin="round"
+                                                                             className="lucide lucide-chevron-down">
+                                                                            <path d="m6 9 6 6 6-6"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </MenuItem>
+                                                        <MenuItem className="slider-container rotate-video">
+                                                            <span>rotate</span>
+                                                            <div className="position-video rotate">
+                                                                <label htmlFor="rotate-value">X</label>
+                                                                <input type="text" id="rotate-value"
+                                                                       className="slider-value rotate-value"
+                                                                       value={`${rotateValue}%`}
+                                                                       onInput={(e) => updateRotate(e.target.value)}/>
+                                                                <div className="slider-buttons rotate-buttons">
+                                                                    <button className="slider-up rotate-up"
+                                                                            onClick={() => increaseRotate()}>
+                                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                                             width="24"
+                                                                             height="24"
+                                                                             viewBox="0 0 24 24"
+                                                                             fill="none" stroke="currentColor"
+                                                                             strokeWidth="2"
+                                                                             strokeLinecap="round"
+                                                                             strokeLinejoin="round"
+                                                                             className="lucide lucide-chevron-up">
+                                                                            <path d="m18 15-6-6-6 6"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                    <button className="slider-down rotate-down"
+                                                                            onClick={() => decreaseRotate()}>
+                                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                                             width="24"
+                                                                             height="24"
+                                                                             viewBox="0 0 24 24"
+                                                                             fill="none" stroke="currentColor"
+                                                                             strokeWidth="2"
+                                                                             strokeLinecap="round"
+                                                                             strokeLinejoin="round"
+                                                                             className="lucide lucide-chevron-down">
+                                                                            <path d="m6 9 6 6 6-6"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </MenuItem>
+                                                    </SubMenu>
+                                                    <SubMenu title="Blend" label="Blend" id="btn-dropdown"
+                                                             className="btn-dropdown">
+                                                        <MenuItem
+                                                            className="slider-container mode-video-basic-blend video-basic-option-edit">
+                                                            <label>Mode</label>
+                                                            <select
+                                                                name="mode-video-type"
+                                                                id="mode-video-type"
+                                                                className="video-type-option mode-video-type"
+                                                                value={blendMode}
+                                                                onChange={handleBlendModeChange}
+                                                            >
+                                                                <option value="default">Default</option>
+                                                                <option value="brighten">Brighten</option>
+                                                                <option value="screen">Screen</option>
+                                                                <option value="darken">Darken</option>
+                                                                <option value="overlay">Overlay</option>
+                                                                <option value="hardLight">Hard light</option>
+                                                                <option value="multiply">Multiply</option>
+                                                            </select>
+                                                        </MenuItem>
+                                                        <MenuItem
+                                                            className="slider-container opacity-video-basic-blend video-basic-option-edit">
+                                                            <label>Opacity</label>
+                                                            <input
+                                                                type="range"
+                                                                id="opacity-slider"
+                                                                className="slider"
+                                                                min="0"
+                                                                max="100"
+                                                                value={opacity}
+                                                                onInput={(e) => updateOpacityValue(e.target.value)}
+                                                            />
+                                                            <input
+                                                                type="text"
+                                                                id="opacity-value"
+                                                                className="slider-value"
+                                                                value={`${opacity}%`}
+                                                                onInput={(e) => updateOpacity(e.target.value)}
+                                                            />
+                                                            <div className="slider-buttons slider-opacity-buttons">
+                                                                <button className="slider-up slider-up-opacity"
+                                                                        onClick={increaseOpacity}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24" viewBox="0 0 24 24" fill="none"
+                                                                         stroke="currentColor" strokeWidth="2"
+                                                                         strokeLinecap="round" strokeLinejoin="round"
                                                                          className="lucide lucide-chevron-up">
                                                                         <path d="m18 15-6-6-6 6"/>
                                                                     </svg>
                                                                 </button>
-                                                                <button className="slider-down rotate-down"
-                                                                        onClick="decreaseRotate()">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg"
-                                                                         width="24"
-                                                                         height="24"
-                                                                         viewBox="0 0 24 24"
-                                                                         fill="none" stroke="currentColor"
-                                                                         strokeWidth="2"
-                                                                         strokeLinecap="round"
-                                                                         strokeLinejoin="round"
+                                                                <button className="slider-down slider-down-opacity"
+                                                                        onClick={decreaseOpacity}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24" viewBox="0 0 24 24" fill="none"
+                                                                         stroke="currentColor" strokeWidth="2"
+                                                                         strokeLinecap="round" strokeLinejoin="round"
                                                                          className="lucide lucide-chevron-down">
                                                                         <path d="m6 9 6 6 6-6"/>
                                                                     </svg>
                                                                 </button>
                                                             </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </li>
-                                        <div className="break-line"></div>
-                                        <li className="detail-edit-video-basic-blend">
-                                            <div className="dropdown">
-                                                <label>
-                                                    <input type="checkbox"
-                                                           className="basic-blend-slider-check uniform-slider-check"
-                                                           id="basic-blend-slider-check uniform-slider-check"/>
-                                                </label>
-                                                <button id="btn-dropdown" className="btn-dropdown">
-                                                    blend
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                         strokeWidth="2"
-                                                         strokeLinecap="round" strokeLinejoin="round"
-                                                         className="lucide lucide-chevron-right">
-                                                        <path d="m9 18 6-6-6-6"/>
-                                                    </svg>
-                                                </button>
-                                                {/*<button class="detail-edit-video-basic-transform-reset-btn">*/}
-                                                {/*<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"*/}
-                                                {/*viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"*/}
-                                                {/*strokeLinecap="round" strokeLinejoin="round"*/}
-                                                {/*class="lucide lucide-rotate-ccw">*/}
-                                                {/*<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>*/}
-                                                {/*<path d="M3 3v5h5"/>*/}
-                                                {/*</svg>*/}
-                                                {/*</button>*/}
-                                                <div id="dropdown-content" className="dropdown-content">
-                                                    <div className="mode-video-basic-blend video-basic-option-edit">
-                                                        <span>Mode</span>
-                                                        <select name="mode-video-type" id="mode-video-type"
-                                                                className="video-type-option mode-video-type">
-                                                            <option value="default">Default</option>
-                                                            <option value="brighten">Brighten</option>
-                                                            <option value="screen">Screen</option>
-                                                            <option value="darken">Darken</option>
-                                                            <option value="overlay">Overlay</option>
-                                                            <option value="hardLight">Hard light</option>
-                                                            <option value="multiply">Multiply</option>
-                                                        </select>
-                                                    </div>
-                                                    <div
-                                                        className="slider-container opacity-video-basic-blend video-basic-option-edit">
-                                                        <label>Opacity</label>
-                                                        <input type="range" id="opacity-slider" className="slider"
-                                                               min="0"
-                                                               max="100"
-                                                               value="94" onInput="updateOpacityValue(this.value)"/>
-                                                        <input type="text" id="opacity-value"
-                                                               className="slider-value"
-                                                               value="94%" onInput="updateOpacity(this.value)"/>
-                                                        <div className="slider-buttons slider-opacity-buttons">
-                                                            <button className="slider-up slider-up-opacity"
-                                                                    onClick="increaseOpacity()">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24"
-                                                                     fill="none" stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round"
-                                                                     strokeLinejoin="round"
-                                                                     className="lucide lucide-chevron-up">
-                                                                    <path d="m18 15-6-6-6 6"/>
-                                                                </svg>
-                                                            </button>
-                                                            <button className="slider-down slider-down-opacity"
-                                                                    onClick="decreaseOpacity()">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24"
-                                                                     fill="none" stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round"
-                                                                     strokeLinejoin="round"
-                                                                     className="lucide lucide-chevron-down">
-                                                                    <path d="m6 9 6 6 6-6"/>
-                                                                </svg>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </li>
-                                        <div className="break-line"></div>
-                                        <li className="detail-edit-video-basic-stabilize">
-                                            <div className="dropdown">
-                                                <button id="btn-dropdown" className="btn-dropdown">
-                                                    <label>
-                                                        <input type="checkbox"
-                                                               className="basic-stabilize-slider-check uniform-slider-check"
-                                                               id="basic-stabilize-slider-check uniform-slider-check"/>
-                                                    </label>
-                                                    stabilize
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                         strokeWidth="2"
-                                                         strokeLinecap="round" strokeLinejoin="round"
-                                                         className="lucide lucide-chevron-right">
-                                                        <path d="m9 18 6-6-6-6"/>
-                                                    </svg>
-                                                </button>
-                                                <div id="dropdown-content" className="dropdown-content">
-                                                    <div
-                                                        className="level-video-basic-stabilize video-basic-option-edit">
-                                                        <span>Level</span>
-                                                        <select name="stabilize-video-type"
+                                                        </MenuItem>
+                                                    </SubMenu>
+                                                    <SubMenu title="Stabilize" label="Stabilize" id="btn-dropdown"
+                                                             className="btn-dropdown">
+                                                        <MenuItem
+                                                            className="slider-container level-video-basic-stabilize video-basic-option-edit">
+                                                            <label>Level</label>
+                                                            <select
+                                                                name="stabilize-video-type"
                                                                 id="stabilize-video-type"
-                                                                className="video-type-option stabilize-video-type">
-                                                            <option value="recommended">Recommended</option>
-                                                            <option value="minimumCut">Minimum cut</option>
-                                                            <option value="mostStable">Most stable</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </li>
-                                        <div className="break-line"></div>
-                                        <li className="detail-edit-video-basic-motionBlur">
-                                            <div className="dropdown">
-                                                <button id="btn-dropdown" className="btn-dropdown">
-                                                    <label>
-                                                        <input type="checkbox"
-                                                               className="basic-motionBlur-slider-check uniform-slider-check"
-                                                               id="basic-motionBlur-slider-check uniform-slider-check"/>
-                                                    </label>
-                                                    motion blur
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                         strokeWidth="2"
-                                                         strokeLinecap="round" strokeLinejoin="round"
-                                                         className="lucide lucide-chevron-right">
-                                                        <path d="m9 18 6-6-6-6"/>
-                                                    </svg>
-                                                </button>
-                                                <div id="dropdown-content" className="dropdown-content">
-                                                    <div className="slider-container slider-blur-container">
-                                                        <label htmlFor="scale-slider">Blur</label>
-                                                        <input type="range" id="scale-slider scale-slider-blur"
-                                                               className="slider"
-                                                               min="1" max="400"
-                                                               value="94" onInput="updateBlurValue(this.value)"/>
-                                                        <input type="text" id="slider-value slider-value-blur"
-                                                               className="slider-value"
-                                                               value="94%" onInput="updateBlur(this.value)"/>
-                                                        <div className="slider-buttons slider-buttons-motionBlur">
-                                                            <button className="slider-up slider-blur-up"
-                                                                    onClick="increaseBlur()">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24"
-                                                                     fill="none" stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round"
-                                                                     strokeLinejoin="round"
-                                                                     className="lucide lucide-chevron-up">
-                                                                    <path d="m18 15-6-6-6 6"/>
-                                                                </svg>
-                                                            </button>
-                                                            <button className="slider-down slider-blur-down"
-                                                                    onClick="decreaseBlur()">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24"
-                                                                     fill="none" stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round"
-                                                                     strokeLinejoin="round"
-                                                                     className="lucide lucide-chevron-down">
-                                                                    <path d="m6 9 6 6 6-6"/>
-                                                                </svg>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                    <div className="slider-container slider-blend-container">
-                                                        <label htmlFor="scale-slider">Blend</label>
-                                                        <input type="range" id="scale-slider scale-slider-blend"
-                                                               className="slider"
-                                                               min="1" max="400"
-                                                               value="94" onInput="updateSliderValue(this.value)"/>
-                                                        <input type="text" id="slider-value slider-value-blend"
-                                                               className="slider-value"
-                                                               value="94%" onInput="updateBlend(this.value)"/>
-                                                        <div className="slider-buttons slider-buttons">
-                                                            <button className="slider-up slider-blend-up"
-                                                                    onClick="increaseBlend()">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24"
-                                                                     fill="none" stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round"
-                                                                     strokeLinejoin="round"
-                                                                     className="lucide lucide-chevron-up">
-                                                                    <path d="m18 15-6-6-6 6"/>
-                                                                </svg>
-                                                            </button>
-                                                            <button className="slider-down slider-blend-down"
-                                                                    onClick="decreaseBlend()">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                     height="24"
-                                                                     viewBox="0 0 24 24"
-                                                                     fill="none" stroke="currentColor"
-                                                                     strokeWidth="2"
-                                                                     strokeLinecap="round"
-                                                                     strokeLinejoin="round"
-                                                                     className="lucide lucide-chevron-down">
-                                                                    <path d="m6 9 6 6 6-6"/>
-                                                                </svg>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                    <div
-                                                        className="direction-video-basic-direction video-basic-option-edit">
-                                                        <span>Direction</span>
-                                                        <select name="direction-video-type"
+                                                                className="video-type-option stabilize-video-type"
+                                                                value={stabilizeLevel}
+                                                                onChange={handleStabilizeLevelChange}
+                                                            >
+                                                                <option value="recommended">Recommended</option>
+                                                                <option value="minimumCut">Minimum cut</option>
+                                                                <option value="mostStable">Most stable</option>
+                                                            </select>
+                                                        </MenuItem>
+                                                    </SubMenu>
+                                                    <SubMenu title="Motion Blur" label="Motion Blur" id="btn-dropdown"
+                                                             className="btn-dropdown">
+                                                        <MenuItem className="slider-container slider-blur-container">
+                                                            <label htmlFor="scale-slider">Blur</label>
+                                                            <input
+                                                                type="range"
+                                                                id="scale-slider-blur"
+                                                                className="slider"
+                                                                min="1"
+                                                                max="400"
+                                                                value={blurValue}
+                                                                onInput={(e) => updateBlurValue(e.target.value)}
+                                                            />
+                                                            <input
+                                                                type="text"
+                                                                id="slider-value-blur"
+                                                                className="slider-value"
+                                                                value={`${blurValue}%`}
+                                                                onInput={(e) => updateBlurValue(e.target.value)}
+                                                            />
+                                                            <div className="slider-buttons slider-buttons-motionBlur">
+                                                                <button className="slider-up slider-blur-up"
+                                                                        onClick={increaseBlur}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24" viewBox="0 0 24 24" fill="none"
+                                                                         stroke="currentColor" strokeWidth="2"
+                                                                         strokeLinecap="round" strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-up">
+                                                                        <path d="m18 15-6-6-6 6"/>
+                                                                    </svg>
+                                                                </button>
+                                                                <button className="slider-down slider-blur-down"
+                                                                        onClick={decreaseBlur}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24" viewBox="0 0 24 24" fill="none"
+                                                                         stroke="currentColor" strokeWidth="2"
+                                                                         strokeLinecap="round" strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-down">
+                                                                        <path d="m6 9 6 6 6-6"/>
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        </MenuItem>
+
+                                                        <MenuItem className="slider-container slider-blend-container">
+                                                            <label htmlFor="scale-slider">Blend</label>
+                                                            <input
+                                                                type="range"
+                                                                id="scale-slider-blend"
+                                                                className="slider"
+                                                                min="1"
+                                                                max="400"
+                                                                value={blendValue}
+                                                                onInput={(e) => updateBlendValue(e.target.value)}
+                                                            />
+                                                            <input
+                                                                type="text"
+                                                                id="slider-value-blend"
+                                                                className="slider-value"
+                                                                value={`${blendValue}%`}
+                                                                onInput={(e) => updateBlendValue(e.target.value)}
+                                                            />
+                                                            <div className="slider-buttons">
+                                                                <button className="slider-up slider-blend-up"
+                                                                        onClick={increaseBlend}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24" viewBox="0 0 24 24" fill="none"
+                                                                         stroke="currentColor" strokeWidth="2"
+                                                                         strokeLinecap="round" strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-up">
+                                                                        <path d="m18 15-6-6-6 6"/>
+                                                                    </svg>
+                                                                </button>
+                                                                <button className="slider-down slider-blend-down"
+                                                                        onClick={decreaseBlend}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24" viewBox="0 0 24 24" fill="none"
+                                                                         stroke="currentColor" strokeWidth="2"
+                                                                         strokeLinecap="round" strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-down">
+                                                                        <path d="m6 9 6 6 6-6"/>
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        </MenuItem>
+
+                                                        <MenuItem
+                                                            className="slider-container direction-video-basic-direction video-basic-option-edit">
+                                                            <label>Direction</label>
+                                                            <select
+                                                                name="direction-video-type"
                                                                 id="direction-video-type"
-                                                                className="video-type-option direction-video-type">
-                                                            <option value="both">Both</option>
-                                                            <option value="forward">Forward</option>
-                                                            <option value="backward">Backward</option>
-                                                        </select>
-                                                    </div>
-                                                    <div
-                                                        className="speed-video-basic-speed video-basic-option-edit">
-                                                        <span>Speed</span>
-                                                        <select name="speed-video-type" id="speed-video-type"
-                                                                className="video-type-option speed-video-type">
-                                                            <option value="once">Once</option>
-                                                            <option value="twice">Twice</option>
-                                                            <option value="4Times">4 times</option>
-                                                            <option value="6Times">6 times</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </li>
-                                        <div className="break-line"></div>
-                                        <li className="detail-edit-video-basic-canvas">
-                                            <div className="dropdown">
-                                                <button id="btn-dropdown" className="btn-dropdown">
-                                                    <label>
-                                                        <input type="checkbox"
-                                                               className="basic-canvas-slider-check uniform-slider-check"
-                                                               id="basic-canvas-slider-check uniform-slider-check"/>
-                                                    </label>
-                                                    canvas
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                         viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                         strokeWidth="2"
-                                                         strokeLinecap="round" strokeLinejoin="round"
-                                                         className="lucide lucide-chevron-right">
-                                                        <path d="m9 18 6-6-6-6"/>
-                                                    </svg>
-                                                </button>
-                                                <div id="dropdown-content" className="dropdown-content">
-                                                    <div
-                                                        className="type-video-basic-canvas video-basic-option-edit">
-                                                        <select name="video-basic-canvas-option"
-                                                                className="video-basic-canvas-option">
-                                                            <option value="none">None</option>
-                                                            <option value="blur">Blur</option>
-                                                            <option value="color">Color</option>
-                                                            <option value="pattern">Pattern</option>
-                                                        </select>
-                                                    </div>
-                                                    <div className="video-basic-blur-option"
-                                                         style={{display: 'none'}}>
-                                                        <div className="blur-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="blur-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="blur-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="blur-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                    </div>
-                                                    <div className="video-basic-color-option"
-                                                         style={{display: 'none'}}>
-                                                        <div className="color-option-wrap">
-                                                            <label htmlFor="color-picker">
-                                                                <img className="color-display" alt=""
-                                                                     src="../../assets/images/rainbow.jpg"/></label>
-                                                            <input type="color" id="color-picker"
-                                                                   name="color-picker"
-                                                                   value="#ff0000" style={{display: 'none'}}/>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#FFFFFF'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#EEEEEE'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#DDDDDD'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#CCCCCC'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#BBBBBB'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#AAAAAA'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#999999'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#888888'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#777777'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#666666'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#555555'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#444444'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#333333'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#222222'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#111111'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#000000'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#FF0000'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#EE0000'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#DD0000'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#CC0000'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#BB0000'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#AA0000'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#990000'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#880000'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#770000'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#660000'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#550000'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#440000'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#330000'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#220000'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#110000'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#FFFFCC'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#FFFF99'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#FFFF66'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#FFFF33'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#FFFF00'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#CCFFFF'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#CCFFCC'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#CCFF99'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#CCFF66'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#CCFF33'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#CCFF00'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#99FFFF'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#99FFCC'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#99FF99'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#99FF66'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#99FF33'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#99FF00'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#66FFFF'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#66FFCC'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#66FF99'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#66FF66'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#66FF33'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#66FF00'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#33FFFF'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#33FFCC'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#33FF99'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#33FF66'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#33FF33'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#33FF00'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#00FFFF'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#00FFCC'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#00FF99'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#00FF66'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#00FF33'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#00FF00'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#FFCCFF'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#FFCCCC'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#FFCC99'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#FFCC66'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#FFCC33'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#FFCC00'}}></div>
-                                                        </div>
-                                                        <div className="color-option-wrap">
-                                                            <div className="color-display"
-                                                                 style={{backgroundColor: '#CCCCFF'}}></div>
-                                                        </div>
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #CCCCCC}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #CCCC99}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #CCCC66}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #CCCC33}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #CCCC00}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #99CCFF}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #99CCCC}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #99CC99}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #99CC66}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #99CC33}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #99CC00}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #66CCFF}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #66CCCC}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #66CC99}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #66CC66}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #66CC33}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #66CC00}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #33CCFF}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #33CCCC}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #33CC99}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #33CC66}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #33CC33}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #33CC00}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #00CCFF}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #00CCCC}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #00CC99}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #00CC66}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #00CC33}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #00CC00}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #FF99FF}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #FF99CC}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #FF9999}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #FF9966}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #FF9933}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #FF9900}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #CC99FF}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #CC99CC}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #CC9999}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #CC9966}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #CC9933}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #CC9900}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #9999FF}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #9999CC}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #999999}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #999966}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #999933}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #999900}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #6699FF}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #6699CC}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #669999}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #669966}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #669933}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #669900}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #3399FF}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #3399CC}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #339999}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #339966}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #339933}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #339900}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #0099FF}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #0099CC}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #009999}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #009966}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #009933}}></div>*/}
-                                                        {/*</div>*/}
-                                                        {/*<div class="color-option-wrap">*/}
-                                                        {/*    <div class="color-display"*/}
-                                                        {/*         style={{backgroundColor: #009900}}></div>*/}
-                                                        {/*</div>*/}
-                                                    </div>
-                                                    <div className="video-basic-pattern-option">
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                        <div className="pattern-option-wrap">
-                                                            <img src={imgTest} alt="Description"/>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </li>
-                                        <div className="break-line"></div>
-                                        <form onSubmit={handleSubmit}>
-                                            <input type="number" placeholder="Start Time"
-                                                   onChange={(e) => setStartTime(e.target.value)}/>
-                                            <input type="number" placeholder="End Time"
-                                                   onChange={(e) => setEndTime(e.target.value)}/>
-                                            <button type="submit">Cut Video</button>
-                                        </form>
-                                        <form onSubmit={handleAddText}>
-                                            <input type="file" accept="video/*"
-                                                   onChange={(e) => setVideoFile(e.target.files[0])}/>
-                                            <input type="text" value={textToAdd} onChange={handleTextChange}
-                                                   placeholder="Enter text to add"/>
-                                            <button type="submit">Add Text to Video</button>
-                                        </form>
-                                        <div>
-                                            <input type="file" onChange={handleFileChange}/>
-                                            <input type="file" accept="audio/*" onChange={handleAudioChange}/>
-                                            <button onClick={handleAddAudio}>Add Audio to Video</button>
-                                            {videoUrl && <ReactPlayer url={videoUrl} controls/>}
-                                        </div>
-                                    </ul>
-                                }
-                                <ul className="detail-edit-video-removeBG-wrap edit-parameters-wrap"
-                                    id="video-video-removeBG-option" style={{display: 'none'}}>
-                                    <li className="detail-edit-video-removeBG-autoRemoval">
-                                        <div className="autoRemoval-option">
-                                            <label>
-                                                <input type="checkbox"
-                                                       className="removeBG-autoRemoval-slider-check uniform-slider-check"
-                                                       id="removeBG-autoRemoval-slider-check uniform-slider-check"/>
-                                            </label>
-                                            <span>auto removal</span>
-                                        </div>
-                                        <div className="dropdown">
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                stroke
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-chevron-right">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                                <div className="stroke-option-wrap">
-                                                    <img src={imgTest} alt="Description"/>
-                                                </div>
-                                                <div className="stroke-option-wrap">
-                                                    <img src={imgTest} alt="Description"/>
-                                                </div>
-                                                <div className="stroke-option-wrap">
-                                                    <img src={imgTest} alt="Description"/>
-                                                </div>
-                                                <div className="stroke-option-wrap">
-                                                    <img src={imgTest} alt="Description"/>
-                                                </div>
-                                                <div className="stroke-option-wrap">
-                                                    <img src={imgTest} alt="Description"/>
-                                                </div>
-                                                <div className="stroke-option-wrap">
-                                                    <img src={imgTest} alt="Description"/>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </li>
-                                    <div className="break-line"></div>
-                                    <li className="detail-edit-video-removeBG-customRemoval">
-                                        <div className="dropdown">
-                                            <label>
-                                                <input type="checkbox"
-                                                       className="removeBG-customRemoval-slider-check uniform-slider-check"
-                                                       id="removeBG-customRemoval-slider-check uniform-slider-check"/>
-                                            </label>
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                custom removal
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-chevron-right">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                            </button>
-                                            {/*{#                                    <button class="detail-edit-video-basic-transform-reset-btn">#}*/}
-                                            {/*{#                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"#}*/}
-                                            {/*{#                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"#}*/}
-                                            {/*{#                                             strokeLinecap="round" strokeLinejoin="round"#}*/}
-                                            {/*{#                                             class="lucide lucide-rotate-ccw">#}*/}
-                                            {/*{#                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>#}*/}
-                                            {/*{#                                            <path d="M3 3v5h5"/>#}*/}
-                                            {/*{#                                        </svg>#}*/}
-                                            {/*{#                                    </button>#}*/}
-                                            <div id="dropdown-content" className="dropdown-content">
-                                                <div className="slider-container slider-customRemoval-container">
-                                                    <label htmlFor="scale-slider">Size</label>
-                                                    <input type="range" id="scale-slider scale-slider-customRemoval"
-                                                           className="slider"
-                                                           min="1" max="400"
-                                                           value="94" onInput="updateBlurValue(this.value)"/>
-                                                    <input type="text" id="slider-value slider-value-customRemoval"
-                                                           className="slider-value"
-                                                           value="94%" onInput="updateBlur(this.value)"/>
-                                                    <div className="slider-buttons slider-buttons-motionBlur">
-                                                        <button className="slider-up slider-customRemoval-up"
-                                                                onClick="increaseCustomRemoval()">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                 height="24"
-                                                                 viewBox="0 0 24 24"
-                                                                 fill="none" stroke="currentColor"
-                                                                 strokeWidth="2"
-                                                                 strokeLinecap="round"
-                                                                 strokeLinejoin="round"
-                                                                 className="lucide lucide-chevron-up">
-                                                                <path d="m18 15-6-6-6 6"/>
-                                                            </svg>
-                                                        </button>
-                                                        <button className="slider-down slider-customRemoval-down"
-                                                                onClick="decreaseCustomRemoval()">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                 height="24"
-                                                                 viewBox="0 0 24 24"
-                                                                 fill="none" stroke="currentColor"
-                                                                 strokeWidth="2"
-                                                                 strokeLinecap="round"
-                                                                 strokeLinejoin="round"
-                                                                 className="lucide lucide-chevron-down">
-                                                                <path d="m6 9 6 6 6-6"/>
-                                                            </svg>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </li>
-                                    <div className="break-line"></div>
-                                    <li className="detail-edit-video-removeBG-chromaKey">
-                                        <div className="dropdown">
-                                            <label>
-                                                <input type="checkbox"
-                                                       className="removeBG-chromaKey-slider-check uniform-slider-check"
-                                                       id="removeBG-chromaKey-slider-check uniform-slider-check"/>
-                                            </label>
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                chroma key
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-chevron-right">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                            </button>
-                                            <button className="detail-edit-video-basic-transform-reset-btn">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-rotate-ccw">
-                                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                                                    <path d="M3 3v5h5"/>
-                                                </svg>
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                            </div>
-                                        </div>
-                                    </li>
-                                </ul>
-                                <ul className="detail-edit-video-mask-wrap edit-parameters-wrap"
-                                    id="video-video-mask-option"
-                                    style={{display: 'none'}}>
-                                    <li className="detail-edit-video-mask-mask">
-                                        <div className="dropdown">
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                <label>
-                                                    <input type="checkbox"
-                                                           className="mask-mask-slider-check uniform-slider-check"
-                                                           id="mask-mask-slider-check uniform-slider-check"/>
-                                                </label>
-                                                mask
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-chevron-right">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                                <div className="mask-option-wrap">
-                                                    <img src={imgTest} alt="Description"/>
-                                                </div>
-                                                <div className="mask-option-wrap">
-                                                    <img src={imgTest} alt="Description"/>
-                                                </div>
-                                                <div className="mask-option-wrap">
-                                                    <img src={imgTest} alt="Description"/>
-                                                </div>
-                                                <div className="mask-option-wrap">
-                                                    <img src={imgTest} alt="Description"/>
-                                                </div>
-                                                <div className="mask-option-wrap">
-                                                    <img src={imgTest} alt="Description"/>
-                                                </div>
-                                                <div className="mask-option-wrap">
-                                                    <img src={imgTest} alt="Description"/>
-                                                </div>
-                                                <div className="mask-option-wrap">
-                                                    <img src={imgTest} alt="Description"/>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </li>
-                                </ul>
-                                <ul className="detail-edit-video-retouch-wrap edit-parameters-wrap"
-                                    id="video-video-retouch-option"
-                                    style={{display: 'none'}}>
-                                    <li className="detail-edit-video-retouch-retouch">
-                                        <div className="dropdown">
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                <label>
-                                                    <input type="checkbox"
-                                                           className="retouch-retouch-slider-check uniform-slider-check"
-                                                           id="retouch-retouch-slider-check uniform-slider-check"/>
-                                                </label>
-                                                retouch
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-chevron-right">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                            </button>
-                                            <button className="detail-edit-video-basic-transform-reset-btn">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-rotate-ccw">
-                                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                                                    <path d="M3 3v5h5"/>
-                                                </svg>
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                            </div>
-                                        </div>
-                                    </li>
-                                    <div className="break-line"></div>
-                                    <li className="detail-edit-video-basic-autoReshape">
-                                        <div className="dropdown">
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                <label>
-                                                    <input type="checkbox"
-                                                           className="basic-autoReshape-slider-check uniform-slider-check"
-                                                           id="basic-autoReshape-slider-check uniform-slider-check"/>
-                                                </label>
-                                                auto reshape
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-chevron-right">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                            </button>
-                                            <button className="detail-edit-video-basic-transform-reset-btn">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-rotate-ccw">
-                                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                                                    <path d="M3 3v5h5"/>
-                                                </svg>
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                            </div>
-                                        </div>
-                                    </li>
-                                    <div className="break-line"></div>
-                                    <li className="detail-edit-video-basic-manual">
-                                        <div className="dropdown">
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                <label>
-                                                    <input type="checkbox"
-                                                           className="basic-manual-slider-check uniform-slider-check"
-                                                           id="basic-manual-slider-check uniform-slider-check"/>
-                                                </label>
-                                                manual
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-chevron-right">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                            </button>
-                                            <button className="detail-edit-video-basic-transform-reset-btn">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-rotate-ccw">
-                                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                                                    <path d="M3 3v5h5"/>
-                                                </svg>
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                            </div>
-                                        </div>
-                                    </li>
-                                    <div className="break-line"></div>
-                                    <li className="detail-edit-video-basic-makeup">
-                                        <div className="dropdown">
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                <label>
-                                                    <input type="checkbox"
-                                                           className="basic-makeup-slider-check uniform-slider-check"
-                                                           id="basic-makeup-slider-check uniform-slider-check"/>
-                                                </label>
-                                                makeup
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-chevron-right">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                            </button>
-                                            <button className="detail-edit-video-basic-transform-reset-btn">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-rotate-ccw">
-                                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                                                    <path d="M3 3v5h5"/>
-                                                </svg>
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                            </div>
-                                        </div>
-                                    </li>
-                                    <div className="break-line"></div>
-                                    <li className="detail-edit-video-basic-body">
-                                        <div className="dropdown">
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                <label>
-                                                    <input type="checkbox"
-                                                           className="basic-body-slider-check uniform-slider-check"
-                                                           id="basic-body-slider-check uniform-slider-check"/>
-                                                </label>
-                                                body
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-chevron-right">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                            </button>
-                                            <button className="detail-edit-video-basic-transform-reset-btn">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-rotate-ccw">
-                                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                                                    <path d="M3 3v5h5"/>
-                                                </svg>
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                            </div>
-                                        </div>
-                                    </li>
-                                </ul>
-                                <ul className="detail-edit-video-basic-wrap edit-parameters-wrap"
-                                    id="video-audio-basic-option"
-                                    style={{display: 'none'}}>
-                                    <li className="detail-edit-video-basic-basic">
-                                        <div className="dropdown">
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                basic
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-chevron-right">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                            </button>
-                                            <button className="detail-edit-video-basic-transform-reset-btn">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-rotate-ccw">
-                                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                                                    <path d="M3 3v5h5"/>
-                                                </svg>
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                            </div>
-                                        </div>
-                                    </li>
-                                    <div className="break-line"></div>
-                                    <li className="detail-edit-video-basic-reduceNoise">
-                                        <div className="dropdown">
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                reduce noise
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                            </div>
-                                        </div>
-                                    </li>
-                                    <div className="break-line"></div>
-                                    <li className="detail-edit-video-basic-channels">
-                                        <div className="dropdown">
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                channels
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-chevron-right">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                            </button>
-                                            <button className="detail-edit-video-basic-transform-reset-btn">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-rotate-ccw">
-                                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                                                    <path d="M3 3v5h5"/>
-                                                </svg>
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                            </div>
-                                        </div>
-                                    </li>
-                                </ul>
-                                <ul className="detail-edit-video-voiceChanger-wrap edit-parameters-wrap"
-                                    id="video-audio-voiceChanger-option" style={{display: 'none'}}>
-                                </ul>
+                                                                className="video-type-option direction-video-type"
+                                                                value={direction}
+                                                                onChange={handleDirectionChange}
+                                                            >
+                                                                <option value="both">Both</option>
+                                                                <option value="forward">Forward</option>
+                                                                <option value="backward">Backward</option>
+                                                            </select>
+                                                        </MenuItem>
 
-                                <ul className="detail-edit-video-standard-wrap edit-parameters-wrap"
-                                    id="video-speed-standard-option" style={{display: 'none'}}>
+                                                        <MenuItem
+                                                            className="slider-container speed-video-basic-speed video-basic-option-edit">
+                                                            <label>Speed</label>
+                                                            <select
+                                                                name="speed-video-type"
+                                                                id="speed-video-type"
+                                                                className="video-type-option speed-video-type"
+                                                                value={speed}
+                                                                onChange={handleSpeedChange}
+                                                            >
+                                                                <option value="once">Once</option>
+                                                                <option value="twice">Twice</option>
+                                                                <option value="4Times">4 times</option>
+                                                                <option value="6Times">6 times</option>
+                                                            </select>
+                                                        </MenuItem>
+                                                    </SubMenu>
+                                                    <SubMenu title="Canvas" label="Canvas" id="btn-dropdown"
+                                                             className="btn-dropdown">
+                                                        {/* Canvas Option Dropdown */}
+                                                        <MenuItem
+                                                            className="type-video-basic-canvas video-basic-option-edit">
+                                                            <select
+                                                                name="video-basic-canvas-option"
+                                                                className="video-basic-canvas-option"
+                                                                value={canvasOption}
+                                                                onChange={handleCanvasOptionChange}
+                                                            >
+                                                                <option value="none">None</option>
+                                                                <option value="blur">Blur</option>
+                                                                <option value="color">Color</option>
+                                                                <option value="pattern">Pattern</option>
+                                                            </select>
+                                                        </MenuItem>
 
-                                </ul>
-                                <ul className="detail-edit-video-curve-wrap edit-parameters-wrap"
-                                    id="video-speed-curve-option"
-                                    style={{display: 'none'}}>
-                                </ul>
+                                                        {/* Blur Option */}
+                                                        {canvasOption === 'blur' && (
+                                                            <MenuItem className="video-basic-blur-option">
+                                                                <div className="blur-option-wrap">
+                                                                    <img src={imgTest} alt="Description"/>
+                                                                </div>
+                                                                <div className="blur-option-wrap">
+                                                                    <img src={imgTest} alt="Description"/>
+                                                                </div>
+                                                                <div className="blur-option-wrap">
+                                                                    <img src={imgTest} alt="Description"/>
+                                                                </div>
+                                                                <div className="blur-option-wrap">
+                                                                    <img src={imgTest} alt="Description"/>
+                                                                </div>
+                                                                <div className="blur-option-wrap">
+                                                                    <img src={imgTest} alt="Description"/>
+                                                                </div>
+                                                            </MenuItem>
+                                                        )}
 
-                                <ul className="detail-edit-video-in-wrap edit-parameters-wrap"
-                                    id="video-animation-in-option"
-                                    style={{display: 'none'}}>
+                                                        {/* Color Option */}
+                                                        {canvasOption === 'color' && (
+                                                            <MenuItem className="video-basic-color-option">
+                                                                <div className="color-option-wrap">
+                                                                    <label htmlFor="color-picker">
+                                                                        <img className="color-display" alt=""
+                                                                             src={rainbow}/>
+                                                                    </label>
+                                                                    <input
+                                                                        type="color"
+                                                                        id="color-picker"
+                                                                        name="color-picker"
+                                                                        value={colorValue}
+                                                                        onChange={handleColorChange}
+                                                                        style={{display: 'none'}}
+                                                                    />
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#FFFFFF'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#EEEEEE'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#DDDDDD'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#CCCCCC'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#BBBBBB'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#AAAAAA'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#999999'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#888888'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#777777'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#666666'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#555555'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#444444'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#333333'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#222222'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#111111'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#000000'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#FF0000'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#EE0000'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#DD0000'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#CC0000'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#BB0000'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#AA0000'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#990000'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#880000'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#770000'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#660000'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#550000'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#440000'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#330000'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#220000'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#110000'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#FFFFCC'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#FFFF99'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#FFFF66'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#FFFF33'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#FFFF00'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#CCFFFF'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#CCFFCC'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#CCFF99'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#CCFF66'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#CCFF33'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#CCFF00'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#99FFFF'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#99FFCC'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#99FF99'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#99FF66'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#99FF33'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#99FF00'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#66FFFF'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#66FFCC'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#66FF99'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#66FF66'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#66FF33'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#66FF00'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#33FFFF'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#33FFCC'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#33FF99'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#33FF66'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#33FF33'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#33FF00'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#00FFFF'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#00FFCC'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#00FF99'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#00FF66'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#00FF33'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#00FF00'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#FFCCFF'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#FFCCCC'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#FFCC99'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#FFCC66'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#FFCC33'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#FFCC00'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#CCCCFF'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#CCCCCC'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#CCCC99'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#CCCC66'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#CCCC33'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#CCCC00'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#99CCFF'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#99CCCC'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#99CC99'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#99CC66'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#99CC33'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#99CC00'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#66CCFF'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#66CCCC'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#66CC99'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#66CC66'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#66CC33'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#66CC00'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#33CCFF'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#33CCCC'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#33CC99'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#33CC66'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#33CC33'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#33CC00'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#00CCFF'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#00CCCC'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#00CC99'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#00CC66'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#00CC33'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#00CC00'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#FF99FF'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#FF99CC'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#FF9999'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#FF9966'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#FF9933'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#FF9900'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#CC99FF'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#CC99CC'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#CC9999'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#CC9966'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#CC9933'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#CC9900'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#9999FF'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#9999CC'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#999999'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#999966'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#999933'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#999900'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#6699FF'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#6699CC'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#669999'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#669966'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#669933'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#669900'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#3399FF'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#3399CC'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#339999'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#339966'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#339933'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#339900'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#0099FF'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#0099CC'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#009999'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#009966'}}></div>
+                                                                </div>
 
-                                </ul>
-                                <ul className="detail-edit-video-out-wrap edit-parameters-wrap"
-                                    id="video-animation-out-option"
-                                    style={{display: 'none'}}>
-                                </ul>
-                                <ul className="detail-edit-video-combo-wrap edit-parameters-wrap"
-                                    id="video-animation-combo-option"
-                                    style={{display: 'none'}}>
-                                </ul>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#009933'}}></div>
+                                                                </div>
+                                                                <div className="color-option-wrap">
+                                                                    <div className="color-display"
+                                                                         style={{backgroundColor: '#009900'}}></div>
+                                                                </div>
+                                                            </MenuItem>
+                                                        )}
 
-                                <ul className="detail-edit-video-basic-wrap edit-parameters-wrap"
-                                    id="video-adjustment-basic-option"
-                                    style={{display: 'none'}}>
-                                    <li className="detail-edit-video-basic-autoAdjust">
-                                        <div className="dropdown">
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                auto adjust
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-chevron-right">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                            </button>
-                                            <button className="detail-edit-video-basic-transform-reset-btn">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-rotate-ccw">
-                                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                                                    <path d="M3 3v5h5"/>
-                                                </svg>
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                            </div>
-                                        </div>
-                                    </li>
-                                    <div className="break-line"></div>
-                                    <li className="detail-edit-video-basic-lut">
-                                        <div className="dropdown">
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                LUT
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-chevron-right">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                            </button>
-                                            <button className="detail-edit-video-basic-transform-reset-btn">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-rotate-ccw">
-                                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                                                    <path d="M3 3v5h5"/>
-                                                </svg>
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                            </div>
-                                        </div>
-                                    </li>
-                                    <div className="break-line"></div>
-                                    <li className="detail-edit-video-basic-adjust">
-                                        <div className="dropdown">
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                adjust
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-chevron-right">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                            </button>
-                                            <button className="detail-edit-video-basic-transform-reset-btn">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-rotate-ccw">
-                                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                                                    <path d="M3 3v5h5"/>
-                                                </svg>
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                            </div>
-                                        </div>
-                                    </li>
-                                </ul>
-                                <ul className="detail-edit-video-removeBG-wrap edit-parameters-wrap"
-                                    id="video-adjustment-hls-option" style={{display: 'none'}}>
-                                    <li className="detail-edit-video-hls-autoRemoval">
-                                        <div className="dropdown">
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                auto removal
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                            </div>
-                                        </div>
-                                    </li>
-                                    <div className="break-line"></div>
-                                    <li className="detail-edit-video-hls-customRemoval">
-                                        <div className="dropdown">
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                custom removal
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-chevron-right">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                            </button>
-                                            <button className="detail-edit-video-basic-transform-reset-btn">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-rotate-ccw">
-                                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                                                    <path d="M3 3v5h5"/>
-                                                </svg>
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                            </div>
-                                        </div>
-                                    </li>
-                                    <div className="break-line"></div>
-                                    <li className="detail-edit-video-hls-chromaKey">
-                                        <div className="dropdown">
-                                            <button id="btn-dropdown" className="btn-dropdown">
-                                                chroma key
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-chevron-right">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                            </button>
-                                            <button className="detail-edit-video-basic-transform-reset-btn">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                     strokeWidth="2"
-                                                     strokeLinecap="round" strokeLinejoin="round"
-                                                     className="lucide lucide-rotate-ccw">
-                                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                                                    <path d="M3 3v5h5"/>
-                                                </svg>
-                                            </button>
-                                            <div id="dropdown-content" className="dropdown-content">
-                                            </div>
-                                        </div>
-                                    </li>
-                                </ul>
+                                                        {/* Pattern Option */}
+                                                        {canvasOption === 'pattern' && (
+                                                            <MenuItem className="video-basic-pattern-option">
+                                                                <div className="pattern-option-wrap">
+                                                                    <img src={imgTest} alt="Description"/>
+                                                                </div>
+                                                                <div className="pattern-option-wrap">
+                                                                    <img src={imgTest} alt="Description"/>
+                                                                </div>
+                                                                <div className="pattern-option-wrap">
+                                                                    <img src={imgTest} alt="Description"/>
+                                                                </div>
+                                                                <div className="pattern-option-wrap">
+                                                                    <img src={imgTest} alt="Description"/>
+                                                                </div>
+                                                                <div className="pattern-option-wrap">
+                                                                    <img src={imgTest} alt="Description"/>
+                                                                </div>
+                                                                <div className="pattern-option-wrap">
+                                                                    <img src={imgTest} alt="Description"/>
+                                                                </div>
+                                                                <div className="pattern-option-wrap">
+                                                                    <img src={imgTest} alt="Description"/>
+                                                                </div>
+                                                            </MenuItem>
+                                                        )}
+                                                    </SubMenu>
+                                                    <SubMenu title="Voice" label="Voice" className="btn-dropdown">
+                                                        <MenuItem className="slider-container voice-container">
+                                                            <label htmlFor="voice-slider">Voice</label>
+                                                            <input
+                                                                type="range"
+                                                                id="scale-voice"
+                                                                className="voice slider"
+                                                                min="-60"
+                                                                max="20"
+                                                                value={voiceValue}
+                                                                onInput={(e) => updateVoiceValue(e.target.value)}
+                                                            />
+                                                            <input
+                                                                type="text"
+                                                                id="voice-value"
+                                                                className="voice-value slider-value"
+                                                                value={`${voiceValue}dB`}
+                                                                onInput={(e) => updateVoice(e.target.value)}
+                                                            />
+                                                            <div className="voice-buttons slider-buttons">
+                                                                <button className="voice-up"
+                                                                        onClick={() => increaseVoice()}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24"
+                                                                         fill="none" stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round"
+                                                                         strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-up">
+                                                                        <path d="m18 15-6-6-6 6"/>
+                                                                    </svg>
+                                                                </button>
+                                                                <button className="voice-down"
+                                                                        onClick={() => decreaseVoice()}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24"
+                                                                         fill="none" stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round"
+                                                                         strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-down">
+                                                                        <path d="m6 9 6 6 6-6"/>
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        </MenuItem>
+                                                    </SubMenu>
+                                                    <SubMenu title="Speed" label="Speed" className="btn-dropdown">
+
+                                                        <MenuItem className="slider-container speed-container">
+                                                            <label htmlFor="speed-slider">Speed</label>
+                                                            <input
+                                                                type="range"
+                                                                id="scale-speed"
+                                                                className="speed slider"
+                                                                min="1"
+                                                                max="100"
+                                                                value={speedValue}
+                                                                onInput={(e) => updateSpeedValue(e.target.value)}
+                                                            />
+                                                            <input
+                                                                type="text"
+                                                                id="speed-value"
+                                                                className="speed-value slider-value"
+                                                                value={`${speedValue}x`}
+                                                                onInput={(e) => updateSpeed(e.target.value)}
+                                                            />
+                                                            <div className="speed-buttons slider-buttons">
+                                                                <button className="speed-up"
+                                                                        onClick={() => increaseSpeed()}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24"
+                                                                         fill="none" stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round"
+                                                                         strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-up">
+                                                                        <path d="m18 15-6-6-6 6"/>
+                                                                    </svg>
+                                                                </button>
+                                                                <button className="speed-down"
+                                                                        onClick={() => decreaseSpeed()}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24"
+                                                                         fill="none" stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round"
+                                                                         strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-down">
+                                                                        <path d="m6 9 6 6 6-6"/>
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        </MenuItem>
+                                                    </SubMenu>
+                                                </Menu>
+                                            </Sidebar>
+                                        </ul>
+                                    }
+                                    {editVideoOption.animation &&
+                                        <>
+                                            <ul className="detail-edit-video-in-wrap edit-parameters-wrap"
+                                                id="video-animation-in-option">
+                                            </ul>
+                                            <ul className="detail-edit-video-out-wrap edit-parameters-wrap"
+                                                id="video-animation-out-option">
+                                            </ul>
+                                            <ul className="detail-edit-video-combo-wrap edit-parameters-wrap"
+                                                id="video-animation-combo-option">
+                                            </ul>
+                                        </>
+                                    }
+
+
+                                </div>
                             </div>
-                        </div>
+                        }
                     </div>
                 </div>
             </div>
             <div className="edit-wrapper">
                 <div className="timestamps">
-                    {timestamps.map((timestamp, index) => (
-                        <span key={index}>
-                            <p>|</p>
-                            {timestamp}
-                            <p>|</p>
-                            <p>|</p>
-                            <p>|</p>
-                            <p>|</p>
-                            <p>|</p>
-                            <p>|</p>
-                            <p>|</p>
-                        </span>
+                    {timestamps.map((time, index) => (
+                        <div className="time-segment" style={{left: calculateLeftValue(index, timestamps.length)}}
+                             key={index}>
+                            {time}
+                        </div>
                     ))}
                 </div>
+                <input
+                    className="seek-bar"
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={(currentTime / duration) * 100}
+                    onChange={handleSeek}
+                    orient="vertical"
+                    style={{width: `${widthTime}%`}}
+                />
                 <div className="video-timeline">
-                    {timelines.map((timeline, timelineIndex) => (
+                    {(timelineVideos?.length > 0 || timelinesText?.length > 0 || timelinesAudio?.length > 0 || timelinesSticker?.length > 0 || timelinesEffect?.length > 0 || timelinesFilter?.length > 0) && (
+                        <div
+                            className="some-timeline-dropzone-top some-timeline-dropzone timeline-dropzone"
+                            onDrop={(e) => handleDrop(e, null)}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                        >
+                        </div>
+                    )}
+                    {timelineVideos.map((timeline, timelineIndex) => (
                         <div
                             key={timelineIndex}
                             className="timeline"
                             onDragOver={handleDragOver}
-                            onDrop={(e) => handleDropVideo(e, timelineIndex)}
+                            onDrop={(e) => handleDrop(e, timelineIndex)}
                         >
                             {timeline.videos.map((file, index) => (
                                 <div key={index} className="timeline-item"
-                                     style={{left: `${file.position}%`, width: `${file.width}px`}}
+                                     style={{left: `${file.position}%`, width: `${file.width}%`}}
                                      draggable="true"
-                                     onDragStart={(e) => handleDragStart(e, file, timelineIndex, "video")}>
+                                     onDragStart={(e) => handleDragStart(e, file, timelineIndex, "video")}
+                                     onClick={() => handleClick(file, "video")}
+                                     onDoubleClick={() => handleDoubleClick(file, "video")}>
+                                    <div
+                                        className="resize-handle resize-handle-left"
+                                        onMouseDown={(e) => handleResizeStart(e, timelineIndex, index, "video", "left")}
+                                    />
                                     {isVideo(file.fileName) ? (
                                         <video
                                             src={file.url}
-                                            style={{width: file.width * 4 + 'px'}}>
+                                            style={{width: '100%'}}>
                                         </video>
                                     ) : (
                                         <img src={file.url} alt="File Thumbnail"/>
                                     )}
+                                    <div
+                                        className="resize-handle resize-handle-right"
+                                        onMouseDown={(e) => handleResizeStart(e, timelineIndex, index, "video", "right")}
+                                    />
                                 </div>
                             ))}
                         </div>
@@ -5253,21 +5766,31 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                             className="timeline-text"
                             onDragOver={handleDragOver}
                             onDrop={(e) => handleDrop(e, timelineIndex)}>
-                            {timeline.texts.map((textSegment, idx) => (
+                            {timeline.texts.map((textSegment, index) => (
                                 <div
-                                    key={idx}
+                                    key={index}
                                     className="text-segment"
                                     style={{
                                         left: `${textSegment.position}%`,
-                                        width: `${textSegment.width}px`,
+                                        width: `${textSegment.width}%`,
                                     }}
                                     draggable="true"
                                     onDragStart={(e) => handleDragStart(e, textSegment, timelineIndex, "text")}
-                                >
-
+                                    onClick={() => handleClick(textSegment, "text")}
+                                    onDoubleClick={() => handleDoubleClick(textSegment, "text")}>
+                                    <div
+                                        className="resize-handle resize-handle-left"
+                                        onMouseDown={(e) => handleResizeStart(e, timelineIndex, index, "text", "left")}
+                                    />
                                     <div className="text-img">
-                                        <img src={textSegment.image} alt="Text"/>
+                                        <img src={textSegment.image}
+                                             style={{width: '100%'}}
+                                             alt="Text"/>
                                     </div>
+                                    <div
+                                        className="resize-handle resize-handle-right"
+                                        onMouseDown={(e) => handleResizeStart(e, timelineIndex, index, "text", "right")}
+                                    />
                                 </div>
                             ))}
                         </div>
@@ -5278,20 +5801,31 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                             className="timeline-audio"
                             onDragOver={handleDragOver}
                             onDrop={(e) => handleDrop(e, timelineIndex)}>
-                            {timeline.audios.map((audioSegment, idx) => (
+                            {timeline.audios.map((audioSegment, index) => (
                                 <div
-                                    key={idx}
+                                    key={index}
                                     className="audio-segment"
                                     style={{
                                         left: `${audioSegment.position}%`,
-                                        width: `${audioSegment.width}px`,
+                                        width: `${audioSegment.width}%`,
                                     }}
                                     draggable="true"
                                     onDragStart={(e) => handleDragStart(e, audioSegment, timelineIndex, "audio")}
-                                >
+                                    onClick={() => handleClick(audioSegment, "audio")}
+                                    onDoubleClick={() => handleDoubleClick(audioSegment, "audio")}>
+                                    <div
+                                        className="resize-handle resize-handle-left"
+                                        onMouseDown={(e) => handleResizeStart(e, timelineIndex, index, "audio", "left")}
+                                    />
                                     <div className="audio-img">
-                                        <img src={audioSegment.image} alt="Audio"/>
+                                        <img src={audioSegment.image}
+                                             style={{width: '100%'}}
+                                             alt="Audio"/>
                                     </div>
+                                    <div
+                                        className="resize-handle resize-handle-right"
+                                        onMouseDown={(e) => handleResizeStart(e, timelineIndex, index, "audio", "right")}
+                                    />
                                 </div>
                             ))}
                         </div>
@@ -5302,43 +5836,122 @@ const response = await axios.post('http://localhost:8000/myapp/upload_video/', f
                             className="timeline-sticker"
                             onDragOver={handleDragOver}
                             onDrop={(e) => handleDrop(e, timelineIndex)}>
-                            {timeline.stickers.map((stickerSegment, idx) => (
+                            {timeline.stickers.map((stickerSegment, index) => (
                                 <div
-                                    key={idx}
+                                    key={index}
                                     className="sticker-segment"
                                     style={{
                                         left: `${stickerSegment.position}%`,
-                                        width: `${stickerSegment.width}px`,
+                                        width: `${stickerSegment.width}%`,
                                     }}
                                     draggable="true"
                                     onDragStart={(e) => handleDragStart(e, stickerSegment, timelineIndex, "sticker")}
-                                >
+                                    onClick={() => handleClick(stickerSegment, "sticker")}
+                                    onDoubleClick={() => handleDoubleClick(stickerSegment, "sticker")}>
+                                    <div
+                                        className="resize-handle resize-handle-left"
+                                        onMouseDown={(e) => handleResizeStart(e, timelineIndex, index, "sticker", "left")}
+                                    />
                                     <div className="sticker-img">
-                                        <img src={stickerSegment.url} alt="Sticker"/>
+                                        <img src={stickerSegment.url}
+                                             style={{width: '100%'}}
+                                             alt="Sticker"/>
                                     </div>
+                                    <div
+                                        className="resize-handle resize-handle-right"
+                                        onMouseDown={(e) => handleResizeStart(e, timelineIndex, index, "sticker", "right")}
+                                    />
                                 </div>
                             ))}
                         </div>
                     ))}
-                    <div
-                        className="empty-timeline-dropzone"
-                        onDrop={(e) => handleDrop(e, null)}
-                        onDragOver={handleDragOver}
-                    >
-                        Drag and drop video here to create a new timeline
-                    </div>
-
-                    {/*{timelines &&*/}
-                    {/*    <input*/}
-                    {/*        className="level"*/}
-                    {/*        type="range"*/}
-                    {/*        min="0"*/}
-                    {/*        max="100"*/}
-                    {/*        value={(Math.floor(accumulatedTime + currentTime) / durationTimeLine) * 100}*/}
-                    {/*        onChange={(e) => handleSeek(e)}*/}
-                    {/*        style={{width: widthTime * 4 + 'px'}}*/}
-                    {/*    />*/}
-                    {/*}*/}
+                    {timelinesEffect.map((timeline, timelineIndex) => (
+                        <div
+                            key={timelineIndex}
+                            className="timeline-effect"
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, timelineIndex)}>
+                            {timeline.effects.map((effectSegment, index) => (
+                                <div
+                                    key={index}
+                                    className="effect-segment"
+                                    style={{
+                                        left: `${effectSegment.position}%`,
+                                        width: `${effectSegment.width}%`,
+                                    }}
+                                    draggable="true"
+                                    onDragStart={(e) => handleDragStart(e, effectSegment, timelineIndex, "effect")}
+                                    onClick={() => handleClick(effectSegment, "effect")}
+                                    onDoubleClick={() => handleDoubleClick(effectSegment, "effect")}>
+                                    <div
+                                        className="resize-handle resize-handle-left"
+                                        onMouseDown={(e) => handleResizeStart(e, timelineIndex, index, "effect", "left")}
+                                    />
+                                    <div className="effect-img">
+                                        <img src={effectSegment.image}
+                                             style={{width: '100%'}}
+                                             alt="Effect"/>
+                                    </div>
+                                    <div
+                                        className="resize-handle resize-handle-right"
+                                        onMouseDown={(e) => handleResizeStart(e, timelineIndex, index, "effect", "right")}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    ))}
+                    {timelinesFilter.map((timeline, timelineIndex) => (
+                        <div
+                            key={timelineIndex}
+                            className="timeline-filter"
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, timelineIndex)}>
+                            {timeline.filters.map((filterSegment, index) => (
+                                <div
+                                    key={index}
+                                    className="filter-segment"
+                                    style={{
+                                        left: `${filterSegment.position}%`,
+                                        width: `${filterSegment.width}%`,
+                                    }}
+                                    draggable="true"
+                                    onDragStart={(e) => handleDragStart(e, filterSegment, timelineIndex, "filter")}
+                                    onClick={() => handleClick(filterSegment, "filter")}
+                                    onDoubleClick={() => handleDoubleClick(filterSegment, "filter")}>
+                                    <div
+                                        className="resize-handle resize-handle-left"
+                                        onMouseDown={(e) => handleResizeStart(e, timelineIndex, index, "filter", "left")}
+                                    />
+                                    <div className="filter-img">
+                                        <img src={filterSegment.image}
+                                             style={{width: '100%'}}
+                                             alt="Filter"/>
+                                    </div>
+                                    <div
+                                        className="resize-handle resize-handle-right"
+                                        onMouseDown={(e) => handleResizeStart(e, timelineIndex, index, "filter", "right")}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    ))}
+                    {(timelineVideos?.length > 0 || timelinesText?.length > 0 || timelinesAudio?.length > 0 || timelinesSticker?.length > 0 || timelinesEffect?.length > 0 || timelinesFilter?.length > 0) ? (
+                        <div
+                            className="some-timeline-dropzone-bottom some-timeline-dropzone timeline-dropzone"
+                            onDrop={(e) => handleDrop(e, null)}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                        >
+                        </div>
+                    ) : (
+                        <div
+                            className="empty-timeline-dropzone timeline-dropzone"
+                            onDrop={(e) => handleDrop(e, null)}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                        >
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

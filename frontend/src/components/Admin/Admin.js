@@ -2,13 +2,12 @@ import React, {useEffect, useState} from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import MainContent from './MainContent';
-import {BrowserRouter as Router, Route, Routes, useNavigate} from 'react-router-dom';
+import {useNavigate} from 'react-router-dom';
 import './Admin.scss';
 import axios from "axios";
 
 const AdminLayout = () => {
     const [selectedOption, setSelectedOption] = useState('users');
-    const [isLogin, setIsLogin] = useState(true);
   const navigate = useNavigate();
     const token = localStorage.getItem('access_token');
 const refreshToken = localStorage.getItem("refresh_token");
@@ -26,7 +25,6 @@ const refreshToken = localStorage.getItem("refresh_token");
       await axios.get("http://localhost:8000/myapp/validate_token/", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setIsLogin(true);
     } catch (error) {
       if (error.response && error.response.status === 401) {
         try {
@@ -34,7 +32,6 @@ const refreshToken = localStorage.getItem("refresh_token");
             refresh: refreshToken,
           });
           localStorage.setItem("access_token", response.data.access);
-          setIsLogin(true);
         } catch (refreshError) {
           navigate("/login");
         }

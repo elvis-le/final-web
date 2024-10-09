@@ -51,9 +51,9 @@ const Sidebar = ({ onOptionSelect }) => {
                 <li><Link className="link" to="/admin/videos" onClick={() => onOptionSelect('videos')}><FaVideo/> <span>Videos</span></Link></li>
                 <li><Link className="link" to="/admin/audio" onClick={() => onOptionSelect('audio')}><FaMusic/> <span>Audio</span></Link></li>
                 <li><Link className="link" to="/admin/text" onClick={() => onOptionSelect('text')}><FaFont/> <span>Text</span></Link></li>
-                <li><Link className="link" to="/admin/stickers" onClick={() => onOptionSelect('stickers')}><FaStickerMule/> <span>Stickers</span></Link></li>
-                <li><Link className="link" to="/admin/effects" onClick={() => onOptionSelect('effects')}><FaMagic/> <span>Effects</span></Link></li>
-                <li><Link className="link" to="/admin/filters" onClick={() => onOptionSelect('filters')}><FaFilter/> <span>Filters</span></Link></li>
+                <li><Link className="link" to="/admin/sticker" onClick={() => onOptionSelect('sticker')}><FaStickerMule/> <span>Stickers</span></Link></li>
+                <li><Link className="link" to="/admin/effect" onClick={() => onOptionSelect('effect')}><FaMagic/> <span>Effects</span></Link></li>
+                <li><Link className="link" to="/admin/filter" onClick={() => onOptionSelect('filter')}><FaFilter/> <span>Filters</span></Link></li>
                 <button onClick={handleLogout} className="logout-btn">
                     Log out
                 </button>

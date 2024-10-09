@@ -77,6 +77,7 @@ class Audio(models.Model):
 
 
 class Text(models.Model):
+    name = models.CharField(max_length=255, default='default')
     image = models.URLField(max_length=500, default='https://btfptkpngrtnnqweftvx.supabase.co/storage/v1/object/public/audio_files/image/oweiIPFVGAAIVCmcAIV4eAaK5FeGcLQe5AqzJ1.jpeg')
     content = models.TextField()
     style = models.JSONField(null=True, blank=True)

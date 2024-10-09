@@ -41,7 +41,7 @@ class AudioSerializer(serializers.ModelSerializer):
 class TextSerializer(serializers.ModelSerializer):
     class Meta:
         model = Text
-        fields = ['id', 'image', 'content', 'style', 'category', 'is_delete', 'created_at', 'updated_at']
+        fields = ['id', 'name', 'image', 'content', 'style', 'category', 'is_delete', 'created_at', 'updated_at']
 
 class StickerSerializer(serializers.ModelSerializer):
     class Meta:

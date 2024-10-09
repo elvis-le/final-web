@@ -13,10 +13,12 @@ djangorestframework==3.14.0
 psycopg2-binary>=2.9
 psycopg>=3.0
 moviepy
+ffmpeg
 supabase
 dj-database-url
 python-dotenv
 djangorestframework-simplejwt
+opencv-python
 
 
 

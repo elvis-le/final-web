@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, JsonResponse, FileResponse
 from django.contrib.auth import authenticate
-from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip, concatenate_videoclips, AudioFileClip, ImageClip
+from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip, concatenate_videoclips, AudioFileClip, ImageClip, ImageSequenceClip, ColorClip
 from moviepy.config import change_settings
 from tempfile import NamedTemporaryFile
 from django.views.decorators.csrf import csrf_exempt
@@ -19,12 +19,18 @@ from io import BytesIO
 from final_web.settings import supabase
 from .serializers import *
 from rest_framework import status
+from moviepy.editor import CompositeAudioClip
+import moviepy.editor as mp
+import numpy as np
 import os
 import json
 import logging
 import requests
+import tempfile
+import cv2
 
 
+os.environ['TMPDIR'] = '/home/khanh123/my_temp'
 def home(request):
     return render(request, 'home.html')
 
@@ -71,6 +77,7 @@ def save_edit_session(request):
         edit_session.save()
 
     return Response({'message': 'Edit session saved successfully'}, status=200)
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -141,9 +148,7 @@ def cut_video(request):
             return JsonResponse({'message': f'Error while processing video: {str(e)}'}, status=500)
     return JsonResponse({'message': 'Invalid request method'}, status=400)
 
-
 change_settings({"IMAGEMAGICK_BINARY": "/usr/bin/convert"})
-
 
 @csrf_exempt
 def add_text_to_video(request):
@@ -171,25 +176,309 @@ def add_text_to_video(request):
 
     return JsonResponse({'error': 'Invalid request method'}, status=400)
 
+def apply_custom_effects(frame, config):
+    
+    brightness = config.get('brightness', 1.0)  
+    contrast = config.get('contrast', 1.0)  
+    hue_shift = config.get('color_tone', {}).get('hue_shift', 0)  
 
-@csrf_exempt
-def merge_videos(request):
-    if request.method == 'POST':
-        files = request.FILES.getlist('videos')
-        clips = []
+    
+    frame = np.clip(frame * brightness, 0, 255).astype(np.uint8)
 
-        for file in files:
-            clip = VideoFileClip(file.temporary_file_path())
-            clips.append(clip)
+    
+    frame = np.clip(contrast * (frame - 128) + 128, 0, 255).astype(np.uint8)
 
-        final_clip = concatenate_videoclips(clips)
-        output_path = 'media/merged_video.mp4'
-        final_clip.write_videofile(output_path)
+    
+    hsv_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
+    hsv_frame[:, :, 0] = (hsv_frame[:, :, 0] + hue_shift) % 180  
+    frame = cv2.cvtColor(hsv_frame, cv2.COLOR_HSV2RGB)
 
-        return JsonResponse({'merged_video_url': f'/media/merged_video.mp4'})
+    return frame
 
-    return JsonResponse({'error': 'Invalid request'}, status=400)
+def apply_effect_in_time_range(clip, config, start_time, end_time):
+    effect_clip = clip.subclip(start_time, end_time).fl_image(lambda frame: apply_custom_effects(frame, config))
+    return effect_clip.set_start(start_time)
 
+def apply_color_tone(clip, hue_shift=0, shadow_tint=[0, 0, 0], highlight_tint=[255, 255, 255]):
+    shadow_tint = np.array(shadow_tint) / 255.0
+    highlight_tint = np.array(highlight_tint) / 255.0
+
+    def process_frame(frame):
+        frame = frame / 255.0
+
+        mask = frame.mean(axis=2, keepdims=True)  
+        tinted_frame = np.where(mask < 0.5, frame * shadow_tint, frame * highlight_tint)
+
+        
+        if hue_shift != 0:
+            tinted_frame = np.roll(tinted_frame, shift=int(hue_shift), axis=2)  
+
+        
+        return np.clip(tinted_frame * 255, 0, 255).astype(np.uint8)
+
+    
+    return clip.fl_image(process_frame)
+
+def apply_contrast(clip, contrast=1.0):
+    def adjust_contrast(image):
+        
+        return np.clip(128 + contrast * (image - 128), 0, 255).astype(np.uint8)
+    return clip.fl_image(adjust_contrast)
+
+def apply_brightness(clip, brightness=1.0):
+    def adjust_brightness(image):
+        
+        return np.clip(image * brightness, 0, 255).astype(np.uint8)
+    return clip.fl_image(adjust_brightness)
+
+def apply_saturation(clip, saturation=1.0):
+    def adjust_saturation(image):
+        grayscale_image = np.dot(image[...,:3], [0.2989, 0.587, 0.114])  
+        grayscale_image = np.stack([grayscale_image] * 3, axis=-1)  
+        return np.clip(grayscale_image * (1 - saturation) + image * saturation, 0, 255).astype(np.uint8)
+    return clip.fl_image(adjust_saturation)
+
+def apply_filter_in_time_range(clip, config, start_time, end_time):
+    
+    sub_clip = clip.subclip(start_time, end_time)
+
+    
+    contrast = config.get('contrast', {}).get('default', 1)
+    brightness = config.get('brightness', {}).get('default', 1)
+    saturation = config.get('saturation', {}).get('default', 1)
+
+    color_tone = config.get('color_tone', {})
+    hue_shift = color_tone.get('hue_shift', {}).get('default', 0)
+    shadow_tint = color_tone.get('shadow_tint', {}).get('default', [0, 0, 0])
+    highlight_tint = color_tone.get('highlight_tint', {}).get('default', [255, 255, 255])
+
+    
+    if contrast != 1:
+        sub_clip = apply_contrast(sub_clip, contrast)
+
+    if brightness != 1:
+        sub_clip = apply_brightness(sub_clip, brightness)
+
+    if saturation != 1:
+        sub_clip = apply_saturation(sub_clip, saturation)
+
+    if hue_shift != 0 or shadow_tint != [0, 0, 0] or highlight_tint != [255, 255, 255]:
+        sub_clip = sub_clip.fx(apply_color_tone, hue_shift=hue_shift, shadow_tint=shadow_tint, highlight_tint=highlight_tint)
+
+    return sub_clip
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def export_video(request):
+    try:
+        total_duration = float(request.POST.get('total_duration', 0.0))  
+        video_width, video_height = 1280, 720  
+
+        
+        black_clip = ColorClip(size=(video_width, video_height), color=(0, 0, 0), duration=total_duration)
+
+        videos_data = request.POST.getlist('videos')
+        videos = [json.loads(video_data) for video_data in videos_data]
+
+        audios_data = request.POST.getlist('audios')
+        audios = [json.loads(audio_data) for audio_data in audios_data]
+
+        texts_data = request.POST.getlist('texts')
+        texts = [json.loads(text_data) for text_data in texts_data]
+
+        stickers_data = request.POST.getlist('stickers')
+        stickers = [json.loads(sticker_data) for sticker_data in stickers_data]
+
+        effects_data = request.POST.getlist('effects')
+        effects = [json.loads(effect_data) for effect_data in effects_data]
+
+        filters_data = request.POST.getlist('filters')
+        filters = [json.loads(filter_data) for filter_data in filters_data]
+
+        
+        print(f"Received videos: {videos}")
+        print(f"Received audios: {audios}")
+        print(f"Received texts: {texts}")
+        print(f"Received stickers: {stickers}")
+        print(f"Received effects: {effects}")
+        print(f"Received filters: {filters}")
+
+        
+        try:
+            texts = json.loads(texts) if isinstance(texts, str) else texts
+            stickers = json.loads(stickers) if isinstance(stickers, str) else stickers
+            effects = json.loads(effects) if isinstance(effects, str) else effects
+            filters = json.loads(filters) if isinstance(filters, str) else filters
+        except json.JSONDecodeError as e:
+            return JsonResponse({'error': f'Error decoding JSON: {str(e)}'}, status=400)
+
+
+        video_clips = []
+        for video in videos:
+            url = video.get('url')
+            startTime = float(video.get('startTime', 0.0))
+            endTime = float(video.get('endTime', 0.0))
+            duration = float(video.get('duration', 5.0))
+
+            response = requests.get(url)
+            video_file = BytesIO(response.content)
+
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_video:
+                temp_video.write(video_file.getvalue())
+                video_path = temp_video.name
+
+            video_clip = VideoFileClip(video_path).subclip(0, duration)
+            video_clip = video_clip.set_start(startTime)
+            video_clips.append(video_clip)  
+
+            
+        final_clip = CompositeVideoClip([black_clip] + video_clips)
+
+        original_audio = final_clip.audio
+
+        audio_clips = [original_audio]
+
+
+        for audio in audios:
+            url = audio.get('url')
+            startTime = float(audio.get('startTime', 0.0))
+            endTime = float(audio.get('endTime', 0.0))
+            duration = float(audio.get('duration', 5.0))
+
+
+            response = requests.get(url)
+            audio_file = BytesIO(response.content)
+
+
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as temp_audio:
+                temp_audio.write(audio_file.getvalue())
+                audio_path = temp_audio.name
+
+
+            audio_clip = AudioFileClip(audio_path).subclip(0, duration)
+
+
+            audio_clip = audio_clip.set_start(startTime)
+
+
+            audio_clips.append(audio_clip)
+
+        final_audio = CompositeAudioClip(audio_clips)
+        final_clip = final_clip.set_audio(final_audio)
+
+        for filter_data in filters:
+            config = filter_data.get('config', {})
+            startTime = float(filter_data.get('startTime', 0.0))
+            endTime = float(filter_data.get('endTime', 0.0))
+            duration = endTime - startTime
+
+
+            contrast = config.get('contrast', {}).get('default', 1)
+            brightness = config.get('brightness', {}).get('default', 1)
+            saturation = config.get('saturation', {}).get('default', 1)
+
+            color_tone = config.get('color_tone', {})
+            hue_shift = color_tone.get('hue_shift', {}).get('default', 0)
+            shadow_tint = color_tone.get('shadow_tint', {}).get('default', [0, 0, 0])
+            highlight_tint = color_tone.get('highlight_tint', {}).get('default', [255, 255, 255])
+
+
+            subclip = final_clip.subclip(startTime, endTime)
+
+
+            if contrast != 1:
+                subclip = apply_contrast(subclip, contrast)
+
+            if brightness != 1:
+                subclip = apply_brightness(subclip, brightness)
+
+            if saturation != 1:
+                subclip = apply_saturation(subclip, saturation)
+
+            if hue_shift != 0 or shadow_tint != [0, 0, 0] or highlight_tint != [255, 255, 255]:
+                subclip = subclip.fx(apply_color_tone, hue_shift=hue_shift, shadow_tint=shadow_tint,
+                                     highlight_tint=highlight_tint)
+
+
+            final_clip = concatenate_videoclips(
+                [final_clip.subclip(0, startTime), subclip, final_clip.subclip(endTime)])
+
+        for text in texts:
+            content = text.get('content', "Default")
+            style = text.get('style', {})
+            color = style.get('color', '#FFFFFF')
+            fontSize = int(style.get('fontSize', 20))
+            position = float(text.get('position', 0.0))
+            startTime = float(text.get('startTime', 0.0))
+            endTime = float(text.get('endTime', 0.0))
+            duration = float(text.get('duration', 5.0))
+            text_clip = TextClip(
+                content,
+                fontsize=fontSize,
+                color=color
+            ).set_position(('center', 'center')).set_start(startTime).set_duration(duration)
+            final_clip = CompositeVideoClip([final_clip, text_clip])
+
+        for sticker in stickers:
+            url = sticker.get('url')
+            print(url)
+            startTime = float(sticker.get('startTime', 0.0))
+            endTime = float(sticker.get('endTime', 0.0))
+            duration = float(sticker.get('duration', 5.0))
+
+            response = requests.get(url)
+            print(f"GIF response status: {response.status_code}")
+            sticker_bytes = BytesIO(response.content)
+
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".gif") as temp_gif:
+                temp_gif.write(sticker_bytes.getbuffer())
+                temp_gif_path = temp_gif.name
+
+
+            sticker_clip = VideoFileClip(temp_gif_path, has_mask=True)
+            repeat_count = int(duration // sticker_clip.duration) + 1
+            print(repeat_count)
+            sticker_clips = []  
+            for i in range(repeat_count):
+                sticker_clip = VideoFileClip(temp_gif_path, has_mask=True)
+                loop_start_time = startTime + i * sticker_clip.duration
+                loop_end_time = endTime + i * sticker_clip.duration
+                if i == repeat_count - 1:
+                    sticker_copy = sticker_clip.copy().set_position(('center', 'center')).set_start(
+                    loop_start_time).set_duration(endTime - loop_start_time)
+                else:
+                    sticker_copy = sticker_clip.copy().set_position(('center', 'center')).set_start(
+                        loop_start_time).set_duration(sticker_clip.duration)
+                    print(f'i: {i}')
+                    print(f'loop_start_time: {loop_start_time}')
+                    print(f'sticker_copy: {sticker_copy}')
+                sticker_clips.append(sticker_copy)
+
+
+
+            
+            final_clip = CompositeVideoClip([final_clip] + sticker_clips)
+
+            os.remove(temp_gif_path)
+
+        for effect in effects:
+            config = effect.get('config', {})
+            startTime = float(effect.get('startTime', 0.0))
+            endTime = float(effect.get('endTime', 0.0))
+            duration = float(effect.get('duration', 5.0))
+
+            effect_clip = apply_effect_in_time_range(final_clip, config, startTime, endTime)
+            final_clip = CompositeVideoClip([final_clip, effect_clip])
+
+        output_filename = 'output_video.mp4'
+        output_file_path = os.path.join(settings.MEDIA_ROOT, output_filename)
+        final_clip.write_videofile(output_file_path, codec='libx264')
+
+        return JsonResponse({'merged_video_url': f'{settings.MEDIA_URL}{output_filename}'})
+
+    except Exception as e:
+        print(f"Error processing request: {str(e)}")
+        return JsonResponse({'error': f'Internal server error: {str(e)}'}, status=500)
 
 @csrf_exempt
 def add_audio_to_video(request):
@@ -223,7 +512,6 @@ def add_audio_to_video(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid request method'}, status=400)
-
 
 @csrf_exempt
 def add_sticker_to_video(request):
@@ -267,14 +555,12 @@ def add_sticker_to_video(request):
 
     return JsonResponse({'error': 'Invalid request method'}, status=400)
 
-
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
     return {
         'refresh': str(refresh),
         'access': str(refresh.access_token),
     }
-
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -303,7 +589,6 @@ def login_user(request):
     else:
         return Response({'error': 'Invalid email or password'}, status=status.HTTP_400_BAD_REQUEST)
 
-
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
@@ -320,7 +605,6 @@ def register_user(request):
             return JsonResponse({'error': serializer.errors}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -390,6 +674,46 @@ def get_audios(request, category):
     return Response(serializer.data)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_audio_by_id(request, audioId):
+    audios = Audio.objects.filter(id=audioId, is_delete=False)
+    serializer = AudioSerializer(audios, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_audio(request, audioId):
+    try:
+        audio = Audio.objects.get(id=audioId, is_delete=False)
+    except Audio.DoesNotExist:
+        return JsonResponse({'error': 'Audio not found'}, status=404)
+
+    serializer = AudioSerializer(audio, data=request.data, partial=True)
+
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=201)
+    else:
+        return JsonResponse({'error': serializer.errors}, status=400)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def delete_audio(request):
+    audioId = request.data.get('audioId')
+    try:
+        audio = Audio.objects.get(id=audioId, is_delete=False)
+    except Audio.DoesNotExist:
+        return JsonResponse({'error': 'Audio not found'}, status=404)
+
+    audio.is_delete = True
+    audio.save()
+
+    return JsonResponse({'message': 'Audio deleted successfully'}, status=201)
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def upload_text(request):
@@ -418,6 +742,46 @@ def get_texts(request, category):
     texts = Text.objects.filter(category=category, is_delete=False)
     serializer = TextSerializer(texts, many=True)
     return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_text_by_id(request, textId):
+    text = Text.objects.filter(id=textId, is_delete=False)
+    serializer = TextSerializer(text, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_text(request, textId):
+    try:
+        text = Text.objects.get(id=textId, is_delete=False)
+    except Text.DoesNotExist:
+        return JsonResponse({'error': 'Text not found'}, status=404)
+
+    serializer = TextSerializer(text, data=request.data, partial=True)
+
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=201)
+    else:
+        return JsonResponse({'error': serializer.errors}, status=400)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def delete_text(request):
+    textId = request.data.get('textId')
+    try:
+        text = Text.objects.get(id=textId, is_delete=False)
+    except Text.DoesNotExist:
+        return JsonResponse({'error': 'Text not found'}, status=404)
+
+    text.is_delete = True
+    text.save()
+
+    return JsonResponse({'message': 'Text deleted successfully'}, status=201)
 
 
 @api_view(['POST'])
@@ -465,6 +829,47 @@ def get_stickers(request, category):
     serializer = StickerSerializer(stickers, many=True)
     return Response(serializer.data)
 
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_sticker_by_id(request, stickerId):
+    sticker = Sticker.objects.filter(id=stickerId, is_delete=False)
+    serializer = StickerSerializer(sticker, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_sticker(request, stickerId):
+    try:
+        sticker = Sticker.objects.get(id=stickerId, is_delete=False)
+    except Sticker.DoesNotExist:
+        return JsonResponse({'error': 'Sticker not found'}, status=404)
+
+    serializer = StickerSerializer(sticker, data=request.data, partial=True)
+
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=201)
+    else:
+        return JsonResponse({'error': serializer.errors}, status=400)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def delete_sticker(request):
+    stickerId = request.data.get('stickerId')
+    try:
+        sticker = Sticker.objects.get(id=stickerId, is_delete=False)
+    except Sticker.DoesNotExist:
+        return JsonResponse({'error': 'Sticker not found'}, status=404)
+
+    sticker.is_delete = True
+    sticker.save()
+
+    return JsonResponse({'message': 'Sticker deleted successfully'}, status=201)
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def upload_effect(request):
@@ -495,6 +900,46 @@ def get_effects(request, category):
     return Response(serializer.data)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_effect_by_id(request, effectId):
+    effect = Effect.objects.filter(id=effectId, is_delete=False)
+    serializer = EffectSerializer(effect, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_effect(request, effectId):
+    try:
+        effect = Effect.objects.get(id=effectId, is_delete=False)
+    except Effect.DoesNotExist:
+        return JsonResponse({'error': 'Effect not found'}, status=404)
+
+    serializer = EffectSerializer(effect, data=request.data, partial=True)
+
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=201)
+    else:
+        return JsonResponse({'error': serializer.errors}, status=400)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def delete_effect(request):
+    effectId = request.data.get('effectId')
+    try:
+        effect = Effect.objects.get(id=effectId, is_delete=False)
+    except Effect.DoesNotExist:
+        return JsonResponse({'error': 'Effect not found'}, status=404)
+
+    effect.is_delete = True
+    effect.save()
+
+    return JsonResponse({'message': 'Effect deleted successfully'}, status=201)
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def upload_filter(request):
@@ -523,3 +968,43 @@ def get_filters(request, category):
     filters = Filter.objects.filter(category=category, is_delete=False)
     serializer = FilterSerializer(filters, many=True)
     return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_filter_by_id(request, filterId):
+    filter = Filter.objects.filter(id=filterId, is_delete=False)
+    serializer = FilterSerializer(filter, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_filter(request, filterId):
+    try:
+        filter = Filter.objects.get(id=filterId, is_delete=False)
+    except Filter.DoesNotExist:
+        return JsonResponse({'error': 'Filter not found'}, status=404)
+
+    serializer = FilterSerializer(filter, data=request.data, partial=True)
+
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=201)
+    else:
+        return JsonResponse({'error': serializer.errors}, status=400)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def delete_filter(request):
+    filterId = request.data.get('filterId')
+    try:
+        filter = Filter.objects.get(id=filterId, is_delete=False)
+    except Filter.DoesNotExist:
+        return JsonResponse({'error': 'Filter not found'}, status=404)
+
+    filter.is_delete = True
+    filter.save()
+
+    return JsonResponse({'message': 'Filter deleted successfully'}, status=201)
