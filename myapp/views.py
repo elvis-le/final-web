@@ -21,6 +21,11 @@ from .serializers import *
 from rest_framework import status
 from moviepy.editor import CompositeAudioClip
 import moviepy.editor as mp
+from moviepy.video.fx.crop import crop
+from moviepy.video.fx.resize import resize
+from moviepy.video.fx.rotate import rotate
+from moviepy.audio.fx.volumex import volumex
+from moviepy.video.fx import all as vfx
 import numpy as np
 import os
 import json
@@ -176,106 +181,342 @@ def add_text_to_video(request):
 
     return JsonResponse({'error': 'Invalid request method'}, status=400)
 
-def apply_custom_effects(frame, config):
-    
-    brightness = config.get('brightness', 1.0)  
-    contrast = config.get('contrast', 1.0)  
-    hue_shift = config.get('color_tone', {}).get('hue_shift', 0)  
-
-    
-    frame = np.clip(frame * brightness, 0, 255).astype(np.uint8)
-
-    
-    frame = np.clip(contrast * (frame - 128) + 128, 0, 255).astype(np.uint8)
-
-    
-    hsv_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
-    hsv_frame[:, :, 0] = (hsv_frame[:, :, 0] + hue_shift) % 180  
-    frame = cv2.cvtColor(hsv_frame, cv2.COLOR_HSV2RGB)
-
-    return frame
-
-def apply_effect_in_time_range(clip, config, start_time, end_time):
-    effect_clip = clip.subclip(start_time, end_time).fl_image(lambda frame: apply_custom_effects(frame, config))
-    return effect_clip.set_start(start_time)
-
-def apply_color_tone(clip, hue_shift=0, shadow_tint=[0, 0, 0], highlight_tint=[255, 255, 255]):
-    shadow_tint = np.array(shadow_tint) / 255.0
-    highlight_tint = np.array(highlight_tint) / 255.0
-
-    def process_frame(frame):
-        frame = frame / 255.0
-
-        mask = frame.mean(axis=2, keepdims=True)  
-        tinted_frame = np.where(mask < 0.5, frame * shadow_tint, frame * highlight_tint)
-
-        
-        if hue_shift != 0:
-            tinted_frame = np.roll(tinted_frame, shift=int(hue_shift), axis=2)  
-
-        
-        return np.clip(tinted_frame * 255, 0, 255).astype(np.uint8)
-
-    
-    return clip.fl_image(process_frame)
-
-def apply_contrast(clip, contrast=1.0):
-    def adjust_contrast(image):
-        
-        return np.clip(128 + contrast * (image - 128), 0, 255).astype(np.uint8)
-    return clip.fl_image(adjust_contrast)
-
-def apply_brightness(clip, brightness=1.0):
-    def adjust_brightness(image):
-        
-        return np.clip(image * brightness, 0, 255).astype(np.uint8)
-    return clip.fl_image(adjust_brightness)
-
-def apply_saturation(clip, saturation=1.0):
-    def adjust_saturation(image):
-        grayscale_image = np.dot(image[...,:3], [0.2989, 0.587, 0.114])  
-        grayscale_image = np.stack([grayscale_image] * 3, axis=-1)  
-        return np.clip(grayscale_image * (1 - saturation) + image * saturation, 0, 255).astype(np.uint8)
-    return clip.fl_image(adjust_saturation)
-
 def apply_filter_in_time_range(clip, config, start_time, end_time):
-    
+
     sub_clip = clip.subclip(start_time, end_time)
-
-    
-    contrast = config.get('contrast', {}).get('default', 1)
-    brightness = config.get('brightness', {}).get('default', 1)
-    saturation = config.get('saturation', {}).get('default', 1)
-
-    color_tone = config.get('color_tone', {})
-    hue_shift = color_tone.get('hue_shift', {}).get('default', 0)
-    shadow_tint = color_tone.get('shadow_tint', {}).get('default', [0, 0, 0])
-    highlight_tint = color_tone.get('highlight_tint', {}).get('default', [255, 255, 255])
-
-    
-    if contrast != 1:
-        sub_clip = apply_contrast(sub_clip, contrast)
-
-    if brightness != 1:
-        sub_clip = apply_brightness(sub_clip, brightness)
-
-    if saturation != 1:
-        sub_clip = apply_saturation(sub_clip, saturation)
-
-    if hue_shift != 0 or shadow_tint != [0, 0, 0] or highlight_tint != [255, 255, 255]:
-        sub_clip = sub_clip.fx(apply_color_tone, hue_shift=hue_shift, shadow_tint=shadow_tint, highlight_tint=highlight_tint)
-
     return sub_clip
+
+def apply_effect_in_time_range(clip, config, startTime, endTime):
+    effect_name = config.get('name', 'default')
+    print(f"Effect {effect_name} applied from {startTime} to {endTime}")  # Logging để kiểm tra
+
+    # Tạo một subclip trong khoảng thời gian startTime đến endTime
+    subclip = clip.subclip(startTime, endTime)
+
+    if effect_name == 'blur':
+        subclip = apply_blur_effect(clip, config, startTime, endTime)
+    elif effect_name == 'glitch':
+        subclip = apply_glitch_effect(clip, config, startTime, endTime)
+    elif effect_name == 'tilt_shift':
+        subclip = apply_tilt_shift_effect(clip, config, startTime, endTime)
+    elif effect_name == 'invert_colors':
+        subclip = apply_invert_colors_effect(clip, config, startTime, endTime)
+    elif effect_name == 'sepia_tone':
+        subclip = apply_sepia_tone_effect(clip, config, startTime, endTime)
+    elif effect_name == 'pixelate':
+        subclip = apply_pixelate_effect(clip, config, startTime, endTime)
+    elif effect_name == 'hue_rotate':
+        subclip = apply_hue_rotate_effect(clip, config, startTime, endTime)
+    elif effect_name == 'lens_zoom':
+        subclip = apply_lens_zoom_effect(clip, config, startTime, endTime)
+    elif effect_name == 'zoom_in_out':
+        subclip = apply_zoom_in_out_effect(clip, config, startTime, endTime)
+    elif effect_name == 'shake':
+        subclip = apply_shake_effect(clip, config, startTime, endTime)
+    elif effect_name == 'old_film':
+        subclip = apply_old_film_effect(clip, config, startTime, endTime)
+    elif effect_name == 'ripple_effect':
+        subclip = apply_ripple_effect(clip, config, startTime, endTime)
+    elif effect_name == 'radial_zoom':
+        subclip = apply_radial_zoom_effect(clip, config, startTime, endTime)
+    elif effect_name == 'ghost_effect':
+        subclip = apply_ghost_effect(clip, config, startTime, endTime)
+    elif effect_name == 'zoom_blur':
+        subclip = apply_zoom_blur_effect(clip, config, startTime, endTime)
+    elif effect_name == 'color_shift':
+        subclip = apply_color_shift_effect(clip, config, startTime, endTime)
+    elif effect_name == 'echo_effect':
+        subclip = apply_echo_effect(clip, config, startTime, endTime)
+
+    # Thay vì cắt và nối lại các đoạn, ta có thể áp dụng hiệu ứng trực tiếp lên đoạn thời gian đã cắt bằng CompositeVideoClip
+    final_clip = CompositeVideoClip([clip, subclip.set_start(startTime)])
+
+    return final_clip
+
+def apply_blur_effect(clip, config, startTime, endTime):
+    blur_value = 61
+    print(f"Applying blur with value: {blur_value} from {startTime} to {endTime}")
+
+    # Đảm bảo blur_value là số lẻ và lớn hơn 0
+    if blur_value % 2 == 0:
+        blur_value += 1
+    if blur_value <= 0:
+        blur_value = 1
+
+    def blur_frame(frame):
+        # Chuyển đổi kiểu dữ liệu của khung hình từ float64 sang uint8 nếu cần
+        if frame.dtype != 'uint8':
+            frame = (frame * 255).astype('uint8')  # Chuyển đổi từ float64 (0-1) sang uint8 (0-255)
+
+        # Chuyển đổi từ RGB sang BGR (OpenCV sử dụng BGR)
+        frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+        # Áp dụng GaussianBlur nhiều lần để tăng cường hiệu ứng mờ
+        for _ in range(3):  # Áp dụng hiệu ứng blur 3 lần để tăng độ mờ
+            frame_bgr = cv2.GaussianBlur(frame_bgr, (blur_value, blur_value), 0)
+
+        # Chuyển đổi ngược lại từ BGR sang RGB
+        blurred_frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+
+        return blurred_frame_rgb
+
+    # Áp dụng hiệu ứng blur lên toàn bộ đoạn clip từ startTime đến endTime
+    blur_clip = clip.fl_image(blur_frame)
+
+    return blur_clip.subclip(startTime, endTime)
+
+def apply_glitch_effect(clip, config):
+    min_x = config.get('min_x', -20)
+    max_x = config.get('max_x', 20)
+    min_skewX = config.get('min_skewX', -10)
+    max_skewX = config.get('max_skewX', 10)
+    min_hue = config.get('min_hue', 0)
+    max_hue = config.get('max_hue', 360)
+
+    def glitch_frame(get_frame, t):
+        frame = get_frame(t)
+        shift_x = np.random.randint(min_x, max_x)
+        skew_x = np.random.randint(min_skewX, max_skewX)
+        hue_shift = np.random.randint(min_hue, max_hue)
+
+        frame = np.roll(frame, shift_x, axis=1)
+        return frame
+
+    glitch_clip = clip.fl(glitch_frame)
+    return glitch_clip
+
+def apply_tilt_shift_effect(clip, config, startTime, endTime):
+    blur_value = config.get('blur', 10)
+    clipPath = config.get('clipPath', None)
+
+    # Hàm để cắt video dần dần theo thời gian dựa trên clipPath
+    def apply_clip_path_dynamic(frame, progress):
+        height, width = frame.shape[:2]
+        mask = np.ones_like(frame) * 255  # Mặt nạ mặc định trắng toàn bộ
+
+        if clipPath:
+            # Thay đổi cách tính top_inset và bottom_inset để đóng từ ngoài vào
+            top_inset = 0.6 * progress  # Tiến độ càng lớn, phần ngoài càng bị cắt
+            bottom_inset = 0.6 * progress  # Tiến độ càng lớn, phần dưới càng bị cắt
+
+            # Áp dụng cắt phần trên và dưới của video dần dần
+            mask[:int(height * top_inset), :] = 0  # Cắt phần trên dần dần từ ngoài vào
+            mask[int(height * (1 - bottom_inset)):, :] = 0  # Cắt phần dưới dần dần từ ngoài vào
+
+        # Áp dụng mặt nạ (mask)
+        return cv2.bitwise_and(frame, mask)
+
+    # Hàm áp dụng Gaussian blur và clipPath động theo thời gian
+    def tilt_shift_frame(get_frame, t):
+        frame = get_frame(t)
+        # Đảm bảo frame là Numpy array
+        if not isinstance(frame, np.ndarray):
+            frame = np.array(frame)  # Chuyển đổi frame thành Numpy array nếu cần
+
+        # Tính toán tiến độ (progress) theo thời gian
+        progress = (t - startTime) / (endTime - startTime)
+        progress = max(0, min(1, progress))  # Giới hạn progress trong khoảng [0, 1]
+
+        # Áp dụng Gaussian blur
+        blurred_frame = cv2.GaussianBlur(frame, (blur_value, blur_value), 0)
+
+        # Áp dụng cắt động (clipPath) theo progress
+        if clipPath:
+            blurred_frame = apply_clip_path_dynamic(blurred_frame, progress)
+
+        return blurred_frame
+
+    # Sử dụng `fl` thay vì `fl_image` để truyền thêm thời gian `t`
+    tilt_shift_clip = clip.fl(tilt_shift_frame)
+
+    return tilt_shift_clip.subclip(startTime, endTime)
+def apply_invert_colors_effect(clip, config, startTime, endTime):
+    def invert_frame(frame):
+        return 255 - frame  # Đảo ngược màu sắc
+
+    inverted_clip = clip.fl_image(invert_frame)
+    return inverted_clip.subclip(startTime, endTime)
+
+def apply_pixelate_effect(clip, config, startTime, endTime):
+    def pixelate_frame(frame):
+        small_frame = cv2.resize(frame, (16, 16), interpolation=cv2.INTER_NEAREST)
+        return cv2.resize(small_frame, (frame.shape[1], frame.shape[0]), interpolation=cv2.INTER_NEAREST)
+
+    pixelated_clip = clip.fl_image(pixelate_frame)
+    return pixelated_clip.subclip(startTime, endTime)
+
+def apply_sepia_tone_effect(clip, config, startTime, endTime):
+    def sepia_frame(frame):
+        sepia_filter = np.array([[0.393, 0.769, 0.189],
+                                 [0.349, 0.686, 0.168],
+                                 [0.272, 0.534, 0.131]])
+        return cv2.transform(frame, sepia_filter)
+
+    sepia_clip = clip.fl_image(sepia_frame)
+    return sepia_clip.subclip(startTime, endTime)
+
+def apply_hue_rotate_effect(clip, config, startTime, endTime):
+    hue_value = config.get('hue', 180)
+
+    def hue_rotate_frame(frame):
+        hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
+        hsv[..., 0] = (hsv[..., 0] + hue_value) % 180
+        return cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+
+    hue_rotated_clip = clip.fl_image(hue_rotate_frame)
+    return hue_rotated_clip.subclip(startTime, endTime)
+
+def apply_ghost_effect(clip, config, startTime, endTime):
+    # Lấy giá trị từ config
+    blur_value = 61
+    opacity = 0.3
+    darkness = config.get('darkness', 0.5)
+    yoyo = config.get('yoyo', False)
+    repeat = config.get('repeat', 0)
+
+    # Đảm bảo blur_value là số lẻ và lớn hơn 0
+    if blur_value % 2 == 0:
+        blur_value += 1
+    if blur_value <= 0:
+        blur_value = 1
+
+    def ghost_effect_frame(frame):
+        print(f"Frame dtype: {frame.dtype}, shape: {frame.shape}")
+
+        # Chuyển đổi kiểu dữ liệu của khung hình từ float64 sang uint8 nếu cần
+        if frame.dtype != 'uint8':
+            frame = (frame * 255).astype('uint8')  # Chuyển đổi từ float64 (0-1) sang uint8 (0-255)
+
+        # Áp dụng Gaussian Blur
+        frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        blurred_frame_bgr = cv2.GaussianBlur(frame_bgr, (blur_value, blur_value), 0)
+        blurred_frame_rgb = cv2.cvtColor(blurred_frame_bgr, cv2.COLOR_BGR2RGB)
+
+        # Áp dụng opacity bằng cách giảm trọng số của khung hình gốc để nó tối hơn
+        blended_frame = cv2.addWeighted(blurred_frame_rgb, 1 - opacity, frame, opacity, 0)
+
+        darkened_frame = (blended_frame * darkness).clip(0, 255).astype('uint8')
+        return darkened_frame
+
+    # Áp dụng hiệu ứng ghost cho clip
+    ghost_clip = clip.fl_image(ghost_effect_frame)
+
+    # Nếu yoyo được kích hoạt, lặp lại và đảo ngược hiệu ứng
+    if yoyo:
+        reversed_clip = ghost_clip.fx(vfx.time_mirror)
+        ghost_clip = concatenate_videoclips([ghost_clip, reversed_clip])
+
+    # Áp dụng subclip để giới hạn thời gian hiệu ứng
+    return ghost_clip.subclip(startTime, endTime)
+
+def apply_lens_zoom_effect(clip, config, startTime, endTime):
+    zoom_level = config.get('zoom_level', 1.5)
+
+    def zoom_frame(get_frame, t):
+        frame = get_frame(t)
+        center_x, center_y = frame.shape[1] // 2, frame.shape[0] // 2
+        zoom_matrix = cv2.getRotationMatrix2D((center_x, center_y), 0, zoom_level)
+        return cv2.warpAffine(frame, zoom_matrix, (frame.shape[1], frame.shape[0]))
+
+    zoom_clip = clip.fl(zoom_frame)
+    return zoom_clip.subclip(startTime, endTime)
+
+def apply_shake_effect(clip, config, startTime, endTime):
+    def shake_frame(get_frame, t):
+        frame = get_frame(t)
+        shift_x = np.random.randint(-5, 5)
+        shift_y = np.random.randint(-5, 5)
+        return np.roll(frame, shift_x, axis=1), np.roll(frame, shift_y, axis=0)
+
+    shake_clip = clip.fl(shake_frame)
+    return shake_clip.subclip(startTime, endTime)
+
+def apply_old_film_effect(clip, config, startTime, endTime):
+    def old_film_frame(get_frame, t):
+        frame = get_frame(t)
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+        frame = cv2.convertScaleAbs(frame, alpha=0.6)
+        return frame
+
+    old_film_clip = clip.fl_image(old_film_frame)
+    return old_film_clip.subclip(startTime, endTime)
+
+def apply_zoom_in_out_effect(clip, config, startTime, endTime):
+    zoom_level = config.get('zoom_level', 1.5)
+
+    def zoom_frame(get_frame, t):
+        frame = get_frame(t)
+        center_x, center_y = frame.shape[1] // 2, frame.shape[0] // 2
+        zoom_matrix = cv2.getRotationMatrix2D((center_x, center_y), 0, zoom_level)
+        return cv2.warpAffine(frame, zoom_matrix, (frame.shape[1], frame.shape[0]))
+
+    zoom_clip = clip.fl(zoom_frame)
+    return zoom_clip.subclip(startTime, endTime)
+
+def apply_zoom_blur_effect(clip, config, startTime, endTime):
+    blur_value = config.get('blur', 10)
+
+    def zoom_blur_frame(frame):
+        frame_blur = cv2.GaussianBlur(frame, (blur_value, blur_value), 0)
+        return frame_blur
+
+    zoom_blur_clip = clip.fl_image(zoom_blur_frame)
+    return zoom_blur_clip.subclip(startTime, endTime)
+
+def apply_color_shift_effect(clip, config, startTime, endTime):
+    hue_shift_value = 60
+
+    def color_shift_frame(frame):
+        hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
+        hsv[..., 0] = (hsv[..., 0] + hue_shift_value) % 180
+        return cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+
+    color_shift_clip = clip.fl_image(color_shift_frame)
+    return color_shift_clip.subclip(startTime, endTime)
+
+def apply_echo_effect(clip, config, startTime, endTime):
+    def echo_frame(get_frame, t):
+        frame = get_frame(t)
+        return cv2.addWeighted(frame, 0.5, frame, 0.5, 0)
+
+    echo_clip = clip.fl_image(echo_frame)
+    return echo_clip.subclip(startTime, endTime)
+
+def apply_ripple_effect(clip, config, startTime, endTime):
+    def ripple_frame(get_frame, t):
+        frame = get_frame(t)
+        rows, cols, _ = frame.shape
+        ripple_center_x, ripple_center_y = cols // 2, rows // 2
+
+        for i in range(rows):
+            offset_x = int(25.0 * np.sin(2 * np.pi * i / 50.0))
+            frame[i, :] = np.roll(frame[i, :], offset_x, axis=0)
+
+        return frame
+
+    ripple_clip = clip.fl(ripple_frame)
+    return ripple_clip.subclip(startTime, endTime)
+
+def apply_radial_zoom_effect(clip, config, startTime, endTime):
+    def radial_zoom_frame(get_frame, t):
+        frame = get_frame(t)
+        center_x, center_y = frame.shape[1] // 2, frame.shape[0] // 2
+        zoom_matrix = cv2.getRotationMatrix2D((center_x, center_y), 0, 1.5)
+        return cv2.warpAffine(frame, zoom_matrix, (frame.shape[1], frame.shape[0]))
+
+    radial_zoom_clip = clip.fl(radial_zoom_frame)
+    return radial_zoom_clip.subclip(startTime, endTime)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def export_video(request):
     try:
         total_duration = float(request.POST.get('total_duration', 0.0))  
-        video_width, video_height = 1280, 720  
+        video_width, video_height = 1272, 720
 
         
-        black_clip = ColorClip(size=(video_width, video_height), color=(0, 0, 0), duration=total_duration)
+        black_clip = ColorClip(size=(video_width, video_height), color=(0, 0, 0), duration=total_duration).set_fps(24)
+
 
         videos_data = request.POST.getlist('videos')
         videos = [json.loads(video_data) for video_data in videos_data]
@@ -295,7 +536,8 @@ def export_video(request):
         filters_data = request.POST.getlist('filters')
         filters = [json.loads(filter_data) for filter_data in filters_data]
 
-        
+
+        print(f"Duration videos: {total_duration}")
         print(f"Received videos: {videos}")
         print(f"Received audios: {audios}")
         print(f"Received texts: {texts}")
@@ -317,8 +559,16 @@ def export_video(request):
         for video in videos:
             url = video.get('url')
             startTime = float(video.get('startTime', 0.0))
-            endTime = float(video.get('endTime', 0.0))
+            endTime = float(video.get('endTime', total_duration))
             duration = float(video.get('duration', 5.0))
+            scale = float(video.get('scale', 1.0))
+            positionX = float(video.get('positionX', 0))
+            positionY = float(video.get('positionY', 0))
+            rotate_angle = float(video.get('rotate', 0))
+            opacity = float(video.get('opacity', 100)) / 100.0
+            voice = float(video.get('voice', 1.0))
+            speed = float(video.get('speed', 1.0))
+            print(f"Rotate angle: {rotate_angle}")
 
             response = requests.get(url)
             video_file = BytesIO(response.content)
@@ -329,21 +579,80 @@ def export_video(request):
 
             video_clip = VideoFileClip(video_path).subclip(0, duration)
             video_clip = video_clip.set_start(startTime)
-            video_clips.append(video_clip)  
 
-            
-        final_clip = CompositeVideoClip([black_clip] + video_clips)
+            scale_video = scale/100
+            #
+            if scale_video != 1.0:
+                video_clip = crop(video_clip, width=video_clip.w / scale_video, height=video_clip.h / scale_video,
+                                  x_center=video_clip.w / scale_video, y_center=video_clip.h / scale_video)
+                video_clip = resize(video_clip, scale_video)
+            #
+            # Xoay video với expand=True để giữ nguyên toàn bộ nội dung
+            video_clip = rotate(video_clip, -rotate_angle, expand=True)
+
+            # Lấy kích thước mới của video sau khi xoay
+            new_width, new_height = video_clip.size
+            print(f"New video size after rotation: {new_width}, {new_height}")
+
+            # Kích thước màn hình đã cho (1272x720)
+            screen_width = 1272
+            screen_height = 720
+
+            # Tính toán tỉ lệ resize để đảm bảo video có cùng chiều rộng hoặc chiều cao với màn hình
+            scale_factor = max(screen_width / new_width, screen_height / new_height)
+
+            # Resize video để đảm bảo video vừa khít màn hình theo chiều rộng hoặc chiều cao
+            video_clip = video_clip.resize(scale_factor)
+
+            # Lấy lại kích thước sau khi resize
+            new_width, new_height = video_clip.size
+            print(f"Video size after resize: {new_width}, {new_height}")
+
+            # Tính toán vị trí để video nằm giữa màn hình
+            centerX = (screen_width - new_width) / 2
+            centerY = (screen_height - new_height) / 2
+
+            # Đặt video vào giữa màn hình, các phần góc tràn ra ngoài
+            video_clip = video_clip.set_position((centerX + positionX, centerY + positionY))
+
+            if opacity < 1.0:
+                video_clip = video_clip.set_opacity(opacity)
+            #
+            # # Adjust playback speed
+            if speed != 1.0:
+                video_clip = video_clip.fx(vfx.speedx, speed)
+
+            voice_dB = min(max(voice, -60), 6)
+            linear_multiplier = 10 ** (voice_dB / 20)
+
+            # Set volume for audio
+            if video_clip.audio:
+
+                video_clip = video_clip.volumex(linear_multiplier)
+
+            video_clips.append(video_clip)
+
+        print(f"video_clips: {len(video_clips)}")
+
+        if not len(video_clips) > 0:
+            print("No video clips available, using black_clip as final_clip.")
+            final_clip = black_clip  # Dùng black_clip nếu không có video
+        else:
+            final_clip = CompositeVideoClip([black_clip] + video_clips)
 
         original_audio = final_clip.audio
-
-        audio_clips = [original_audio]
-
+        if original_audio is not None:
+            audio_clips = [original_audio]
+        else:
+            audio_clips = []
 
         for audio in audios:
             url = audio.get('url')
             startTime = float(audio.get('startTime', 0.0))
-            endTime = float(audio.get('endTime', 0.0))
+            endTime = float(audio.get('endTime', total_duration))
             duration = float(audio.get('duration', 5.0))
+            voice = float(audio.get('voice', 1.0))
+            speed = float(audio.get('speed', 1.0))
 
 
             response = requests.get(url)
@@ -354,22 +663,31 @@ def export_video(request):
                 temp_audio.write(audio_file.getvalue())
                 audio_path = temp_audio.name
 
+            audio_clip = AudioFileClip(audio_path)
 
-            audio_clip = AudioFileClip(audio_path).subclip(0, duration)
-
-
+            audio_clip = audio_clip.subclip(0, min(duration, audio_clip.duration))
             audio_clip = audio_clip.set_start(startTime)
 
+            if speed != 1.0:
+                audio_clip = audio_clip.fx(vfx.speedx, speed)
+
+            voice_dB = min(max(voice, -60), 6)
+            linear_multiplier = 10 ** (voice_dB / 20)
+
+            audio_clip = audio_clip.volumex(linear_multiplier)
 
             audio_clips.append(audio_clip)
 
-        final_audio = CompositeAudioClip(audio_clips)
-        final_clip = final_clip.set_audio(final_audio)
+        if len(audio_clips) > 0:  # Chỉ ghép nếu có audio clips
+            final_audio = CompositeAudioClip(audio_clips)
+            final_clip = final_clip.set_audio(final_audio)
+        else:
+            print("No audio clips to process.")
 
         for filter_data in filters:
             config = filter_data.get('config', {})
             startTime = float(filter_data.get('startTime', 0.0))
-            endTime = float(filter_data.get('endTime', 0.0))
+            endTime = float(filter_data.get('endTime', total_duration))
             duration = endTime - startTime
 
 
@@ -382,24 +700,10 @@ def export_video(request):
             shadow_tint = color_tone.get('shadow_tint', {}).get('default', [0, 0, 0])
             highlight_tint = color_tone.get('highlight_tint', {}).get('default', [255, 255, 255])
 
-
             subclip = final_clip.subclip(startTime, endTime)
+            subclip = apply_filter_in_time_range(subclip, config, startTime, endTime)
 
-
-            if contrast != 1:
-                subclip = apply_contrast(subclip, contrast)
-
-            if brightness != 1:
-                subclip = apply_brightness(subclip, brightness)
-
-            if saturation != 1:
-                subclip = apply_saturation(subclip, saturation)
-
-            if hue_shift != 0 or shadow_tint != [0, 0, 0] or highlight_tint != [255, 255, 255]:
-                subclip = subclip.fx(apply_color_tone, hue_shift=hue_shift, shadow_tint=shadow_tint,
-                                     highlight_tint=highlight_tint)
-
-
+            # Thay thế subclip đã được áp dụng hiệu ứng vào vị trí trong video chính
             final_clip = concatenate_videoclips(
                 [final_clip.subclip(0, startTime), subclip, final_clip.subclip(endTime)])
 
@@ -410,7 +714,7 @@ def export_video(request):
             fontSize = int(style.get('fontSize', 20))
             position = float(text.get('position', 0.0))
             startTime = float(text.get('startTime', 0.0))
-            endTime = float(text.get('endTime', 0.0))
+            endTime = float(text.get('endTime', total_duration))
             duration = float(text.get('duration', 5.0))
             text_clip = TextClip(
                 content,
@@ -419,11 +723,18 @@ def export_video(request):
             ).set_position(('center', 'center')).set_start(startTime).set_duration(duration)
             final_clip = CompositeVideoClip([final_clip, text_clip])
 
+        for effect in effects:
+            config = effect.get('config', {})
+            startTime = float(effect.get('startTime', 0.0))
+            endTime = float(effect.get('endTime', total_duration))
+
+            final_clip = apply_effect_in_time_range(final_clip, config, startTime, endTime)
+
         for sticker in stickers:
             url = sticker.get('url')
             print(url)
             startTime = float(sticker.get('startTime', 0.0))
-            endTime = float(sticker.get('endTime', 0.0))
+            endTime = float(sticker.get('endTime', total_duration))
             duration = float(sticker.get('duration', 5.0))
 
             response = requests.get(url)
@@ -434,18 +745,17 @@ def export_video(request):
                 temp_gif.write(sticker_bytes.getbuffer())
                 temp_gif_path = temp_gif.name
 
-
             sticker_clip = VideoFileClip(temp_gif_path, has_mask=True)
             repeat_count = int(duration // sticker_clip.duration) + 1
             print(repeat_count)
-            sticker_clips = []  
+            sticker_clips = []
             for i in range(repeat_count):
                 sticker_clip = VideoFileClip(temp_gif_path, has_mask=True)
                 loop_start_time = startTime + i * sticker_clip.duration
                 loop_end_time = endTime + i * sticker_clip.duration
                 if i == repeat_count - 1:
                     sticker_copy = sticker_clip.copy().set_position(('center', 'center')).set_start(
-                    loop_start_time).set_duration(endTime - loop_start_time)
+                        loop_start_time).set_duration(endTime - loop_start_time)
                 else:
                     sticker_copy = sticker_clip.copy().set_position(('center', 'center')).set_start(
                         loop_start_time).set_duration(sticker_clip.duration)
@@ -454,31 +764,46 @@ def export_video(request):
                     print(f'sticker_copy: {sticker_copy}')
                 sticker_clips.append(sticker_copy)
 
-
-
-            
             final_clip = CompositeVideoClip([final_clip] + sticker_clips)
 
             os.remove(temp_gif_path)
 
-        for effect in effects:
-            config = effect.get('config', {})
-            startTime = float(effect.get('startTime', 0.0))
-            endTime = float(effect.get('endTime', 0.0))
-            duration = float(effect.get('duration', 5.0))
+        filename = 'output_video.mp4'
+        output_file_path = os.path.join(settings.MEDIA_ROOT, filename)
+        final_clip.write_videofile(output_file_path, codec='libx264', audio_codec='aac',
+                                   temp_audiofile="temp-audio.m4a", remove_temp=True,
+                                   write_logfile=False, preset='medium', ffmpeg_params=['-movflags', 'faststart'], fps=24)
 
-            effect_clip = apply_effect_in_time_range(final_clip, config, startTime, endTime)
-            final_clip = CompositeVideoClip([final_clip, effect_clip])
+        return JsonResponse({'merged_video_url': f'{settings.MEDIA_URL}{filename}'})
 
-        output_filename = 'output_video.mp4'
-        output_file_path = os.path.join(settings.MEDIA_ROOT, output_filename)
-        final_clip.write_videofile(output_file_path, codec='libx264')
-
-        return JsonResponse({'merged_video_url': f'{settings.MEDIA_URL}{output_filename}'})
 
     except Exception as e:
+
         print(f"Error processing request: {str(e)}")
+
+        import traceback
+
+        traceback.print_exc()  # In ra toàn bộ lỗi
+
         return JsonResponse({'error': f'Internal server error: {str(e)}'}, status=500)
+
+
+def serve_video(request, filename):
+    try:
+        print(f"Serving video file: {filename}")  # Thêm dòng này để kiểm tra
+        file_path = os.path.join(settings.MEDIA_ROOT, filename)
+
+        file = open(file_path, 'rb')
+
+        response = FileResponse(file, content_type='video/mp4')
+        response['Content-Disposition'] = f'inline; filename={filename}'
+        response['Accept-Ranges'] = 'bytes'
+
+        return response
+
+    except FileNotFoundError:
+        print(f"File not found: {filename}")  # Thêm dòng này nếu file không tìm thấy
+        return JsonResponse({'error': 'File not found'}, status=404)
 
 @csrf_exempt
 def add_audio_to_video(request):
@@ -619,12 +944,88 @@ def logout_user(request):
     except Exception as e:
         return Response({"error": str(e)}, status=400)
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_user(request, userId):
+    try:
+        user = User.objects.get(id=userId, is_delete=False)
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'User not found'}, status=404)
+
+    serializer = UserSerializer(user, data=request.data, partial=True)
+
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=200)
+    else:
+        print("Received data:", request.data)  # Log dữ liệu nhận được
+        print("Serializer errors:", serializer.errors)  # Log lỗi của serializer
+        return JsonResponse({'error': serializer.errors}, status=400)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_all_users(request):
+    users = User.objects.filter(is_delete=False, role="user")
+    serializer = UserSerializer(users, many=True)
+    return Response(serializer.data)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def delete_user(request):
+    userId = request.data.get('userId')
+    try:
+        user = User.objects.get(id=userId, is_delete=False)
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'User not found'}, status=404)
+
+    user.is_delete = True
+    user.save()
+
+    return JsonResponse({'message': 'User deleted successfully'}, status=201)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password(request, userId):
+    current_password = request.data.get('currentPassword')
+    new_password = request.data.get('newPassword')
+
+    # Kiểm tra nếu thiếu dữ liệu
+    if not current_password or not new_password:
+        return JsonResponse({'message': 'Thiếu dữ liệu cần thiết'}, status=400)
+
+    try:
+        user = User.objects.get(id=userId, is_delete=False)
+    except User.DoesNotExist:
+        return JsonResponse({'message': 'User not found'}, status=404)
+
+    # So sánh mật khẩu hiện tại với mật khẩu đã mã hóa
+    if not user.check_password(current_password):
+        return JsonResponse({'message': 'Mật khẩu hiện tại không chính xác'}, status=400)
+
+    # Mã hóa và lưu mật khẩu mới
+    user.set_password(new_password)
+    user.save()
+
+    # Serialize and return the updated user data
+    user_serializer = UserSerializer(user)
+
+    return Response(user_serializer.data, status=200)
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_user_projects(request):
     user = request.user
     projects = Project.objects.filter(user=user, is_delete=False)
+    serializer = ProjectSerializer(projects, many=True)
+    return Response({'projects': serializer.data}, status=200)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_deleted_projects(request):
+    user = request.user
+    projects = Project.objects.filter(user=user, is_delete=True)
     serializer = ProjectSerializer(projects, many=True)
     return Response({'projects': serializer.data}, status=200)
 
@@ -642,6 +1043,34 @@ def create_project(request):
 
     serializer = ProjectSerializer(project)
     return Response({'project': serializer.data}, status=201)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def delete_project(request):
+    projectId = request.data.get('projectId')
+    try:
+        project = Project.objects.get(id=projectId, is_delete=False)
+    except Project.DoesNotExist:
+        return JsonResponse({'error': 'Project not found'}, status=404)
+
+    project.is_delete = True
+    project.save()
+
+    return JsonResponse({'message': 'Project deleted successfully'}, status=201)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def restore_project(request):
+    projectId = request.data.get('projectId')
+    try:
+        project = Project.objects.get(id=projectId, is_delete=True)
+    except Project.DoesNotExist:
+        return JsonResponse({'error': 'Project not found'}, status=404)
+
+    project.is_delete = False
+    project.save()
+
+    return JsonResponse({'message': 'Project restore successfully'}, status=201)
 
 
 @api_view(['POST'])

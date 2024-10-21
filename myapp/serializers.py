@@ -5,7 +5,7 @@ from .models import User, Project, Video, Audio, Text, Sticker, Effect, Filter, 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'email', 'password', 'username', 'role', 'birth_date', 'sex', 'address', 'is_delete', 'created_at', 'updated_at']
+        fields = ['id', 'email', 'password', 'fullname', 'username', 'role', 'image', 'birth_date', 'sex', 'address', 'is_delete', 'created_at', 'updated_at']
         extra_kwargs = {
             'password': {'write_only': True}
         }
@@ -13,6 +13,8 @@ class UserSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user = User.objects.create_user(
             email=validated_data['email'],
+            fullname=validated_data['fullname'],
+            image=validated_data['image'],
             username=validated_data['username'],
             password=validated_data['password'],
             role=validated_data.get('role', 'user'),

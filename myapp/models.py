@@ -17,11 +17,15 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser):
     email = models.EmailField(max_length=255, unique=True)
+    image = models.URLField(max_length=500, default='https://btfptkpngrtnnqweftvx.supabase.co/storage/v1/object/public/user_image/images.png')
     password = models.CharField(max_length=255)
     username = models.CharField(max_length=255, unique=True)
+    fullname = models.CharField(max_length=255, default='Lê Nguyễn Quốc Khánh')
     role = models.CharField(max_length=50, default='user')
     birth_date = models.DateField(null=True, blank=True)
-    sex = models.CharField(max_length=10, null=True, choices=(('Male', 'Male'), ('Female', 'Female')))
+    sex = models.CharField(max_length=10, null=True, choices=(
+        ('male', 'Male'),
+    ('female', 'Female'),))
     address = models.CharField(max_length=255, null=True, blank=True)
     is_delete = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

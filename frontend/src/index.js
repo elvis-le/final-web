@@ -9,11 +9,13 @@ import {
     Route,
 } from "react-router-dom";
 import User from "./components/User/User";
+import DeletedProjectsDialog from "./components/User/DeletedProjectsDialog";
 import Admin from "./components/Admin/Admin";
 import Login from "./components/Login";
 import HomePage from "./components/Home/HomePage";
 import Register from "./components/Register";
 import MainContent from "./components/Admin/MainContent";
+import UserManage from "./components/Admin/UserManage";
 import AudioManage from "./components/Admin/AudioManage";
 import AudioCreate from "./components/Admin/AudioCreate";
 import AudioEdit from "./components/Admin/AudioEdit";
@@ -29,6 +31,8 @@ import EffectEdit from "./components/Admin/EffectEdit";
 import FilterManage from "./components/Admin/FilterManage";
 import FilterCreate from "./components/Admin/FilterCreate";
 import FilterEdit from "./components/Admin/FilterEdit";
+import Profile from "./components/Admin/Profile";
+import PrivateRoute from './components/PrivateRoute'; // Import component kiểm tra đăng nhập
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -37,9 +41,27 @@ root.render(
             <Route path="/" element={<App/>}/>
             <Route path="login" element={<Login/>}/>
             <Route path="register" element={<Register/>}/>
-            <Route path="home" element={<HomePage/>}/>
-            <Route path="user" element={<User/>}/>
-            <Route path="admin/*" element={<Admin/>}>
+
+            
+            <Route path="home" element={
+                    <HomePage />
+            }/>
+
+            <Route path="user" element={
+                <PrivateRoute allowedRoles={['user']}>
+                    <User />
+                </PrivateRoute>
+            }>
+                <Route path="DeletedProjectsDialog" element={<DeletedProjectsDialog/>}/>
+            </Route>
+
+            <Route path="admin/*" element={
+                <PrivateRoute allowedRoles={['admin']}>
+                    <Admin />
+                </PrivateRoute>
+            }>
+                <Route path="UserManage" element={<UserManage/>}/>
+                <Route path="Profile" element={<Profile/>}/>
                 <Route path="AudioManage" element={<AudioManage/>}/>
                 <Route path="AudioCreate" element={<AudioCreate/>}/>
                 <Route path="AudioEdit" element={<AudioEdit/>}/>
@@ -58,12 +80,7 @@ root.render(
                 <Route path="FilterEdit" element={<FilterEdit/>}/>
             </Route>
         </Routes>
-    </BrowserRouter>,
+    </BrowserRouter>
 );
 
-// const home = ReactDOM.createRoot(document.getElementById('home'));
-// root.render(<Home />);
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 reportWebVitals();

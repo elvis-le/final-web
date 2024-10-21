@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaChartBar, FaUsers, FaVideo, FaMusic, FaFont, FaStickerMule, FaMagic, FaFilter } from 'react-icons/fa';
+import {FaChartBar, FaUsers, FaVideo, FaMusic, FaFont, FaStickerMule, FaMagic, FaFilter, FaUser} from 'react-icons/fa';
 import axios from "axios";
 import {useNavigate, Link } from "react-router-dom";
 
@@ -46,14 +46,20 @@ const Sidebar = ({ onOptionSelect }) => {
                 <span className="status-online">Online</span>
             </div>
             <ul className="sidebar-menu">
-                <li><Link className="link" to="/admin/users" onClick={() => onOptionSelect('users')}><FaUsers/> <span>Users</span></Link></li>
-                <li><Link className="link" to="/admin/projects" onClick={() => onOptionSelect('projects')}><FaChartBar/> <span>Projects</span></Link></li>
-                <li><Link className="link" to="/admin/videos" onClick={() => onOptionSelect('videos')}><FaVideo/> <span>Videos</span></Link></li>
-                <li><Link className="link" to="/admin/audio" onClick={() => onOptionSelect('audio')}><FaMusic/> <span>Audio</span></Link></li>
-                <li><Link className="link" to="/admin/text" onClick={() => onOptionSelect('text')}><FaFont/> <span>Text</span></Link></li>
-                <li><Link className="link" to="/admin/sticker" onClick={() => onOptionSelect('sticker')}><FaStickerMule/> <span>Stickers</span></Link></li>
-                <li><Link className="link" to="/admin/effect" onClick={() => onOptionSelect('effect')}><FaMagic/> <span>Effects</span></Link></li>
-                <li><Link className="link" to="/admin/filter" onClick={() => onOptionSelect('filter')}><FaFilter/> <span>Filters</span></Link></li>
+                <li><Link className="link" to="/admin/profile" onClick={() => onOptionSelect('profile')}><FaUser/>
+                    <span>Profile</span></Link></li>
+                <li><Link className="link" to="/admin/users" onClick={() => onOptionSelect('users')}><FaUsers/>
+                    <span>Users</span></Link></li>
+                <li><Link className="link" to="/admin/audio" onClick={() => onOptionSelect('audio')}><FaMusic/>
+                    <span>Audio</span></Link></li>
+                <li><Link className="link" to="/admin/text" onClick={() => onOptionSelect('text')}><FaFont/>
+                    <span>Text</span></Link></li>
+                <li><Link className="link" to="/admin/sticker"
+                          onClick={() => onOptionSelect('sticker')}><FaStickerMule/> <span>Stickers</span></Link></li>
+                <li><Link className="link" to="/admin/effect" onClick={() => onOptionSelect('effect')}><FaMagic/>
+                    <span>Effects</span></Link></li>
+                <li><Link className="link" to="/admin/filter" onClick={() => onOptionSelect('filter')}><FaFilter/>
+                    <span>Filters</span></Link></li>
                 <button onClick={handleLogout} className="logout-btn">
                     Log out
                 </button>

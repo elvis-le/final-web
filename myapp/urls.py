@@ -18,8 +18,15 @@ urlpatterns = [
     path('register_user/', views.register_user, name='register_user'),
     path('login_user/', views.login_user, name='login_user'),
     path('logout_user/', views.logout_user, name='logout_user'),
+    path('update_user/<int:userId>/', views.update_user, name='update_user'),
+    path('get_all_users/', views.get_all_users, name='get_all_users'),
+    path('delete_user/', views.delete_user, name='delete_user'),
+    path('change_password/<int:userId>/', views.change_password, name='change_password'),
 
     path('get_user_projects/', views.get_user_projects, name='get_user_projects'),
+    path('get_user_deleted_projects/', views.get_user_deleted_projects, name='get_user_deleted_projects'),
+    path('delete_project/', views.delete_project, name='delete_project'),
+    path('restore_project/', views.restore_project, name='restore_project'),
     path('create_project/', views.create_project, name='create_project'),
 
     path('upload_audio/', views.upload_audio, name='upload_audio'),

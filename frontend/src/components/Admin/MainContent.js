@@ -15,6 +15,8 @@ import FilterManage from "./FilterManage";
 import FilterCreate from "./FilterCreate";
 import FilterEdit from "./FilterEdit";
 import {useParams} from "react-router-dom";
+import UserManage from "./UserManage";
+import Profile from "./Profile";
 
 const MainContent = ({ selectedOption }) => {
     const { type, id } = useParams();
@@ -47,9 +49,8 @@ const MainContent = ({ selectedOption }) => {
     return (
         <div className="main-content">
             <div className="content">
-                {selectedOption === 'users' && <div>Users Management</div>}
-                {selectedOption === 'projects' && <div>Projects Management</div>}
-                {selectedOption === 'videos' && <div>Videos Management</div>}
+                {(selectedOption === 'profile') && <Profile onOptionSelect={handleOptionContentSelect} />}
+                {(selectedOption === 'users') && <UserManage onOptionSelect={handleOptionContentSelect} />}
                 {(selectedOption === 'audio' && selectedOptionContent === 'audio') && <AudioManage onOptionSelect={handleOptionContentSelect} />}
                 {selectedOptionContent === 'createAudio' && <AudioCreate onOptionSelect={handleOptionContentSelect} />}
                 {(type === 'audio' && selectedOptionContent === 'editAudio') && <AudioEdit onOptionSelect={handleOptionContentSelect} audioId={id} />}

@@ -1,19 +1,24 @@
 import React, {useEffect, useRef, useState} from "react";
 import './HomePage.scss'
 import logo from '../../assets/images/file.png';
-import {NavLink, Outlet, Link, useNavigate} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 import {Menu, MenuItem, Sidebar, SubMenu} from "react-pro-sidebar";
 import imgTest from '../../assets/images/Nitro_Wallpaper_01_3840x2400.jpg';
 import rainbow from '../../assets/images/rainbow.jpg';
+import video from '../../assets/video/video1.mp4';
 import axios from 'axios';
-import ReactPlayer from 'react-player';
 import {v4 as uuidv4} from 'uuid';
 import {supabase} from '../../supabaseClient';
-import {Stage, Layer, Rect, Text, Image, Circle, Group} from "react-konva";
-import Konva from 'konva';
+import {Stage, Layer, Text, Image} from "react-konva";
+import {FaBold, FaItalic, FaUnderline} from "react-icons/fa";
+import {RxLetterCaseLowercase, RxLetterCaseToggle, RxLetterCaseUppercase} from "react-icons/rx";
+import {FFmpeg} from '@ffmpeg/ffmpeg';
+import {gsap} from 'gsap';
+
+const ffmpeg = new FFmpeg({log: true});
 
 const HomePage = () => {
-    const [isLogin, setIsLogin] = useState(true);
+    const [isLogin, setIsLogin] = useState(false);
     const navigate = useNavigate();
 
     const videoRef = useRef(null);
@@ -23,38 +28,29 @@ const HomePage = () => {
     const [duration, setDuration] = useState(0);
     const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
     const [accumulatedTime, setAccumulatedTime] = useState(0);
-    const [isPlayingNext, setIsPlayingNext] = useState(false);
-    const [currentTimelineIndex, setCurrentTimelineIndex] = useState(0);
     const [totalDuration, setTotalDuration] = useState(0);
     const [currentTime, setCurrentTime] = useState(0);
-    const [elapsedTime, setElapsedTime] = useState(0);
     const [timelineDuration, setTimelineDuration] = useState(0);
     const [timestamps, setTimestamps] = useState([])
     const [videoDuration, setVideoDuration] = useState(0);
 
 
     const [listVideo, setListVideo] = useState([]);
-    const [timelines, setTimelines] = useState([]);
 
     const [selectedVideo, setSelectedVideo] = useState({});
     const [timelineVideos, setTimelineVideos] = useState([]);
-    const [videoPosition, setVideoPosition] = useState({x: 0, y: 0});
-    const [editVideo, setEditVideo] = useState(false)
 
     const [selectedText, setSelectedText] = useState({});
     const [timelinesText, setTimelinesText] = useState([]);
-    const [textPosition, setTextPosition] = useState({x: 50, y: 50});
     const [textFiles, setTextFiles] = useState({
         default: [],
         trending: [],
         basic: [],
         multicolor: [],
     });
-    const [editText, setEditText] = useState(false)
 
     const [selectedAudio, setSelectedAudio] = useState({});
     const [timelinesAudio, setTimelinesAudio] = useState([]);
-    const [audioPosition, setAudioPosition] = useState({x: 0, y: 0});
     const [audioFiles, setAudioFiles] = useState({
         vlog: [],
         tourism: [],
@@ -68,11 +64,9 @@ const HomePage = () => {
         horrified: [],
         laugh: [],
     });
-    const [editAudio, setEditAudio] = useState(false)
 
     const [selectedSticker, setSelectedSticker] = useState({});
     const [timelinesSticker, setTimelinesSticker] = useState([]);
-    const [stickerPosition, setStickerPosition] = useState({x: 0, y: 0});
     const [stickerFiles, setStickerFiles] = useState({
         trending: [],
         easter_holiday: [],
@@ -81,11 +75,9 @@ const HomePage = () => {
         gaming: [],
         emoji: [],
     });
-    const [editSticker, setEditSticker] = useState(false)
 
     const [selectedEffect, setSelectedEffect] = useState({});
     const [timelinesEffect, setTimelinesEffect] = useState([]);
-    const [effectPosition, setEffectPosition] = useState({x: 0, y: 0});
     const [effectFiles, setEffectFiles] = useState({
         trending: [],
         nightclub: [],
@@ -98,11 +90,9 @@ const HomePage = () => {
         mask_body: [],
         selfie_body: [],
     });
-    const [editEffect, setEditEffect] = useState(false)
 
     const [selectedFilter, setSelectedFilter] = useState({});
     const [timelinesFilter, setTimelinesFilter] = useState([]);
-    const [filterPosition, setFilterPosition] = useState({x: 0, y: 0});
     const [filterFiles, setFilterFiles] = useState({
         featured: [],
         life: [],
@@ -111,14 +101,11 @@ const HomePage = () => {
         retro: [],
         style: [],
     });
-    const [editFilter, setEditFilter] = useState(false)
 
     const [draggableText, setDraggableText] = useState({
         content: "Your draggable text here",
         position: {x: 0, y: 0},
     });
-
-    const [isShowVideoBasic, setShowVideoBasic] = useState(true);
 
     const [widthTime, setWidthTime] = useState(0);
     const [startTime, setStartTime] = useState(0);
@@ -134,57 +121,80 @@ const HomePage = () => {
 
     const [isResizing, setIsResizing] = useState(false);
     const [resizingInfo, setResizingInfo] = useState({});
-    const [stickerImages, setStickerImages] = useState({});
-    const [scaleValue, setScaleValue] = useState(94);
-    const [scaleValueWidth, setScaleValueWidth] = useState(94);
-    const [scaleValueHeight, setScaleValueHeight] = useState(94); 
-    const [positionX, setPositionX] = useState(50);  
-    const [positionY, setPositionY] = useState(50);  
-    const [rotateValue, setRotateValue] = useState(0); 
-    const [opacity, setOpacity] = useState(94); 
+    const [scaleValue, setScaleValue] = useState(100);
+    const [scaleValueWidth, setScaleValueWidth] = useState(100);
+    const [scaleValueHeight, setScaleValueHeight] = useState(100);
+    const [positionX, setPositionX] = useState(0);
+    const [positionY, setPositionY] = useState(0);
+    const [rotateValue, setRotateValue] = useState(0);
+    const [opacity, setOpacity] = useState(100);
     const [blendMode, setBlendMode] = useState("default");
     const [stabilizeLevel, setStabilizeLevel] = useState("recommended");
-    const [blurValue, setBlurValue] = useState(94); 
-    const [blendValue, setBlendValue] = useState(94); 
-    const [direction, setDirection] = useState("both"); 
+    const [blurValue, setBlurValue] = useState(94);
+    const [blendValue, setBlendValue] = useState(94);
+    const [direction, setDirection] = useState("both");
     const [speed, setSpeed] = useState("once");
-    const [canvasOption, setCanvasOption] = useState('none'); 
+    const [canvasOption, setCanvasOption] = useState('none');
     const [colorValue, setColorValue] = useState('#ff0000');
     const [customRemovalValue, setCustomRemovalValue] = useState(94);
     const [voiceValue, setVoiceValue] = useState(0);
     const [speedValue, setSpeedValue] = useState(1);
 
 
-    const audioRefs = useRef({});
+    const [textContent, setTextContent] = useState("Default text")
+    const [fontText, setFontText] = useState("arial");
+    const [fontSizeText, setFontSizeText] = useState(10);
+    const [patternText, setPatternText] = useState("normal");
+    const [caseText, setCaseText] = useState("normal");
+    const [scaleText, setScaleText] = useState(100);
+    const [scaleWidthText, setScaleWidthText] = useState(100);
+    const [scaleHeightText, setScaleHeightText] = useState(100);
+    const [positionXText, setPositionXText] = useState(0);
+    const [positionYText, setPositionYText] = useState(0);
+    const [rotateText, setRotateText] = useState(0);
+    const [opacityText, setOpacityText] = useState(100);
+    const [blod, setBlod] = useState(false);
+    const [underline, setUnderline] = useState(false);
+    const [italic, setItalic] = useState(false);
+    const [styleOfText, setStyleOfText] = useState("lettercase");
 
-    const effectHandlers = {
-        blur: (config) => {
-            return {
-                filter: `blur(${config.default}px)`,
-                transform: ''
-            };
-        },
-        flash_black: (config) => {
-            return {
-                filter: '',
-                transform: `translate(0, 0)`
-            };
-        },
-        film_roll: (config) => {
-            const scrollSpeed = config.scroll_speed.default;
-            return {
-                filter: '',
-                transform: `translate${config.direction.default === 'vertical' ? 'Y' : 'X'}(${scrollSpeed}px)`
-            };
-        },
-        lens_zoom: (config) => {
-            const zoomLevel = config.zoom_level.default;
-            return {
-                filter: '',
-                transform: `scale(${zoomLevel})`
-            };
-        },
-    };
+
+    const [voiceValueAudio, setVoiceValueAudio] = useState(0);
+    const [speedValueAudio, setSpeedValueAudio] = useState(1);
+
+    const [scaleValueSticker, setScaleValueSticker] = useState(100);
+    const [scaleValueWidthSticker, setScaleValueWidthSticker] = useState(100);
+    const [scaleValueHeightSticker, setScaleValueHeightSticker] = useState(100);
+    const [positionXSticker, setPositionXSticker] = useState(0);
+    const [positionYSticker, setPositionYSticker] = useState(0);
+    const [rotateValueSticker, setRotateValueSticker] = useState(0);
+
+    const [effectName, setEffectName] = useState("Default");
+    const [filterName, setFilterName] = useState("Default");
+
+    const [videoIndex, setVideoIndex] = useState(0);
+    const [timelineVideoIndex, setTimelineVideoIndex] = useState(0);
+    const [textIndex, setTextIndex] = useState(0);
+    const [timelineTextIndex, setTimelineTextIndex] = useState(0);
+    const [audioIndex, setAudioIndex] = useState(0);
+    const [timelineAudioIndex, setTimelineAudioIndex] = useState(0);
+    const [stickerIndex, setStickerIndex] = useState(0);
+    const [timelineStickerIndex, setTimelineStickerIndex] = useState(0);
+
+    const [frameIndex, setFrameIndex] = useState(0);
+    const [frames, setFrames] = useState([]);
+    const [currentImage, setCurrentImage] = useState(null);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [gifFileUrl, setGifFileUrl] = useState("");
+    const [translateSticker, setTranslateSticker] = useState(false)
+    const [stickerFrames, setStickerFrames] = useState({});
+    const [currentFrameIndex, setCurrentFrameIndex] = useState({});
+    const [videoUrlTranslate, setVideoUrlTranslate] = useState("");
+    const [selectedElement, setSelectedElement] = useState(null);
+  const seekBarRef = useRef(null);
+
+
+    const audioRefs = useRef({});
 
     const filterHandlers = {
         applyFilter: (config) => {
@@ -253,6 +263,28 @@ const HomePage = () => {
         }
     };
 
+
+    const [editType, setEditType] = useState({
+        video: false,
+        text: false,
+        audio: false,
+        effect: false,
+        filter: false,
+        sticker: false,
+    });
+
+    const handleMenuEditType = (option) => {
+        setEditType({
+            video: false,
+            text: false,
+            audio: false,
+            effect: false,
+            filter: false,
+            sticker: false,
+            [option]: true,
+        });
+    };
+
     const [editVideoOption, setEditVideoOption] = useState({
         video: true,
         animation: false,
@@ -266,6 +298,46 @@ const HomePage = () => {
         });
     };
 
+    const [editTextOption, setEditTextOption] = useState({
+        text: true,
+        animation: false,
+        text_to_speed: false,
+    });
+
+    const handleMenuEditTextOptionClick = (option) => {
+        setEditTextOption({
+            text: false,
+            animation: false,
+            text_to_speed: false,
+            [option]: true,
+        });
+    };
+
+    const [editAudioOption, setEditAudioOption] = useState({
+        basic: true,
+        voice_changer: false,
+    });
+
+    const handleMenuEditAudioOptionClick = (option) => {
+        setEditAudioOption({
+            basic: false,
+            voice_changer: false,
+            [option]: true,
+        });
+    };
+
+    const [editStickerOption, setEditStickerOption] = useState({
+        sticker: true,
+        animation: false,
+    });
+
+    const handleMenuEditStickerOptionClick = (option) => {
+        setEditStickerOption({
+            sticker: false,
+            animation: false,
+            [option]: true,
+        });
+    };
 
     const [activeWrapper, setActiveWrapper] = useState({
         import: true,
@@ -525,19 +597,6 @@ const HomePage = () => {
         }
     };
 
-    const handleVideoClick = (url, time) => {
-        setSelectedVideo({url, time});
-        setVideoUrl(url);
-        setCurrentTime(0);
-        setDuration(time);
-    };
-
-    const getCenteredPosition = (width, height) => {
-        const x = (videoWidth - width) / 2;
-        const y = (videoHeight - height) / 2;
-        return {x, y};
-    };
-
     const handleDrop = (e, timelineIndex = null) => {
         e.preventDefault();
         const dropZone = document.querySelector('.timeline-dropzone');
@@ -553,6 +612,8 @@ const HomePage = () => {
         const filter = e.dataTransfer.getData("text/plain");
         const audioUrl = e.dataTransfer.getData("audioUrl");
         const stickerUrl = e.dataTransfer.getData("stickerUrl");
+
+
 
         if (videoUrl && fileName) {
             setVideoUrl(videoUrl);
@@ -585,9 +646,20 @@ const HomePage = () => {
         } else if (type === "filter") {
             handleDropFilter(e, timelineIndex);
         }
+
+
+        if (seekBarRef.current) {
+      seekBarRef.current.style.pointerEvents = 'auto';
+      console.log(seekBarRef.current.style.pointerEvents)
+    }
+
     };
 
     const handleDragStart = (e, item, timelineIndex, type) => {
+        if (seekBarRef.current) {
+      seekBarRef.current.style.pointerEvents = 'none';
+      console.log(seekBarRef.current.style.pointerEvents)
+    }
         if (isResizing) {
             e.preventDefault();
             return;
@@ -644,7 +716,6 @@ const HomePage = () => {
         const totalTimelineDuration = Math.max(totalDuration, 30);
         const segmentWidth = (duration / totalTimelineDuration) * 100;
 
-        setWidthTime(widthTime + segmentWidth);
         setTimelineDuration(duration);
         setTimestamps(generateTimestamps(totalTimelineDuration));
 
@@ -657,7 +728,7 @@ const HomePage = () => {
         const timelineWidth = e.target.clientWidth;
         const dropPositionPercentage = (dropX / timelineWidth) * 100;
 
-        const startTime = (dropPositionPercentage / 100) * 30;
+        const startTime = (dropPositionPercentage / 100) * totalTimelineDuration;
         const endTime = startTime + duration;
 
         setTimelineVideos((prevTimelineVideos) => {
@@ -672,7 +743,16 @@ const HomePage = () => {
                 width: segmentWidth,
                 startTime: startTime,
                 duration: duration,
-                endTime: endTime
+                endTime: endTime,
+                scale: 100,
+                scaleWidth: 100,
+                scaleHeight: 100,
+                positionX: 0,
+                positionY: 0,
+                rotate: 0,
+                opacity: 100,
+                voice: 0,
+                speed: 1,
             };
 
             if (selectedVideo.timelineIndex === timelineIndex) {
@@ -731,18 +811,14 @@ const HomePage = () => {
         const timelineWidth = e.target.clientWidth;
         const dropPositionPercentage = (dropX / timelineWidth) * 100;
 
-        const startTime = (dropPositionPercentage / 100) * 30;
-        const endTime = startTime + duration;
-
         const totalTimelineDuration = Math.max(totalDuration, 30);
         const segmentWidth = (duration / totalTimelineDuration) * 100;
 
+        const startTime = (dropPositionPercentage / 100)* totalTimelineDuration;
+        const endTime = startTime + duration;
+
         const x = (videoWidth / 2) - (style?.fontSize ? parseInt(style.fontSize) * content.length / 2 : 8 * content.length / 2);
         const y = (videoHeight / 2) - (style?.fontSize ? parseInt(style.fontSize) / 2 : 8);
-
-        console.log("x", x)
-        console.log("y", y)
-
 
         setTimelinesText((prevTimelinesText) => {
             const updatedTimelinesText = [...prevTimelinesText];
@@ -758,8 +834,25 @@ const HomePage = () => {
                 startTime: startTime,
                 duration: duration,
                 endTime: endTime,
-                x: x,
-                y: y,
+
+                fontStyle: "arial",
+                fontSize: parseInt(style.fontSize),
+                pattern: "normal",
+                case: "normal",
+
+                scale: 100,
+                scaleWidth: 100,
+                scaleHeight: 100,
+                positionX: x,
+                positionY: y,
+                rotate: 0,
+                opacity: 100,
+                voice: 0,
+                speed: 1,
+                blod: false,
+                underline: false,
+                italic: false,
+                styleOfText: styleOfText,
             };
 
             if (selectedText.timelineIndex === timelineIndex) {
@@ -823,7 +916,7 @@ const HomePage = () => {
         const segmentWidth = (duration / totalTimelineDuration) * 100;
 
 
-        const startTime = (dropPositionPercentage / 100) * 30;
+        const startTime = (dropPositionPercentage / 100)* totalTimelineDuration;
         const endTime = startTime + duration;
 
         setTimelinesAudio((prevTimelinesAudio) => {
@@ -839,7 +932,9 @@ const HomePage = () => {
                 width: segmentWidth,
                 startTime: startTime,
                 duration: duration,
-                endTime: endTime
+                endTime: endTime,
+                voice: 0,
+                speed: 1,
             };
 
             if (selectedAudio.timelineIndex === timelineIndex) {
@@ -887,7 +982,7 @@ const HomePage = () => {
         const stickerId = e.dataTransfer.getData("stickerId");
         const duration = 5;
 
-        
+
         const img = new window.Image();
         img.src = stickerUrl;
 
@@ -895,23 +990,20 @@ const HomePage = () => {
             const stickerWidth = img.width;
             const stickerHeight = img.height;
 
-            
+
             const x = (videoWidth / 2) - (stickerWidth / 2);
             const y = (videoHeight / 2) - (stickerHeight / 2);
 
-            
+
             const dropX = e.clientX - e.target.getBoundingClientRect().left;
             const timelineWidth = e.target.clientWidth;
             const dropPositionPercentage = (dropX / timelineWidth) * 100;
 
-            const startTime = (dropPositionPercentage / 100) * 30;
-            const endTime = startTime + duration;
-
             const totalTimelineDuration = Math.max(totalDuration, 30);
             const segmentWidth = (duration / totalTimelineDuration) * 100;
 
-            
-            setStickerPosition({x: x, y: y});
+            const startTime = (dropPositionPercentage / 100)* totalTimelineDuration;
+            const endTime = startTime + duration;
 
             setTimelinesSticker((prevTimelinesStickers) => {
                 const updatedTimelinesStickers = [...prevTimelinesStickers];
@@ -924,8 +1016,12 @@ const HomePage = () => {
                     startTime: startTime,
                     duration: duration,
                     endTime: endTime,
-                    x: x, 
-                    y: y  
+                    scale: 100,
+                    scaleWidth: 100,
+                    scaleHeight: 100,
+                    positionX: x,
+                    positionY: y,
+                    rotate: 0,
                 };
 
                 if (selectedSticker.timelineIndex === timelineIndex) {
@@ -974,13 +1070,13 @@ const HomePage = () => {
         };
     };
 
-
     const handleDropEffect = (e, timelineIndex = null) => {
         e.preventDefault();
 
         const effectId = e.dataTransfer.getData("effectId");
         const instanceId = e.dataTransfer.getData("instanceId");
         const config = JSON.parse(e.dataTransfer.getData("config"));
+        const name = e.dataTransfer.getData("fileName");
         const duration = 5;
         const image = e.dataTransfer.getData("image");
 
@@ -988,11 +1084,11 @@ const HomePage = () => {
         const timelineWidth = e.target.clientWidth;
         const dropPositionPercentage = (dropX / timelineWidth) * 100;
 
-        const startTime = (dropPositionPercentage / 100) * 30;
-        const endTime = startTime + duration;
-
         const totalTimelineDuration = Math.max(totalDuration, 30);
         const segmentWidth = (duration / totalTimelineDuration) * 100;
+
+        const startTime = (dropPositionPercentage / 100)* totalTimelineDuration;
+        const endTime = startTime + duration;
 
         setTimelinesEffect((prevTimelinesEffect) => {
             const updatedTimelinesEffect = [...prevTimelinesEffect];
@@ -1000,6 +1096,7 @@ const HomePage = () => {
             const newEffectSegment = {
                 instanceId: instanceId,
                 id: effectId,
+                name: name,
                 config: config,
                 image: image,
                 position: dropPositionPercentage,
@@ -1051,6 +1148,7 @@ const HomePage = () => {
         const filterId = e.dataTransfer.getData("filterId");
         const instanceId = e.dataTransfer.getData("instanceId");
         const config = JSON.parse(e.dataTransfer.getData("config"));
+        const name = e.dataTransfer.getData("fileName");
         const duration = 5;
         const image = e.dataTransfer.getData("image");
 
@@ -1058,11 +1156,11 @@ const HomePage = () => {
         const timelineWidth = e.target.clientWidth;
         const dropPositionPercentage = (dropX / timelineWidth) * 100;
 
-        const startTime = (dropPositionPercentage / 100) * 30;
-        const endTime = startTime + duration;
-
         const totalTimelineDuration = Math.max(totalDuration, 30);
         const segmentWidth = (duration / totalTimelineDuration) * 100;
+
+        const startTime = (dropPositionPercentage / 100)* totalTimelineDuration;
+        const endTime = startTime + duration;
 
         setTimelinesFilter((prevTimelinesFilter) => {
             const updatedTimelinesFilter = [...prevTimelinesFilter];
@@ -1070,6 +1168,7 @@ const HomePage = () => {
             const newFilterSegment = {
                 instanceId: instanceId,
                 id: filterId,
+                name: name,
                 config: config,
                 image: image,
                 position: dropPositionPercentage,
@@ -1131,87 +1230,32 @@ const HomePage = () => {
     };
 
     const handleProgress = (progress) => {
-        setCurrentTime(progress.playedSeconds);
+        if (timelineVideos.length > 0) {
+            if (allVideos[currentVideoIndex].duration === currentTime) {
+                setAccumulatedTime(currentTime)
+                setCurrentTime(0);
+            }
+        }
+        if (progress.playedSeconds !== undefined && progress.playedSeconds !== null) {
+            setCurrentTime(accumulatedTime + progress.playedSeconds);
+        }
     };
 
     const handleDuration = (duration) => {
         setDuration(duration);
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-
-        const formData = new FormData();
-
-        const fetchResponse = await fetch(selectedVideo.url);
-        const blob = await fetchResponse.blob();
-
-        formData.append('file', blob, 'video.mp4');
-        formData.append('start', startTime);
-        formData.append('end', endTime);
-
-        const response = await fetch('http://localhost:8000/myapp/cut_video/', {
-            method: 'POST',
-            body: formData,
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            setVideoUrl(`http://localhost:8000${data.video_url}`);
-
-            const videoElement = document.createElement('video');
-            videoElement.src = `http://localhost:8000${data.video_url}`;
-
-            videoElement.onloadedmetadata = () => {
-                const fileTime = videoElement.duration;
-                handleVideoClick(videoElement.src, fileTime);
-            };
-        } else {
-            console.error('Failed to cut video');
-        }
-    };
-
-    const handleAddText = async (e) => {
-        e.preventDefault();
-
-        const formData = new FormData();
-
-        const fetchResponse = await fetch('https://btfptkpngrtnnqweftvx.supabase.co/storage/v1/object/public/video_files/1/DLPanda.com.7338365652207537435.mp4');
-        const blob = await fetchResponse.blob();
-
-        formData.append('file', blob, 'video.mp4');
-        formData.append('text', "default");
-
-        const response = await fetch('http://localhost:8000/myapp/add_text_to_video/', {
-            method: 'POST',
-            body: formData,
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            setVideoUrl(`http://localhost:8000${data.video_url}`);
-
-            const videoElement = document.createElement('video');
-            videoElement.src = `http://localhost:8000${data.video_url}`;
-
-            videoElement.onloadedmetadata = () => {
-                const fileTime = videoElement.duration;
-                handleVideoClick(videoElement.src, fileTime);
-            };
-        } else {
-            console.error('Failed to add text to video');
-        }
-
-    };
-
     const handleTextChange = (e) => {
         setTextToAdd(e.target.value);
+        setTextContent(e.target.value);
     };
 
-    const handleExport = async () => {
+    const handleExport = async (currentTotalDuration) => {
+        setIsProcessing(true);
+        const durationToSend = currentTotalDuration || totalDuration;
         const formData = new FormData();
 
-        formData.append('total_duration', totalDuration);
+        formData.append('total_duration', durationToSend);
 
         if (timelineVideos.length > 0) {
             for (const timeline of timelineVideos) {
@@ -1273,90 +1317,41 @@ const HomePage = () => {
             });
 
             if (response.status === 200) {
-                const videoUrl = `http://localhost:8000${response.data.merged_video_url}`;
-                const link = document.createElement('a');
-                link.href = videoUrl;
-                link.download = 'exported_video.mp4';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                const videoUrl = `http://localhost:8000${response.data.merged_video_url}?t=${Date.now()}`;
+                setVideoUrlTranslate(videoUrl);
+
+const videoElement = document.createElement("video");
+videoElement.src = videoUrl;
+
+videoElement.addEventListener('loadedmetadata', () => {
+    setTotalDuration(videoElement.duration);  // Lấy độ dài video sau khi metadata đã tải xong
+});
             } else {
                 console.error('Error exporting video');
             }
         } catch (error) {
+            setVideoUrlTranslate("");
+            setCurrentTime(0);
+            setTotalDuration(0);
             console.error('Error:', error);
-        }
+        } finally {
+        setIsProcessing(false);  // Re-enable updates after export completes
+    }
     };
 
-    const handleAudioChange = (e) => {
-        const file = e.target.files[0];
-        setAudioFiles(file);
-    };
-    const handleAddAudio = async () => {
-        if (!videoFile || !audioFiles) {
-            alert("Please select both video and audio files.");
-            return;
-        }
+    const handleDownloadVideo = () => {
+    if (videoUrlTranslate) {
+        const link = document.createElement('a');
+        link.href = videoUrlTranslate;
+        link.download = 'exported_video.mp4';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } else {
+        console.error('No video URL available');
+    }
+};
 
-        const formData = new FormData();
-        formData.append('video', videoFile);
-        formData.append('audio', audioFiles);
-
-        const response = await fetch('http://localhost:8000/myapp/add_audio_to_video/', {
-            method: 'POST',
-            body: formData,
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            setVideoUrl(`http://localhost:8000${data.video_url}`);
-
-            const videoElement = document.createElement('video');
-            videoElement.src = `http://localhost:8000${data.video_url}`;
-
-            videoElement.onloadedmetadata = () => {
-                const fileTime = videoElement.duration;
-                handleVideoClick(videoElement.src, fileTime);
-            };
-        } else {
-            console.error('Failed to add audio to video');
-        }
-    };
-
-    const handleStickerChange = (sticker) => {
-        setSelectedSticker(sticker);
-    };
-    const handleAddSticker = async () => {
-        const formData = new FormData();
-
-        const fetchResponse = await fetch(selectedVideo.url);
-        const videoBlob = await fetchResponse.blob();
-
-        formData.append('file', videoBlob, 'video.mp4');
-        formData.append('sticker_url', selectedSticker.url);
-        formData.append('position_x', stickerPosition.x);
-        formData.append('position_y', stickerPosition.y);
-
-        const response = await fetch('http://localhost:8000/myapp/add_sticker_to_video/', {
-            method: 'POST',
-            body: formData,
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            setVideoUrl(`http://localhost:8000${data.video_url}`);
-
-            const videoElement = document.createElement('video');
-            videoElement.src = `http://localhost:8000${data.video_url}`;
-
-            videoElement.onloadedmetadata = () => {
-                const fileTime = videoElement.duration;
-                handleVideoClick(videoElement.src, fileTime);
-            };
-        } else {
-            console.error('Failed to add sticker to video');
-        }
-    };
 
     const handleSaveEditSession = async () => {
         const actions = {
@@ -1417,7 +1412,9 @@ const HomePage = () => {
             console.error('Error loading edit session:', error);
         }
     };
+
     const handleDragEnd = (e, index, type) => {
+
         const x = (e.target.x() / videoWidth) * 100;
         const y = (e.target.y() / videoHeight) * 100;
 
@@ -1454,16 +1451,25 @@ const HomePage = () => {
         }
     };
 
-    const generateTimestamps = (totalDuration, interval = 5) => {
-        const timestamps = [];
-        const duration = Math.max(totalDuration, 30);
-        for (let i = 0; i <= duration; i += interval) {
-            const minutes = Math.floor(i / 60).toString().padStart(2, '0');
-            const seconds = (i % 60).toString().padStart(2, '0');
-            timestamps.push(`${minutes}:${seconds}`);
-        }
-        return timestamps;
-    };
+   const generateTimestamps = (totalDuration, interval = 5) => {
+    const timestamps = [];
+    const duration = Math.max(totalDuration, 30);
+
+    for (let i = 0; i <= duration; i += interval) {
+        const minutes = Math.floor(i / 60).toString().padStart(2, '0');
+        const seconds = (i % 60).toString().padStart(2, '0');
+        timestamps.push(`${minutes}:${seconds}`);
+    }
+
+    // Nếu thời gian cuối cùng không phải là bội số của interval, thêm mốc thời gian cuối cùng
+    if (duration % interval !== 0) {
+        const finalMinutes = Math.floor(duration / 60).toString().padStart(2, '0');
+        const finalSeconds = (duration % 60).toString().padStart(2, '0');
+        timestamps.push(`${finalMinutes}:${finalSeconds}`);
+    }
+
+    return timestamps;
+};
 
     const calculateLeftValue = (index, totalSegments) => {
         return `${(index / (totalSegments - 1)) * 100}%`;
@@ -1471,12 +1477,12 @@ const HomePage = () => {
 
     const handleVideoEnd = () => {
         if (currentVideoIndex + 1 < allVideos.length) {
-            setAccumulatedTime(accumulatedTime + allVideos[currentVideoIndex].duration);
             setCurrentVideoIndex((prevIndex) => {
                 const nextIndex = prevIndex + 1;
                 return nextIndex < allVideos.length ? nextIndex : 0;
             });
-        } else {
+            setAccumulatedTime(accumulatedTime + allVideos[currentVideoIndex].duration);
+        } else if (currentTime + accumulatedTime >= totalDuration) {
             setAccumulatedTime(0);
             setCurrentTime(0);
             setCurrentVideoIndex(0);
@@ -1489,48 +1495,206 @@ const HomePage = () => {
                     videoRef.current.oncanplay = null;
                 };
             }
+        } else {
+
         }
     };
 
-    const calculateTotalDuration = () => {
-        if (timelineVideos.length === 0) return 0;
+    const [totalCurrentTime, setTotalCurrentTime] = useState(0)
 
-        const sortedVideos = [...timelineVideos].sort((a, b) => a.position - b.position);
-        let totalDuration = 0;
-        let lastEndTime = 0;
+    useEffect(() => {
+        setTotalCurrentTime(accumulatedTime + currentTime)
+    }, [accumulatedTime, currentTime])
 
 
-        sortedVideos.forEach((timeline) => {
+    const deepEqual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
-            if (timeline && Array.isArray(timeline.videos) && timeline.videos.length > 0) {
-                timeline.videos.forEach((video) => {
-                    const videoStart = (video.position / 100) * 30;
-                    const videoEnd = videoStart + video.duration;
+    const updateWidthTimeline = (totalTimelineDuration) => {
+        if (isProcessing) return;
 
-                    if (videoStart < lastEndTime) {
-                        const overlapTime = lastEndTime - videoStart;
-                        totalDuration += video.duration - overlapTime;
-                    } else {
-                        const gapTime = videoStart - lastEndTime;
-                        totalDuration += gapTime + video.duration;
-                    }
+    // Cập nhật width và position cho timelineVideos
+    const updatedTimelineVideos = timelineVideos.map(timeline => {
+        const updatedVideos = timeline.videos.map(video => {
+            const videoWidth = (video.duration / totalTimelineDuration) * 100;
+            const videoPosition = (video.startTime / totalTimelineDuration) * 100;
+            console.log(`videoWidth: ${videoWidth}`)
+            console.log(`videoPosition: ${videoPosition}`)
 
-                    lastEndTime = videoEnd;
-                });
-            }
+            return {
+                ...video,
+                width: videoWidth,
+                position: videoPosition
+            };
         });
 
+        return {
+            ...timeline,
+            videos: updatedVideos
+        };
+    });
 
-        return totalDuration;
-    };
+    // Cập nhật width và position cho timelinesAudio
+    const updatedTimelinesAudio = timelinesAudio.map(timeline => {
+        const updatedAudios = timeline.audios.map(audio => {
+            const audioWidth = (audio.duration / totalTimelineDuration) * 100;
+            const audioPosition = (audio.startTime / totalTimelineDuration) * 100;
+            console.log(`audioWidth: ${audioWidth}`)
+            console.log(`audioPosition: ${audioPosition}`)
 
-    const handleSeek = (e) => {
-        const seekTime = (e.target.value / 100) * duration;
-        const value = e.target.value;
-        videoRef.current.currentTime = seekTime;
-        setCurrentTime(seekTime);
+            return {
+                ...audio,
+                width: audioWidth,
+                position: audioPosition
+            };
+        });
 
-    };
+        return {
+            ...timeline,
+            audios: updatedAudios
+        };
+    });
+
+    // Cập nhật width và position cho timelinesText
+    const updatedTimelinesText = timelinesText.map(timeline => {
+        const updatedTexts = timeline.texts.map(text => {
+            const textWidth = (text.duration / totalTimelineDuration) * 100;
+            const textPosition = (text.startTime / totalTimelineDuration) * 100;
+            console.log(`textWidth: ${textWidth}`)
+            console.log(`textPosition: ${textPosition}`)
+
+            return {
+                ...text,
+                width: textWidth,
+                position: textPosition
+            };
+        });
+
+        return {
+            ...timeline,
+            texts: updatedTexts
+        };
+    });
+
+    // Cập nhật width và position cho timelinesSticker
+    const updatedTimelinesSticker = timelinesSticker.map(timeline => {
+        const updatedStickers = timeline.stickers.map(sticker => {
+            const stickerWidth = (sticker.duration / totalTimelineDuration) * 100;
+            const stickerPosition = (sticker.startTime / totalTimelineDuration) * 100;
+            console.log(`stickerWidth: ${stickerWidth}`)
+            console.log(`stickerPosition: ${stickerPosition}`)
+
+            return {
+                ...sticker,
+                width: stickerWidth,
+                position: stickerPosition
+            };
+        });
+
+        return {
+            ...timeline,
+            stickers: updatedStickers
+        };
+    });
+
+    // Cập nhật width và position cho timelinesEffect
+    const updatedTimelinesEffect = timelinesEffect.map(timeline => {
+        const updatedEffects = timeline.effects.map(effect => {
+            const effectWidth = (effect.duration / totalTimelineDuration) * 100;
+            const effectPosition = (effect.startTime / totalTimelineDuration) * 100;
+            console.log(`effectWidth: ${effectWidth}`)
+            console.log(`effectPosition: ${effectPosition}`)
+
+            return {
+                ...effect,
+                width: effectWidth,
+                position: effectPosition
+            };
+        });
+
+        return {
+            ...timeline,
+            effects: updatedEffects
+        };
+    });
+
+    // Cập nhật width và position cho timelinesFilter
+    const updatedTimelinesFilter = timelinesFilter.map(timeline => {
+        const updatedFilters = timeline.filters.map(filter => {
+            const filterWidth = (filter.duration / totalTimelineDuration) * 100;
+            const filterPosition = (filter.startTime / totalTimelineDuration) * 100;
+            console.log(`filterWidth: ${filterWidth}`)
+            console.log(`filterPosition: ${filterPosition}`)
+
+            return {
+                ...filter,
+                width: filterWidth,
+                position: filterPosition
+            };
+        });
+
+        return {
+            ...timeline,
+            filters: updatedFilters
+        };
+    });
+
+    // Cập nhật state nếu có thay đổi
+    if (!deepEqual(timelineVideos, updatedTimelineVideos)) {
+        setTimelineVideos(updatedTimelineVideos);
+    }
+    if (!deepEqual(timelinesAudio, updatedTimelinesAudio)) {
+        setTimelinesAudio(updatedTimelinesAudio);
+    }
+    if (!deepEqual(timelinesText, updatedTimelinesText)) {
+        setTimelinesText(updatedTimelinesText);
+    }
+    if (!deepEqual(timelinesSticker, updatedTimelinesSticker)) {
+        setTimelinesSticker(updatedTimelinesSticker);
+    }
+    if (!deepEqual(timelinesEffect, updatedTimelinesEffect)) {
+        setTimelinesEffect(updatedTimelinesEffect);
+    }
+    if (!deepEqual(timelinesFilter, updatedTimelinesFilter)) {
+        setTimelinesFilter(updatedTimelinesFilter);
+    }
+    }
+
+    const calculateTotalDuration = () => {
+    if (timelineVideos.length === 0 && timelinesAudio.length === 0 && timelinesText.length === 0 && timelinesSticker.length === 0 && timelinesEffect.length === 0 && timelinesFilter.length === 0)
+        return 0;
+
+    // Gộp tất cả các timeline lại thành một mảng
+    const allTimelines = [
+        ...timelineVideos.map(timeline => timeline.videos),
+        ...timelinesAudio.map(timeline => timeline.audios),
+        ...timelinesText.map(timeline => timeline.texts),
+        ...timelinesSticker.map(timeline => timeline.stickers),
+        ...timelinesEffect.map(timeline => timeline.effects),
+        ...timelinesFilter.map(timeline => timeline.filters)
+    ].flat();
+
+    // Lấy startTime nhỏ nhất
+    const minStartTime = Math.min(...allTimelines.map(element => (element.position / 100) * 30));
+
+    // Lấy endTime lớn nhất
+    const maxEndTime = Math.max(...allTimelines.map(element => ((element.position / 100) * 30) + element.duration));
+
+    const totalDuration = maxEndTime - minStartTime;
+    const totalTimelineDuration = Math.max(totalDuration, 30);
+    // updateWidthTimeline(totalTimelineDuration);
+    const calculatedWidthTime = (totalDuration / totalTimelineDuration) * 100;
+
+    console.log(`totalDuration: ${totalDuration}`);
+    console.log(`totalTimelineDuration: ${totalTimelineDuration}`);
+    console.log(`calculatedWidthTime: ${calculatedWidthTime}`);
+
+    setWidthTime(calculatedWidthTime);
+
+    return totalDuration;
+};
+
+    console.log(`widthTime: ${widthTime}`)
+
 
     const calculateTimeFromPosition = (position, totalWidth) => {
         const duration = Math.max(totalDuration, 30);
@@ -1726,29 +1890,61 @@ const HomePage = () => {
     };
 
     const handleClick = (item, type) => {
+        setSelectedElement({ ...item, type });
+    console.log({ ...item, type });
         switch (type) {
             case "video":
-                setEditVideo(!editVideo)
+                setScaleValue(item.scale);
+                setScaleValueWidth(item.scaleWidth);
+                setScaleValueHeight(item.scaleHeight);
+                setPositionX(item.positionX);
+                setPositionY(item.positionY);
+                setRotateValue(item.rotate);
+                setOpacity(item.opacity);
+                setVoiceValue(item.voice);
+                setSpeedValue(item.speed);
                 break;
 
             case "text":
-                setEditText(!editText)
+                setTextContent(item.content)
+                setFontText(item.fontStyle)
+                setFontSizeText(item.fontSize)
+                setPatternText(item.pattern)
+                setCaseText(item.case)
+                setScaleText(item.scale)
+                setScaleWidthText(item.scaleWidth)
+                setScaleHeightText(item.scaleHeight)
+                setPositionXText(item.positionX)
+                setPositionYText(item.positionY)
+                setRotateText(item.rotate)
+                setOpacityText(item.opacity)
+                setBlod(item.blod)
+                setUnderline(item.underline)
+                setItalic(item.italic)
+                setStyleOfText(item.styleOfText)
                 break;
 
             case "audio":
-                setEditAudio(!editAudio)
+                setVoiceValueAudio(item.voice);
+                setSpeedValueAudio(item.speed);
                 break;
 
             case "sticker":
-                setEditSticker(!editSticker)
+                setScaleValueSticker(item.scale);
+                setScaleValueWidthSticker(item.scaleWidth);
+                setScaleValueHeightSticker(item.scaleHeight);
+                setPositionXSticker(item.positionX);
+                setPositionYSticker(item.positionY);
+                setRotateValueSticker(item.rotate);
+                setGifFileUrl(item.url);
                 break;
 
             case "effect":
-                setEditEffect(!editEffect)
+                setEffectName(item.name)
                 break;
 
             case "filter":
-                setEditFilter(!editFilter)
+                setFilterName(item.name)
                 break;
 
             default:
@@ -1760,44 +1956,131 @@ const HomePage = () => {
         console.log(`Clicked on: ${item.fileName || item.content || item.url}`);
     };
 
-    const updateSliderValue = (value) => {
-        setScaleValue(value);
+    const updateSliderWidthValue = (e) => {
+        const newScaleValueWidth = parseFloat(e.target.value);
+        setScaleValueWidth(newScaleValueWidth);
     };
 
-    const updateSliderWidthValue = (value) => {
-        setScaleValueWidth(value);
+    const updateSliderWidthValueSticker = (e) => {
+        const newScaleValueWidth = parseFloat(e.target.value);
+        setScaleValueWidthSticker(newScaleValueWidth);
     };
 
-    const updateSliderHeightValue = (value) => {
-        setScaleValueHeight(value);
+    const updateSliderScaleWidthTextValue = (e) => {
+        const newScaleValueWidth = parseFloat(e.target.value);
+        setScaleWidthText(newScaleValueWidth);
+    };
+
+    const updateSliderHeightValue = (e) => {
+        const newScaleValueHeight = parseFloat(e.target.value);
+        setScaleValueHeight(newScaleValueHeight);
+    };
+
+    const updateSliderHeightValueSticker = (e) => {
+        const newScaleValueHeight = parseFloat(e.target.value);
+        setScaleValueHeightSticker(newScaleValueHeight);
+    };
+
+    const updateSliderScaleHeightTextValue = (e) => {
+        const newScaleValueHeight = parseFloat(e.target.value);
+        setScaleHeightText(newScaleValueHeight);
     };
 
     const updateVoiceValue = (value) => {
-        setVoiceValue(value);
+        const newVoice = parseFloat(value);
+        setVoiceValue(newVoice);
+
+
+        if (videoRef.current) {
+            const linearVolume = Math.pow(10, newVoice / 20);
+            videoRef.current.volume = Math.max(0, Math.min(linearVolume, 1));
+        }
+    };
+
+    const updateVoiceValueAudio = (value) => {
+        const newVoice = parseFloat(value);
+        setVoiceValueAudio(newVoice);
     };
 
     const updateSpeedValue = (value) => {
-        setSpeedValue(value);
+        const newSpeed = parseFloat(value);
+        setSpeedValue(newSpeed);
+
+    };
+
+    const updateSpeedValueAudio = (value) => {
+        const newSpeed = parseFloat(value);
+        setSpeedValueAudio(newSpeed);
     };
 
     const updatePositionX = (value) => {
         setPositionX(value);
     };
 
+    const updatePositionXSticker = (value) => {
+        setPositionXSticker(value);
+    };
+
+    const updatePositionXText = (value) => {
+        setPositionXText(value);
+    };
+
     const updatePositionY = (value) => {
         setPositionY(value);
+    };
+
+    const updatePositionYSticker = (value) => {
+        setPositionYSticker(value);
+    };
+
+    const updatePositionYText = (value) => {
+        setPositionYText(value);
     };
 
     const updateRotate = (value) => {
         setRotateValue(value);
     };
 
-    
+    const updateRotateSticker = (value) => {
+        setRotateValueSticker(value);
+    };
+
+    const updateRotateText = (value) => {
+        setRotateText(parseInt(value));
+    };
+
+    const updateSliderSticker = (value) => {
+        let numericValue = parseInt(value.replace("%", ""), 10);
+        if (numericValue > 300) numericValue = 300;
+        if (numericValue < 5) numericValue = 5;
+        setScaleValueSticker(numericValue);
+        setScaleValueWidthSticker(numericValue);
+        setScaleValueHeightSticker(numericValue);
+    };
+
     const updateSlider = (value) => {
         let numericValue = parseInt(value.replace("%", ""), 10);
-        if (numericValue > 400) numericValue = 400;
-        if (numericValue < 1) numericValue = 1;
+        if (numericValue > 300) numericValue = 300;
+        if (numericValue < 5) numericValue = 5;
         setScaleValue(numericValue);
+        setScaleValueWidth(numericValue);
+        setScaleValueHeight(numericValue);
+    };
+
+    const updateSliderScaleText = (value) => {
+        let numericValue = parseInt(value.replace("%", ""), 10);
+        if (numericValue > 300) numericValue = 300;
+        if (numericValue < 5) numericValue = 5;
+        setScaleText(numericValue);
+        setScaleWidthText(numericValue);
+        setScaleHeightText(numericValue);
+    };
+
+    const updateFontSizeText = (value) => {
+        let numericValue = parseInt(value.replace("%", ""), 10);
+        if (numericValue > 300) numericValue = 300;
+        if (numericValue < 5) numericValue = 5;
+        setFontSizeText(numericValue);
     };
 
     const updateSliderWidth = (value) => {
@@ -1807,6 +2090,27 @@ const HomePage = () => {
         setScaleValueWidth(numericValue);
     };
 
+    const updateSliderWidthSticker = (value) => {
+        let numericValue = parseInt(value.replace("%", ""), 10);
+        if (numericValue > 400) numericValue = 400;
+        if (numericValue < 1) numericValue = 1;
+        setScaleValueWidthSticker(numericValue);
+    };
+
+    const updateSliderWidthText = (value) => {
+        let numericValue = parseInt(value.replace("%", ""), 10);
+        if (numericValue > 400) numericValue = 400;
+        if (numericValue < 1) numericValue = 1;
+        setScaleWidthText(numericValue);
+    };
+
+    const updateSliderHeightSticker = (value) => {
+        let numericValue = parseInt(value.replace("%", ""), 10);
+        if (numericValue > 400) numericValue = 400;
+        if (numericValue < 1) numericValue = 1;
+        setScaleValueHeightSticker(numericValue);
+    };
+
     const updateSliderHeight = (value) => {
         let numericValue = parseInt(value.replace("%", ""), 10);
         if (numericValue > 400) numericValue = 400;
@@ -1814,18 +2118,39 @@ const HomePage = () => {
         setScaleValueHeight(numericValue);
     };
 
-        const updateVoice = (value) => {
+    const updateSliderHeightText = (value) => {
+        let numericValue = parseInt(value.replace("%", ""), 10);
+        if (numericValue > 400) numericValue = 400;
+        if (numericValue < 1) numericValue = 1;
+        setScaleHeightText(numericValue);
+    };
+
+    const updateVoice = (value) => {
         let numericValue = parseInt(value.replace("dB", ""), 10);
         if (numericValue > 20) numericValue = 20;
         if (numericValue < -60) numericValue = -60;
         setVoiceValue(numericValue);
     };
 
-         const updateSpeed = (value) => {
+    const updateSpeed = (value) => {
         let numericValue = parseInt(value.replace("x", ""), 10);
         if (numericValue > 100) numericValue = 100;
         if (numericValue < 1) numericValue = 1;
-        setScaleValue(numericValue);
+        setSpeedValue(numericValue);
+    };
+
+    const updateVoiceAudio = (value) => {
+        let numericValue = parseInt(value.replace("dB", ""), 10);
+        if (numericValue > 20) numericValue = 20;
+        if (numericValue < -60) numericValue = -60;
+        setVoiceValueAudio(numericValue);
+    };
+
+    const updateSpeedAudio = (value) => {
+        let numericValue = parseInt(value.replace("x", ""), 10);
+        if (numericValue > 100) numericValue = 100;
+        if (numericValue < 1) numericValue = 1;
+        setSpeedValueAudio(numericValue);
     };
 
     const handleStabilizeLevelChange = (e) => {
@@ -1848,41 +2173,129 @@ const HomePage = () => {
         setColorValue(e.target.value);
     };
 
-    
     const increaseSlider = () => {
         if (scaleValue < 400) {
             setScaleValue(prevValue => Math.min(prevValue + 1, 400));
+            setScaleValueWidth(prevValue => Math.min(prevValue + 1, 400));
+            setScaleValueHeight(prevValue => Math.min(prevValue + 1, 400));
         }
     };
 
-     const increaseSliderWidth = () => {
+    const increaseSliderSticker = () => {
+        if (scaleValueSticker < 400) {
+            setScaleValueSticker(prevValue => Math.min(prevValue + 1, 400));
+            setScaleValueWidthSticker(prevValue => Math.min(prevValue + 1, 400));
+            setScaleValueHeightSticker(prevValue => Math.min(prevValue + 1, 400));
+        }
+    };
+
+    const increaseSliderScaleText = () => {
+        if (scaleText < 400) {
+            setScaleText(prevValue => Math.min(prevValue + 1, 400));
+            setScaleWidthText(prevValue => Math.min(prevValue + 1, 400));
+            setScaleHeightText(prevValue => Math.min(prevValue + 1, 400));
+        }
+    };
+
+    const increaseFontSizeText = () => {
+        if (fontSizeText < 300) {
+            setFontSizeText(prevValue => Math.min(prevValue + 1, 300));
+        }
+    };
+
+    const increaseSliderWidth = () => {
         if (scaleValueWidth < 400) {
             setScaleValueWidth(prevValue => Math.min(prevValue + 1, 400));
         }
     };
 
-      const increaseSliderHeight = () => {
+    const increaseSliderWidthSticker = () => {
+        if (scaleValueWidthSticker < 400) {
+            setScaleValueWidthSticker(prevValue => Math.min(prevValue + 1, 400));
+        }
+    };
+
+    const increaseSliderWidthText = () => {
+        if (scaleValueWidth < 400) {
+            setScaleWidthText(prevValue => Math.min(prevValue + 1, 400));
+        }
+    };
+
+    const increaseSliderHeight = () => {
         if (scaleValueHeight < 400) {
             setScaleValueHeight(prevValue => Math.min(prevValue + 1, 400));
         }
     };
 
-      const increaseVoice = () => {
-        if (scaleValue < 400) {
-            setVoiceValue(prevValue => Math.min(prevValue + 1, 400));
+    const increaseSliderHeightSticker = () => {
+        if (scaleValueHeightSticker < 400) {
+            setScaleValueHeightSticker(prevValue => Math.min(prevValue + 1, 400));
         }
     };
 
-      const increaseSpeed = () => {
-        if (scaleValue < 400) {
-            setSpeedValue(prevValue => Math.min(prevValue + 1, 400));
+    const increaseSliderHeightText = () => {
+        if (scaleValueHeight < 400) {
+            setScaleHeightText(prevValue => Math.min(prevValue + 1, 400));
         }
     };
 
-    
+    const increaseVoice = () => {
+        let newVoice = voiceValue + 1;
+        if (newVoice > 20) newVoice = 6;
+        updateVoiceValue(newVoice);
+    };
+
+    const increaseSpeed = () => {
+        let newSpeed = speedValue + 1;
+        if (newSpeed > 100) newSpeed = 100;
+        updateSpeedValue(newSpeed);
+    };
+
+    const increaseVoiceAudio = () => {
+        let newVoice = voiceValueAudio + 1;
+        if (newVoice > 6) newVoice = 6;
+        updateVoiceValueAudio(newVoice);
+    };
+
+    const increaseSpeedAudio = () => {
+        let newSpeed = speedValueAudio + 1;
+        if (newSpeed > 100) newSpeed = 100;
+        updateSpeedValueAudio(newSpeed);
+    };
+
     const decreaseSlider = () => {
         if (scaleValue > 1) {
             setScaleValue(prevValue => Math.max(prevValue - 1, 1));
+            setScaleValueWidth(prevValue => Math.max(prevValue - 1, 1));
+            setScaleValueHeight(prevValue => Math.max(prevValue - 1, 1));
+        }
+    };
+
+    const decreaseSliderSticker = () => {
+        if (scaleValueSticker > 1) {
+            setScaleValueSticker(prevValue => Math.max(prevValue - 1, 1));
+            setScaleValueWidthSticker(prevValue => Math.max(prevValue - 1, 1));
+            setScaleValueHeightSticker(prevValue => Math.max(prevValue - 1, 1));
+        }
+    };
+
+    const decreaseSliderScaleText = () => {
+        if (scaleText > 1) {
+            setScaleText(prevValue => Math.max(prevValue - 1, 1));
+            setScaleWidthText(prevValue => Math.max(prevValue - 1, 1));
+            setScaleHeightText(prevValue => Math.max(prevValue - 1, 1));
+        }
+    };
+
+    const decreaseFontSizeText = () => {
+        if (fontSizeText > 5) {
+            setFontSizeText(prevValue => Math.max(prevValue - 1, 5));
+        }
+    };
+
+    const decreaseSliderWidthSticker = () => {
+        if (scaleValueWidthSticker > 1) {
+            setScaleValueWidthSticker(prevValue => Math.max(prevValue - 1, 1));
         }
     };
 
@@ -1892,50 +2305,132 @@ const HomePage = () => {
         }
     };
 
+    const decreaseSliderWidthText = () => {
+        if (scaleValueWidth > 1) {
+            setScaleWidthText(prevValue => Math.max(prevValue - 1, 1));
+        }
+    };
+
     const decreaseSliderHeight = () => {
         if (scaleValueHeight > 1) {
             setScaleValueHeight(prevValue => Math.max(prevValue - 1, 1));
         }
     };
 
-    const decreaseVoice = () => {
-        if (scaleValue > 1) {
-            setVoiceValue(prevValue => Math.max(prevValue - 1, 1));
+    const decreaseSliderHeightSticker = () => {
+        if (scaleValueHeightSticker > 1) {
+            setScaleValueHeightSticker(prevValue => Math.max(prevValue - 1, 1));
         }
+    };
+
+    const decreaseSliderHeightText = () => {
+        if (scaleValueHeight > 1) {
+            setScaleHeightText(prevValue => Math.max(prevValue - 1, 1));
+        }
+    };
+
+    const decreaseVoice = () => {
+        let newVoice = voiceValue - 1;
+        if (newVoice < -60) newVoice = -60;
+        updateVoiceValue(newVoice);
     };
 
     const decreaseSpeed = () => {
-        if (scaleValue > 1) {
-            setSpeedValue(prevValue => Math.max(prevValue - 1, 1));
-        }
+        let newSpeed = speedValue - 1;
+        if (newSpeed < 1) newSpeed = 1;
+        updateSpeedValue(newSpeed);
+    };
+
+    const decreaseVoiceAudio = () => {
+        let newVoice = voiceValueAudio - 1;
+        if (newVoice < -60) newVoice = -60;
+        updateVoiceValueAudio(newVoice);
+    };
+
+    const decreaseSpeedAudio = () => {
+        let newSpeed = speedValueAudio - 1;
+        if (newSpeed < 1) newSpeed = 1;
+        updateSpeedValueAudio(newSpeed);
     };
 
     const increasePositionX = () => {
-        setPositionX(prevValue => Math.min(prevValue + 1, 400));
+        setPositionX(prevValue => Math.min(prevValue + 1, 5000));
+    };
+
+    const increasePositionXSticker = () => {
+        setPositionXSticker(prevValue => Math.min(prevValue + 1, 5000));
+    };
+
+    const increasePositionXText = () => {
+        setPositionXText(prevValue => Math.min(prevValue + 1, 5000));
     };
 
     const decreasePositionX = () => {
-        setPositionX(prevValue => Math.max(prevValue - 1, 1));
+        setPositionX(prevValue => Math.max(prevValue - 1, -5000));
+    };
+
+    const decreasePositionXSticker = () => {
+        setPositionXSticker(prevValue => Math.max(prevValue - 1, -5000));
+    };
+
+    const decreasePositionXText = () => {
+        setPositionXText(prevValue => Math.max(prevValue - 1, -5000));
     };
 
     const increasePositionY = () => {
-        setPositionY(prevValue => Math.min(prevValue + 1, 400));
+        setPositionY(prevValue => Math.min(prevValue + 1, 5000));
+    };
+
+    const increasePositionYSticker = () => {
+        setPositionYSticker(prevValue => Math.min(prevValue + 1, 5000));
     };
 
     const decreasePositionY = () => {
-        setPositionY(prevValue => Math.max(prevValue - 1, 1));
+        setPositionY(prevValue => Math.max(prevValue - 1, -5000));
+    };
+
+    const decreasePositionYSticker = () => {
+        setPositionYSticker(prevValue => Math.max(prevValue - 1, -5000));
+    };
+
+    const increasePositionYText = () => {
+        setPositionYText(prevValue => Math.min(prevValue + 1, 5000));
+    };
+
+    const decreasePositionYText = () => {
+        setPositionYText(prevValue => Math.max(prevValue - 1, -5000));
     };
 
     const increaseRotate = () => {
-        setRotateValue(prevValue => Math.min(prevValue + 1, 360));
+        setRotateValue(prevValue => Math.min(prevValue + 1, 3600));
+    };
+
+    const increaseRotateSticker = () => {
+        setRotateValueSticker(prevValue => Math.min(prevValue + 1, 3600));
+    };
+
+    const increaseRotateText = () => {
+        setRotateText(prevValue => Math.min(prevValue + 1, 3600));
     };
 
     const decreaseRotate = () => {
-        setRotateValue(prevValue => Math.max(prevValue - 1, 0));
+        setRotateValue(prevValue => Math.max(prevValue - 1, -3600));
+    };
+
+    const decreaseRotateSticker = () => {
+        setRotateValueSticker(prevValue => Math.max(prevValue - 1, -3600));
+    };
+
+    const decreaseRotateText = () => {
+        setRotateText(prevValue => Math.max(prevValue - 1, -3600));
     };
 
     const updateOpacityValue = (value) => {
         setOpacity(value);
+    };
+
+    const updateOpacityValueText = (value) => {
+        setOpacityText(value);
     };
 
     const updateOpacity = (value) => {
@@ -1943,6 +2438,13 @@ const HomePage = () => {
         if (numericValue > 100) numericValue = 100;
         if (numericValue < 0) numericValue = 0;
         setOpacity(numericValue);
+    };
+
+    const updateOpacityText = (value) => {
+        let numericValue = parseInt(value.replace("%", ""), 10);
+        if (numericValue > 100) numericValue = 100;
+        if (numericValue < 0) numericValue = 0;
+        setOpacityText(numericValue);
     };
 
     const increaseOpacity = () => {
@@ -1954,6 +2456,18 @@ const HomePage = () => {
     const decreaseOpacity = () => {
         if (opacity > 0) {
             setOpacity(prevValue => Math.max(prevValue - 1, 0));
+        }
+    };
+
+    const increaseOpacityText = () => {
+        if (opacityText < 100) {
+            setOpacityText(prevValue => Math.min(prevValue + 1, 100));
+        }
+    };
+
+    const decreaseOpacityText = () => {
+        if (opacityText > 0) {
+            setOpacityText(prevValue => Math.max(prevValue - 1, 0));
         }
     };
 
@@ -1993,7 +2507,6 @@ const HomePage = () => {
         setSpeed(e.target.value);
     };
 
-
     const updateCustomRemovalValue = (value) => {
         const numericValue = Math.min(Math.max(parseInt(value, 10), 1), 400);
         setCustomRemovalValue(numericValue);
@@ -2017,9 +2530,47 @@ const HomePage = () => {
         }
     };
 
-    function resetChromaKey() {
-        console.log("Chroma Key reset");
+    const handleVideoSelect = (video, timelineIndex, videoIndex) => {
+        setSelectedVideo(video);
+        setTimelineVideoIndex(timelineIndex);
+        setVideoIndex(videoIndex);
+    };
+
+    const handleTextSelect = (text, timelineIndex, Index) => {
+        setSelectedText(text);
+        setTimelineTextIndex(timelineIndex);
+        setTextIndex(Index);
+    };
+
+    const handleFontTextChange = (e) => {
+        setFontText(e.target.value);
     }
+
+    const updateSliderValue = (e) => {
+        const newScaleValue = parseFloat(e.target.value);
+        setScaleValue(newScaleValue);
+        setScaleValueWidth(newScaleValue);
+        setScaleValueHeight(newScaleValue);
+    };
+
+    const updateSliderValueSticker = (e) => {
+        const newScaleValue = parseFloat(e.target.value);
+        setScaleValueSticker(newScaleValue);
+        setScaleValueWidthSticker(newScaleValue);
+        setScaleValueHeightSticker(newScaleValue);
+    };
+
+    const updateScaleTextValue = (e) => {
+        const newScaleValue = parseFloat(e.target.value);
+        setScaleText(newScaleValue);
+        setScaleWidthText(newScaleValue);
+        setScaleHeightText(newScaleValue);
+    };
+
+    const updateFontSizeTextValue = (e) => {
+        const newFontSizeValue = parseFloat(e.target.value);
+        setFontSizeText(newFontSizeValue);
+    };
 
 
     useEffect(() => {
@@ -2053,10 +2604,10 @@ const HomePage = () => {
                         localStorage.setItem("access_token", response.data.access);
                         setIsLogin(true);
                     } catch (refreshError) {
-                        navigate("/login");
+                        setIsLogin(false);
                     }
                 } else {
-                    navigate("/login");
+                        setIsLogin(false);
                 }
             }
         };
@@ -2095,19 +2646,63 @@ const HomePage = () => {
         loadEditSession();
     }, []);
 
-    useEffect(() => {
-        const videoElement = videoRef.current;
-        if (videoElement) {
-            const handleTimeUpdate = () => {
-                setCurrentTime(videoElement.currentTime);
-            };
+const handleTimeUpdate = () => {
+    const videoElement = videoRef.current;
+    setCurrentTime(videoElement.currentTime);
 
-            videoElement.addEventListener('timeupdate', handleTimeUpdate);
-            return () => {
-                videoElement.removeEventListener('timeupdate', handleTimeUpdate);
-            };
-        }
-    }, [selectedVideo])
+    // Đảm bảo cập nhật opacity khi nó thay đổi
+    if (opacity !== undefined) {
+        videoElement.style.opacity = opacity / 100; // Sử dụng style để cập nhật opacity
+    }
+};
+
+useEffect(() => {
+    const videoElement = videoRef.current;
+    if (videoElement) {
+        // Lắng nghe sự kiện loadedmetadata để lấy tổng thời lượng video
+        videoElement.addEventListener('loadedmetadata', () => {
+            setTotalDuration(videoElement.duration);  // Thiết lập tổng thời lượng video
+        });
+
+        // Lắng nghe sự kiện timeupdate để cập nhật thời gian hiện tại
+        videoElement.addEventListener('timeupdate', handleTimeUpdate);
+
+        // Cleanup khi component unmount hoặc thay đổi
+        return () => {
+            videoElement.removeEventListener('timeupdate', handleTimeUpdate);
+        };
+    }
+}, [selectedVideo, opacity]);
+
+// Hàm xử lý sự kiện kéo thanh seek-bar
+const handleSeek = (e) => {
+  const videoElement = videoRef.current;
+
+  // Kiểm tra xem video có khả năng tua tới thời điểm này không
+  const seekPercentage = parseFloat(e.target.value);
+  const seekTime = (seekPercentage / 100) * totalDuration;
+
+  if (videoElement.seekable.length > 0) {
+    // Kiểm tra xem thời gian cần tua có nằm trong khoảng seekable không
+    const seekableStart = videoElement.seekable.start(0);
+    const seekableEnd = videoElement.seekable.end(0);
+
+    if (seekTime >= seekableStart && seekTime <= seekableEnd) {
+
+      // Cập nhật thời gian video trực tiếp
+      videoElement.currentTime = seekTime;
+      setCurrentTime(seekTime);
+
+      videoElement.addEventListener('seeked', () => {
+      });
+    } else {
+      console.log(`Seek time (${seekTime}) is out of seekable range: ${seekableStart} - ${seekableEnd}`);
+    }
+  } else {
+    console.log('Video không thể tua tại thời điểm này');
+  }
+};
+
 
     useEffect(() => {
         if (videoRef.current) {
@@ -2122,7 +2717,6 @@ const HomePage = () => {
                 setCurrentTime(videoRef.current.currentTime);
             }
         }, 100);
-
         return () => clearInterval(interval);
     }, []);
 
@@ -2142,124 +2736,279 @@ const HomePage = () => {
     }, [videoUrl]);
 
     useEffect(() => {
-        const durationSum = allVideos.reduce((sum, video) => sum + video.duration, 0);
-        const newTimestamps = generateTimestamps(durationSum, 5);
+        const newTimestamps = generateTimestamps(totalDuration, 5);
 
         if (JSON.stringify(newTimestamps) !== JSON.stringify(timestamps)) {
             setTimestamps(newTimestamps);
         }
-    }, [allVideos, timestamps]);
+    }, [totalDuration, timestamps]);
+
+   useEffect(() => {
+    const newTotalDuration = calculateTotalDuration();
+    if (newTotalDuration !== totalDuration) {
+        setTotalDuration(newTotalDuration);
+    }
+
+    if (timelineVideos.length || timelinesText.length || timelinesFilter.length || timelinesEffect.length || timelinesAudio.length || timelinesSticker.length) {
+        handleExport(newTotalDuration);  // Pass the newTotalDuration directly
+    }
+}, [timelineVideos, timelinesText, timelinesFilter, timelinesEffect, timelinesAudio, timelinesSticker]);
 
     useEffect(() => {
-        const newTotalDuration = calculateTotalDuration();
-        if (newTotalDuration !== totalDuration) {
-            setTotalDuration(newTotalDuration);
-        }
-    }, [timelineVideos, totalDuration]);
+        setTimelineVideos((prevVideos) => {
+            return prevVideos.map((timelineVideo, index) => {
+                if (index !== timelineVideoIndex) return timelineVideo;
 
-    useEffect(() => {
-        const videoElement = videoRef.current;
+                const updatedVideos = [...timelineVideo.videos];
+                const video = updatedVideos[videoIndex];
+                const duration = video.duration / speedValue;
 
+                const totalTimelineDuration = Math.max(totalDuration, 30);
+                const segmentWidth = (duration / totalTimelineDuration) * 100;
 
-        if (videoElement) {
-            const handlePause = () => {
-                Object.values(audioRefs.current).forEach((audioElement) => {
-                    audioElement.pause();
-                });
-            };
+                if (!video) return timelineVideo;
 
-            videoElement.addEventListener("pause", handlePause);
+                const updatedVideo = {
+                    ...video,
+                    width: segmentWidth,
+                    scale: scaleValue,
+                    scaleWidth: scaleValueWidth,
+                    scaleHeight: scaleValueHeight,
+                    positionX: positionX,
+                    positionY: positionY,
+                    rotate: rotateValue,
+                    opacity: opacity,
+                    voice: voiceValue,
+                    speed: speedValue
+                };
 
-
-            return () => {
-                videoElement.removeEventListener("pause", handlePause);
-            };
-        }
-    }, [timelinesAudio]);
-
-    useEffect(() => {
-        timelinesAudio.forEach((timeline) => {
-            timeline.audios.forEach((audioSegment) => {
-                if (!audioRefs.current[audioSegment.url]) {
-                    audioRefs.current[audioSegment.url] = new window.Audio(audioSegment.url);
-                }
-
-                const audioElement = audioRefs.current[audioSegment.url];
-
-                if (currentTime >= audioSegment.startTime && currentTime <= audioSegment.endTime) {
-                    if (audioElement.paused) {
-                        audioElement.play().catch(err => console.error("Error playing audio:", err));
-                    }
-                } else {
-                    if (!audioElement.paused) {
-                        audioElement.pause();
-                        audioElement.currentTime = 0;
-                    }
-                }
+                return {
+                    ...timelineVideo,
+                    videos: updatedVideos.map((v, i) => (i === videoIndex ? updatedVideo : v))
+                };
             });
         });
-
-
-        return () => {
-            timelinesAudio.forEach((timeline) => {
-                timeline.audios.forEach((audioSegment) => {
-                    const audioElement = new window.Audio(audioSegment.url);
-                    audioElement.pause();
-                    audioElement.currentTime = 0;
-                });
-            });
-        };
-    }, [currentTime, timelinesAudio]);
+    }, [scaleValue, scaleValueWidth, scaleValueHeight, positionX, positionY, rotateValue, opacity, voiceValue, speedValue]);
 
     useEffect(() => {
-        const video = videoRef.current;
+        setTimelinesText((prevTexts) => {
+            return prevTexts.map((timelineText, index) => {
+                if (index !== timelineTextIndex) return timelineText;
 
+                const updatedTexts = [...timelineText.texts];
+                const text = updatedTexts[textIndex];
 
-        if (!video) return;
+                const x = (videoWidth / 2) - (fontSizeText ? parseInt(fontSizeText) * textContent.length / 2 : 8 * textContent.length / 2);
+                const y = (videoHeight / 2) - (fontSizeText ? parseInt(fontSizeText) / 2 : 8);
 
+                if (!text) return timelineText;
 
-        video.style.filter = 'none';
-        video.style.transform = 'none';
-        video.style.backgroundColor = '';
-        video.style.opacity = 1;
+                const updatedText = {
+                    ...text,
+                    content: textContent,
+                    fontStyle: fontText,
+                    fontSize: fontSizeText,
+                    pattern: patternText,
+                    case: caseText,
+                    scale: scaleText,
+                    scaleWidth: scaleWidthText,
+                    scaleHeight: scaleHeightText,
+                    positionX: positionXText,
+                    positionY: positionYText,
+                    rotate: rotateText,
+                    opacity: opacityText,
+                    blod: blod,
+                    underline: underline,
+                    italic: italic,
+                    styleOfText: styleOfText,
+                };
 
-        let combinedFilter = [];
-        let transformValue = '';
+                return {
+                    ...timelineText,
+                    texts: updatedTexts.map((v, i) => (i === textIndex ? updatedText : v))
+                };
+            });
+        });
+    }, [textContent, fontText, fontSizeText, patternText, caseText, scaleText, scaleWidthText, scaleHeightText, positionXText, positionYText, rotateText, opacityText, blod, underline, italic, styleOfText]);
 
-        timelinesEffect.forEach((timeline) =>
-            timeline.effects.forEach((effectSegment) => {
-                if (currentTime >= effectSegment.startTime && currentTime <= effectSegment.endTime) {
-                    if (effectHandlers[effectSegment.config.name]) {
-                        const effectStyle = effectHandlers[effectSegment.config.name](effectSegment.config);
-                        if (effectStyle.transform) {
-                            transformValue += effectStyle.transform;
-                        }
-                        if (effectStyle.filter) {
-                            combinedFilter.push(effectStyle.filter);
-                        }
-                    }
-                }
-            })
-        );
+    useEffect(() => {
+        setTimelinesSticker((prevStickers) => {
+            return prevStickers.map((timelineSticker, index) => {
+                if (index !== timelineStickerIndex) return timelineSticker;
 
-        timelinesFilter.forEach((timeline) =>
-            timeline.filters.forEach((filterSegment) => {
-                if (currentTime >= filterSegment.startTime && currentTime <= filterSegment.endTime) {
-                    const filterStyle = filterHandlers.applyFilter(filterSegment.config);
-                    combinedFilter.push(filterStyle);
-                }
-            })
-        );
+                const updatedStickers = [...timelineSticker.stickers];
+                const sticker = updatedStickers[stickerIndex];
 
-        if (combinedFilter.length > 0) {
-            video.style.filter = combinedFilter.join(' ');
+                if (!sticker) return timelineSticker;
+
+                const updatedSticker = {
+                    ...sticker,
+                    scale: scaleValueSticker,
+                    scaleWidth: scaleValueWidthSticker,
+                    scaleHeight: scaleValueHeightSticker,
+                    positionX: positionXSticker,
+                    positionY: positionYSticker,
+                    rotate: rotateValueSticker,
+                };
+
+                return {
+                    ...timelineSticker,
+                    stickers: updatedStickers.map((v, i) => (i === stickerIndex ? updatedSticker : v))
+                };
+            });
+        });
+    }, [scaleValueSticker, scaleValueWidthSticker, scaleValueHeightSticker, positionXSticker, positionYSticker, rotateValueSticker]);
+
+    useEffect(() => {
+        setTimelinesAudio((prevAudios) => {
+            return prevAudios.map((timelineAudio, index) => {
+                if (index !== timelineAudioIndex) return timelineAudio;
+
+                const updatedAudios = [...timelineAudio.audios];
+                const audio = updatedAudios[audioIndex];
+
+                const duration = audio.duration / speedValueAudio;
+
+                const totalTimelineDuration = Math.max(totalDuration, 30);
+                const segmentWidth = (duration / totalTimelineDuration) * 100;
+
+                if (!audio) return timelineAudio;
+
+                const updatedAudio = {
+                    ...audio,
+                    width: segmentWidth,
+                    voice: voiceValueAudio,
+                    speed: speedValueAudio
+                };
+
+                return {
+                    ...timelineAudio,
+                    audios: updatedAudios.map((v, i) => (i === audioIndex ? updatedAudio : v))
+                };
+            });
+        });
+    }, [voiceValueAudio, speedValueAudio]);
+
+    useEffect(() => {
+    const handleDeleteKey = (e) => {
+        console.log(e.key);  // Kiểm tra xem có log ra phím "Delete" hay không
+        if (e.key === "Delete" && selectedElement) {
+            handleDeleteElement(selectedElement);
         }
+    };
 
-        if (transformValue) {
-            video.style.transform = transformValue;
-        }
+    window.addEventListener("keydown", handleDeleteKey);
 
-    }, [currentTime, timelinesEffect, timelinesFilter]);
+    return () => {
+        window.removeEventListener("keydown", handleDeleteKey);
+    };
+}, [selectedElement]);
+
+    const handleDeleteElement = (element) => {
+    console.log('Element to delete:', element);  // Kiểm tra phần tử sẽ bị xóa
+    switch (element.type) {
+        case 'video':
+            setTimelineVideos(prev => {
+                const updated = prev.map(timeline => {
+                    // Lọc các video không khớp với instanceId của phần tử cần xóa
+                    return {
+                        ...timeline,
+                        videos: timeline.videos.filter(video => video.instanceId !== element.instanceId)
+                    };
+                });
+                console.log('Updated timelines after delete:', updated);
+                return updated;
+            });
+            break;
+
+        case 'text':
+            setTimelinesText(prev => {
+                const updated = prev.map(timeline => {
+                    // Lọc các text không khớp với instanceId của phần tử cần xóa
+                    return {
+                        ...timeline,
+                        texts: timeline.texts.filter(text => text.instanceId !== element.instanceId)
+                    };
+                });
+                console.log('Updated timelines (text) after delete:', updated);
+                return updated;
+            });
+            break;
+
+        case 'audio':
+            setTimelinesAudio(prev => {
+                const updated = prev.map(timeline => {
+                    // Lọc các audio không khớp với instanceId của phần tử cần xóa
+                    return {
+                        ...timeline,
+                        audios: timeline.audios.filter(audio => audio.instanceId !== element.instanceId)
+                    };
+                });
+                console.log('Updated timelines (audio) after delete:', updated);
+                return updated;
+            });
+            break;
+
+        case 'sticker':
+            setTimelinesSticker(prev => {
+                const updated = prev.map(timeline => {
+                    // Lọc các sticker không khớp với instanceId của phần tử cần xóa
+                    return {
+                        ...timeline,
+                        stickers: timeline.stickers.filter(sticker => sticker.instanceId !== element.instanceId)
+                    };
+                });
+                console.log('Updated timelines (sticker) after delete:', updated);
+                return updated;
+            });
+            break;
+
+        case 'effect':
+            setTimelinesEffect(prev => {
+                const updated = prev.map(timeline => {
+                    // Lọc các effect không khớp với instanceId của phần tử cần xóa
+                    return {
+                        ...timeline,
+                        effects: timeline.effects.filter(effect => effect.instanceId !== element.instanceId)
+                    };
+                });
+                console.log('Updated timelines (effect) after delete:', updated);
+                return updated;
+            });
+            break;
+
+        case 'filter':
+            setTimelinesFilter(prev => {
+                const updated = prev.map(timeline => {
+                    // Lọc các filter không khớp với instanceId của phần tử cần xóa
+                    return {
+                        ...timeline,
+                        filters: timeline.filters.filter(filter => filter.instanceId !== element.instanceId)
+                    };
+                });
+                console.log('Updated timelines (filter) after delete:', updated);
+                return updated;
+            });
+            break;
+
+        default:
+            console.warn('Unknown type:', element.type);
+            break;
+    }
+};
+
+    useEffect(() => {
+  const videoElement = videoRef.current;
+if (videoElement) {
+    videoElement.addEventListener('seeked', () => {
+    });
+
+    return () => {
+        videoElement.removeEventListener('seeked', () => {
+        });
+    };
+}
+}, []);
 
     return (
         <body>
@@ -2270,7 +3019,7 @@ const HomePage = () => {
                     <p>EditEase</p>
                 </div>
                 <div className="export-btn">
-                    <button className="export" onClick={handleExport}>
+                    <button className="export" onClick={handleDownloadVideo}>
                         Export
                     </button>
                 </div>
@@ -4255,31 +5004,44 @@ const HomePage = () => {
                         <span>Player</span>
                     </div>
                     <div className="player-wrap">
-                        <div id="canvas-cover"
-                             className="player-show">
-                            {timelineVideos.length > 0 ? (
-                                <video
-                                    id="player"
-                                    ref={videoRef}
-                                    width="100%"
-                                    height="100%"
-                                    src={allVideos[currentVideoIndex].url}
-                                    onEnded={handleVideoEnd}
-                                    onLoadedMetadata={() => setDuration(videoRef.current.duration)}
-                                />
-                            ) : (
-                                <video
-                                    id="player"
-                                    className="player-show">
-                                </video>
-                            )
-                            }
+                        <div
+                            id="canvas-cover"
+                            className="player-show"
+                            style={{
+                                overflow: 'hidden',
+                                position: 'relative'
+                            }}
+                        >
+                            <div
+                                style={{
+                                    backgroundColor: 'black',
+                                    width: `${scaleValueWidth}%`,
+                                    height: `${scaleValueHeight}%`,
+                                    position: 'absolute',
+                                    top: `${(1 - (scaleValueHeight / 100)) * 50}%`,
+                                    left: `${(1 - (scaleValueWidth / 100)) * 50}%`,
+                                }}
+                            >
+                                {videoUrlTranslate ? (
+                                    <video
+                                        key={videoUrlTranslate}
+                                        id="player"
+                                        ref={videoRef}
+                                        width="100%"
+                                        height="100%"
+                                        src={videoUrlTranslate}
+                                    />
+                                ) : (
+                                    <video id="player"></video>
+                                )}
+                            </div>
                         </div>
+
 
                         <Stage width={videoWidth} height={videoHeight} style={{
                             position: "absolute",
                             top: "4rem",
-                            left: "43.4rem",
+                            left: "43rem",
                             width: "26.5rem",
                             height: "15rem",
                             pointerEvents: "none"
@@ -4293,16 +5055,29 @@ const HomePage = () => {
                                         currentTime >= textSegment.startTime && currentTime <= textSegment.endTime ? (
                                             <Text
                                                 key={`${index}`}
-                                                x={textSegment.x}
-                                                y={textSegment.y}
-                                                text={textSegment.content}
-                                                fontSize={textSegment.style && textSegment.style.fontSize ? parseInt(textSegment.style.fontSize) : 16}
+                                                x={textSegment.positionX}
+                                                y={textSegment.positionY}
+                                                text={
+                                                    textSegment.styleOfText === "uppercase"
+                                                        ? textSegment.content.toUpperCase()
+                                                        : textSegment.styleOfText === "lowercase"
+                                                            ? textSegment.content.toLowerCase()
+                                                            : textSegment.content
+                                                }
+                                                opacity={parseInt(textSegment.opacity)}
+                                                rotation={parseInt(textSegment.rotate)}
+                                                fontSize={textSegment.fontSize ? parseInt(textSegment.fontSize) : 16}
                                                 fill={textSegment.style && textSegment.style.color ? textSegment.style.color : "black"}
-                                                fontStyle={textSegment.style && textSegment.style.fontWeight ? textSegment.style.fontWeight : "normal"}
+                                                fontFamily={textSegment.fontStyle || "Arial"}
                                                 stroke={textSegment.style && textSegment.style.strokeColor ? textSegment.style.strokeColor : null}
                                                 strokeWidth={textSegment.style && textSegment.style.strokeWidth ? parseInt(textSegment.style.strokeWidth) : 0}
                                                 shadowColor={textSegment.style && textSegment.style.textShadow ? "rgba(255, 223, 0, 0.8)" : null}
                                                 shadowBlur={textSegment.style && textSegment.style.textShadow ? 20 : 0}
+                                                fontStyle={
+                                                    (textSegment.blod || textSegment.style.fontWeight === "bold" ? "bold" : "normal") +
+                                                    (textSegment.italic || textSegment.style.fontStyle === "italic" ? " italic" : "")
+                                                }
+                                                textDecoration={textSegment.underline ? "underline" : null}
                                                 shadowOffset={{x: 0, y: 0}}
                                                 draggable
                                                 onDragEnd={(e) => handleDragEnd(e, index, "text")}
@@ -4313,31 +5088,37 @@ const HomePage = () => {
                                 {timelinesSticker.map((timeline) =>
                                     timeline.stickers.map((stickerSegment, index) => {
                                         if (currentTime >= stickerSegment.startTime && currentTime <= stickerSegment.endTime) {
-                                            const stickerImage = new window.Image();
-                                            stickerImage.src = stickerSegment.url;
+                                            const frames = stickerFrames[stickerSegment.id];
+                                            const frameIndex = currentFrameIndex[stickerSegment.id];
 
-                                            return (
-                                                <Image
-                                                    key={`${index}`}
-                                                    x={stickerSegment.x}
-                                                    y={stickerSegment.y}
-                                                    width={100}
-                                                    height={100}
-                                                    image={stickerImage}
-                                                    draggable
-                                                    onDragEnd={(e) => handleDragEnd(e, index, "sticker")}
-                                                />
-                                            );
-                                        } else {
+                                            if (frames && frames[frameIndex]) {
+                                                return (
+                                                    <Image
+                                                        x={stickerSegment.positionX}
+                                                        y={stickerSegment.positionY}
+                                                        width={100}
+                                                        height={100}
+                                                        key={`${index}`}
+                                                        image={frames[frameIndex]}
+                                                        draggable
+                                                        onDragEnd={(e) => handleDragEnd(e, index, "sticker")}
+                                                    />
+                                                );
+                                            }
+
                                             return null;
                                         }
+
+                                        return null;
                                     })
                                 )}
                             </Layer>
                         </Stage>
+
+
                         <div className="player-actions">
                             <div className="time-play-player">
-                                <span>{currentTime ? formatTime(accumulatedTime + currentTime) : "0:00"}</span>
+                                <span>{currentTime ? formatTime(currentTime) : "0:00"}</span>
                             </div>
                             <div className="time-player">
                                 <span>{totalDuration ? formatTime(totalDuration) : "0:00"}</span>
@@ -4395,7 +5176,7 @@ const HomePage = () => {
                 <div className="detail-wrapper">
                     <div className="detail-nav">
                         <nav className="detail-nav-type">
-                            {editVideo &&
+                            {editType.video &&
                                 <div className="detail-video detail-type">
                                     <div className="detail-wrap" id="video-video"
                                          onClick={() => handleMenuVideoOptionClick('video')}>
@@ -4407,56 +5188,54 @@ const HomePage = () => {
                                     </div>
                                 </div>
                             }
-                            {editAudio &&
+                            {editType.audio &&
                                 <div className="detail-audio detail-type">
-                                    <div className="detail-wrap">
+                                    <div className="detail-wrap"
+                                         onClick={() => handleMenuEditAudioOptionClick('basic')}>
                                         <button>Basic</button>
                                     </div>
-                                    <div className="detail-wrap">
-                                        <button>Voice changer</button>
-                                    </div>
-                                    <div className="detail-wrap">
-                                        <button>Speed</button>
+                                    <div className="detail-wrap"
+                                         onClick={() => handleMenuEditAudioOptionClick('voice_changer')}>
+                                        <button>Voice Changer</button>
                                     </div>
                                 </div>
                             }
-                            {editText &&
+                            {editType.text &&
                                 <div className="detail-text detail-type">
-                                    <div className="detail-wrap">
+                                    <div className="detail-wrap"
+                                         onClick={() => handleMenuEditTextOptionClick('text')}>
                                         <button>Text</button>
                                     </div>
-                                    <div className="detail-wrap">
+                                    <div className="detail-wrap"
+                                         onClick={() => handleMenuEditTextOptionClick('animation')}>
                                         <button>Animation</button>
                                     </div>
-                                    <div className="detail-wrap">
-                                        <button>Tracking</button>
-                                    </div>
-                                    <div className="detail-wrap">
-                                        <button>Text-to-speech</button>
+                                    <div className="detail-wrap"
+                                         onClick={() => handleMenuEditTextOptionClick('text_to_speed')}>
+                                        <button>Text to speech</button>
                                     </div>
                                 </div>
                             }
-                            {editSticker &&
+                            {editType.sticker &&
                                 <div className="detail-sticker detail-type">
-                                    <div className="detail-wrap">
+                                    <div className="detail-wrap"
+                                         onClick={() => handleMenuEditStickerOptionClick('sticker')}>
                                         <button>Sticker</button>
                                     </div>
-                                    <div className="detail-wrap">
+                                    <div className="detail-wrap"
+                                         onClick={() => handleMenuEditStickerOptionClick('animation')}>
                                         <button>Animation</button>
                                     </div>
-                                    <div className="detail-wrap">
-                                        <button>Tracking</button>
-                                    </div>
                                 </div>
                             }
-                            {editEffect &&
+                            {editType.effect &&
                                 <div className="detail-effect detail-type">
                                     <div className="detail-wrap">
-                                        <button>Special effect</button>
+                                        <button>Effect</button>
                                     </div>
                                 </div>
                             }
-                            {editFilter &&
+                            {editType.filter &&
                                 <div className="detail-filter detail-type">
                                     <div className="detail-wrap">
                                         <button>Filter</button>
@@ -4466,7 +5245,7 @@ const HomePage = () => {
                         </nav>
                     </div>
                     <div className="detail-edit">
-                        {editVideo &&
+                        {editType.video &&
                             <div className="detail-edit-video-type detail-edit-wrapper">
                                 <div className="detail-edit-video-video detail-edit-wrap">
                                     {editVideoOption.video &&
@@ -4485,7 +5264,7 @@ const HomePage = () => {
                                                                 min="1"
                                                                 max="400"
                                                                 value={scaleValue}
-                                                                onInput={(e) => updateSliderValue(e.target.value)}
+                                                                onChange={updateSliderValue}
                                                             />
                                                             <input
                                                                 type="text"
@@ -4531,13 +5310,13 @@ const HomePage = () => {
                                                                    min="1"
                                                                    max="400"
                                                                    value={scaleValueWidth}
-                                                                   onInput={(e) => updateSliderWidthValue(e.target.value)}/>
+                                                                   onChange={updateSliderWidthValue}/>
                                                             <input type="text" id="slider-width-value"
                                                                    className="slider-value"
                                                                    value={`${scaleValueWidth}%`}
                                                                    onInput={(e) => updateSliderWidth(e.target.value)}/>
                                                             <div className="slider-buttons slider-width-buttons">
-                                                            <button className="slider-up slider-width-up"
+                                                                <button className="slider-up slider-width-up"
                                                                         onClick={() => increaseSliderWidth()}>
                                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                          height="24"
@@ -4573,7 +5352,7 @@ const HomePage = () => {
                                                                    min="1"
                                                                    max="400"
                                                                    value={scaleValueHeight}
-                                                                   onInput={(e) => updateSliderHeightValue(e.target.value)}/>
+                                                                   onChange={updateSliderHeightValue}/>
                                                             <input type="text" id="slider-height-value"
                                                                    className="slider-value"
                                                                    value={`${scaleValueHeight}%`}
@@ -4621,8 +5400,8 @@ const HomePage = () => {
                                                                 <label htmlFor="position-x-value">X</label>
                                                                 <input type="text" id="position-x-value"
                                                                        className="slider-value position-x-value"
-                                                                       value={`${positionX}%`}
-                                                                       onInput={(e) => updatePositionX(e.target.value)}/>
+                                                                       value={positionX}
+                                                                       onInput={(e) => updatePositionX(Math.max(0, Math.min(e.target.value, 5000)))}/>
                                                                 <div className="slider-buttons position-x-buttons">
                                                                     <button className="slider-up position-x-up"
                                                                             onClick={() => increasePositionX()}>
@@ -4658,8 +5437,8 @@ const HomePage = () => {
                                                                 <label htmlFor="position-y-value">Y</label>
                                                                 <input type="text" id="position-y-value"
                                                                        className="slider-value position-y-value"
-                                                                       value={`${positionY}%`}
-                                                                       onInput={(e) => updatePositionY(e.target.value)}/>
+                                                                       value={positionY}
+                                                                       onInput={(e) => updatePositionY(Math.max(0, Math.min(e.target.value, 5000)))}/>
                                                                 <div className="slider-buttons position-y-buttons">
                                                                     <button className="slider-up position-y-up"
                                                                             onClick={() => increasePositionY()}>
@@ -4695,10 +5474,9 @@ const HomePage = () => {
                                                         <MenuItem className="slider-container rotate-video">
                                                             <span>rotate</span>
                                                             <div className="position-video rotate">
-                                                                <label htmlFor="rotate-value">X</label>
                                                                 <input type="text" id="rotate-value"
                                                                        className="slider-value rotate-value"
-                                                                       value={`${rotateValue}%`}
+                                                                       value={rotateValue}
                                                                        onInput={(e) => updateRotate(e.target.value)}/>
                                                                 <div className="slider-buttons rotate-buttons">
                                                                     <button className="slider-up rotate-up"
@@ -4797,143 +5575,6 @@ const HomePage = () => {
                                                             </div>
                                                         </MenuItem>
                                                     </SubMenu>
-                                                    <SubMenu title="Stabilize" label="Stabilize" id="btn-dropdown"
-                                                             className="btn-dropdown">
-                                                        <MenuItem
-                                                            className="slider-container level-video-basic-stabilize video-basic-option-edit">
-                                                            <label>Level</label>
-                                                            <select
-                                                                name="stabilize-video-type"
-                                                                id="stabilize-video-type"
-                                                                className="video-type-option stabilize-video-type"
-                                                                value={stabilizeLevel}
-                                                                onChange={handleStabilizeLevelChange}
-                                                            >
-                                                                <option value="recommended">Recommended</option>
-                                                                <option value="minimumCut">Minimum cut</option>
-                                                                <option value="mostStable">Most stable</option>
-                                                            </select>
-                                                        </MenuItem>
-                                                    </SubMenu>
-                                                    <SubMenu title="Motion Blur" label="Motion Blur" id="btn-dropdown"
-                                                             className="btn-dropdown">
-                                                        <MenuItem className="slider-container slider-blur-container">
-                                                            <label htmlFor="scale-slider">Blur</label>
-                                                            <input
-                                                                type="range"
-                                                                id="scale-slider-blur"
-                                                                className="slider"
-                                                                min="1"
-                                                                max="400"
-                                                                value={blurValue}
-                                                                onInput={(e) => updateBlurValue(e.target.value)}
-                                                            />
-                                                            <input
-                                                                type="text"
-                                                                id="slider-value-blur"
-                                                                className="slider-value"
-                                                                value={`${blurValue}%`}
-                                                                onInput={(e) => updateBlurValue(e.target.value)}
-                                                            />
-                                                            <div className="slider-buttons slider-buttons-motionBlur">
-                                                                <button className="slider-up slider-blur-up"
-                                                                        onClick={increaseBlur}>
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                         height="24" viewBox="0 0 24 24" fill="none"
-                                                                         stroke="currentColor" strokeWidth="2"
-                                                                         strokeLinecap="round" strokeLinejoin="round"
-                                                                         className="lucide lucide-chevron-up">
-                                                                        <path d="m18 15-6-6-6 6"/>
-                                                                    </svg>
-                                                                </button>
-                                                                <button className="slider-down slider-blur-down"
-                                                                        onClick={decreaseBlur}>
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                         height="24" viewBox="0 0 24 24" fill="none"
-                                                                         stroke="currentColor" strokeWidth="2"
-                                                                         strokeLinecap="round" strokeLinejoin="round"
-                                                                         className="lucide lucide-chevron-down">
-                                                                        <path d="m6 9 6 6 6-6"/>
-                                                                    </svg>
-                                                                </button>
-                                                            </div>
-                                                        </MenuItem>
-
-                                                        <MenuItem className="slider-container slider-blend-container">
-                                                            <label htmlFor="scale-slider">Blend</label>
-                                                            <input
-                                                                type="range"
-                                                                id="scale-slider-blend"
-                                                                className="slider"
-                                                                min="1"
-                                                                max="400"
-                                                                value={blendValue}
-                                                                onInput={(e) => updateBlendValue(e.target.value)}
-                                                            />
-                                                            <input
-                                                                type="text"
-                                                                id="slider-value-blend"
-                                                                className="slider-value"
-                                                                value={`${blendValue}%`}
-                                                                onInput={(e) => updateBlendValue(e.target.value)}
-                                                            />
-                                                            <div className="slider-buttons">
-                                                                <button className="slider-up slider-blend-up"
-                                                                        onClick={increaseBlend}>
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                         height="24" viewBox="0 0 24 24" fill="none"
-                                                                         stroke="currentColor" strokeWidth="2"
-                                                                         strokeLinecap="round" strokeLinejoin="round"
-                                                                         className="lucide lucide-chevron-up">
-                                                                        <path d="m18 15-6-6-6 6"/>
-                                                                    </svg>
-                                                                </button>
-                                                                <button className="slider-down slider-blend-down"
-                                                                        onClick={decreaseBlend}>
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                         height="24" viewBox="0 0 24 24" fill="none"
-                                                                         stroke="currentColor" strokeWidth="2"
-                                                                         strokeLinecap="round" strokeLinejoin="round"
-                                                                         className="lucide lucide-chevron-down">
-                                                                        <path d="m6 9 6 6 6-6"/>
-                                                                    </svg>
-                                                                </button>
-                                                            </div>
-                                                        </MenuItem>
-
-                                                        <MenuItem
-                                                            className="slider-container direction-video-basic-direction video-basic-option-edit">
-                                                            <label>Direction</label>
-                                                            <select
-                                                                name="direction-video-type"
-                                                                id="direction-video-type"
-                                                                className="video-type-option direction-video-type"
-                                                                value={direction}
-                                                                onChange={handleDirectionChange}
-                                                            >
-                                                                <option value="both">Both</option>
-                                                                <option value="forward">Forward</option>
-                                                                <option value="backward">Backward</option>
-                                                            </select>
-                                                        </MenuItem>
-
-                                                        <MenuItem
-                                                            className="slider-container speed-video-basic-speed video-basic-option-edit">
-                                                            <label>Speed</label>
-                                                            <select
-                                                                name="speed-video-type"
-                                                                id="speed-video-type"
-                                                                className="video-type-option speed-video-type"
-                                                                value={speed}
-                                                                onChange={handleSpeedChange}
-                                                            >
-                                                                <option value="once">Once</option>
-                                                                <option value="twice">Twice</option>
-                                                                <option value="4Times">4 times</option>
-                                                                <option value="6Times">6 times</option>
-                                                            </select>
-                                                        </MenuItem>
-                                                    </SubMenu>
                                                     <SubMenu title="Canvas" label="Canvas" id="btn-dropdown"
                                                              className="btn-dropdown">
                                                         {/* Canvas Option Dropdown */}
@@ -4955,9 +5596,6 @@ const HomePage = () => {
                                                         {/* Blur Option */}
                                                         {canvasOption === 'blur' && (
                                                             <MenuItem className="video-basic-blur-option">
-                                                                <div className="blur-option-wrap">
-                                                                    <img src={imgTest} alt="Description"/>
-                                                                </div>
                                                                 <div className="blur-option-wrap">
                                                                     <img src={imgTest} alt="Description"/>
                                                                 </div>
@@ -5581,7 +6219,7 @@ const HomePage = () => {
                                                                 id="scale-voice"
                                                                 className="voice slider"
                                                                 min="-60"
-                                                                max="20"
+                                                                max="6"
                                                                 value={voiceValue}
                                                                 onInput={(e) => updateVoiceValue(e.target.value)}
                                                             />
@@ -5623,7 +6261,6 @@ const HomePage = () => {
                                                         </MenuItem>
                                                     </SubMenu>
                                                     <SubMenu title="Speed" label="Speed" className="btn-dropdown">
-
                                                         <MenuItem className="slider-container speed-container">
                                                             <label htmlFor="speed-slider">Speed</label>
                                                             <input
@@ -5694,6 +6331,922 @@ const HomePage = () => {
                                 </div>
                             </div>
                         }
+                        {editType.audio &&
+                            <div className="detail-edit-audio-type detail-edit-wrapper">
+                                <div className="detail-edit-audio-basic detail-edit-wrap">
+                                    {editAudioOption.basic &&
+                                        <ul className="detail-edit-audio-basic-wrap edit-parameters-wrap"
+                                            id="video-audio-basic-option">
+                                            <Sidebar className="detail-edit-video detail-edit-audio-basic-transform">
+                                                <Menu className="dropdown">
+                                                    <MenuItem className="slider-container voice-audio-container">
+                                                        <label htmlFor="voice-slider">Voice</label>
+                                                        <input
+                                                            type="range"
+                                                            id="scale-voice"
+                                                            className="voice slider"
+                                                            min="-60"
+                                                            max="6"
+                                                            value={voiceValueAudio}
+                                                            onChange={(e) => updateVoiceValueAudio(e.target.value)}
+                                                            onInput={(e) => updateVoiceValueAudio(e.target.value)}
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            id="voice-value"
+                                                            className="voice-value slider-value"
+                                                            value={`${voiceValueAudio}dB`}
+                                                            onInput={(e) => updateVoiceAudio(e.target.value)}
+                                                        />
+                                                        <div className="voice-audio-buttons slider-buttons">
+                                                            <button className="voice-audio-up"
+                                                                    onClick={() => increaseVoiceAudio()}>
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                     height="24"
+                                                                     viewBox="0 0 24 24"
+                                                                     fill="none" stroke="currentColor"
+                                                                     strokeWidth="2"
+                                                                     strokeLinecap="round"
+                                                                     strokeLinejoin="round"
+                                                                     className="lucide lucide-chevron-up">
+                                                                    <path d="m18 15-6-6-6 6"/>
+                                                                </svg>
+                                                            </button>
+                                                            <button className="voice-audio-down"
+                                                                    onClick={() => decreaseVoiceAudio()}>
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                     height="24"
+                                                                     viewBox="0 0 24 24"
+                                                                     fill="none" stroke="currentColor"
+                                                                     strokeWidth="2"
+                                                                     strokeLinecap="round"
+                                                                     strokeLinejoin="round"
+                                                                     className="lucide lucide-chevron-down">
+                                                                    <path d="m6 9 6 6 6-6"/>
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    </MenuItem>
+                                                    <MenuItem className="slider-container speed-audio-container">
+                                                        <label htmlFor="speed-slider">Speed</label>
+                                                        <input
+                                                            type="range"
+                                                            id="scale-audio-speed"
+                                                            className="speed-audio slider"
+                                                            min="1"
+                                                            max="100"
+                                                            value={speedValueAudio}
+                                                            onInput={(e) => updateSpeedValueAudio(e.target.value)}
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            id="speed-audio-value"
+                                                            className="speed-audio-value slider-value"
+                                                            value={`${speedValueAudio}x`}
+                                                            onInput={(e) => updateSpeedAudio(e.target.value)}
+                                                        />
+                                                        <div className="speed-audio-buttons slider-buttons">
+                                                            <button className="speed-audio-up"
+                                                                    onClick={() => increaseSpeedAudio()}>
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                     height="24"
+                                                                     viewBox="0 0 24 24"
+                                                                     fill="none" stroke="currentColor"
+                                                                     strokeWidth="2"
+                                                                     strokeLinecap="round"
+                                                                     strokeLinejoin="round"
+                                                                     className="lucide lucide-chevron-up">
+                                                                    <path d="m18 15-6-6-6 6"/>
+                                                                </svg>
+                                                            </button>
+                                                            <button className="speed-audio-down"
+                                                                    onClick={() => decreaseSpeedAudio()}>
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                     height="24"
+                                                                     viewBox="0 0 24 24"
+                                                                     fill="none" stroke="currentColor"
+                                                                     strokeWidth="2"
+                                                                     strokeLinecap="round"
+                                                                     strokeLinejoin="round"
+                                                                     className="lucide lucide-chevron-down">
+                                                                    <path d="m6 9 6 6 6-6"/>
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    </MenuItem>
+                                                </Menu>
+                                            </Sidebar>
+                                        </ul>
+                                    }
+                                    {editAudioOption.voice_changer &&
+                                        <>
+                                            <ul className="detail-edit-video-in-wrap edit-parameters-wrap"
+                                                id="video-animation-in-option">
+                                            </ul>
+                                            <ul className="detail-edit-video-out-wrap edit-parameters-wrap"
+                                                id="video-animation-out-option">
+                                            </ul>
+                                            <ul className="detail-edit-video-combo-wrap edit-parameters-wrap"
+                                                id="video-animation-combo-option">
+                                            </ul>
+                                        </>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        {editType.text &&
+                            <div className="detail-edit-text-type detail-edit-wrapper">
+                                <div className="detail-edit-text-video detail-edit-wrap">
+                                    {editTextOption.text &&
+                                        <ul className="detail-edit-text-text-wrap edit-parameters-wrap"
+                                            id="video-text-text-option">
+                                            <Sidebar className="detail-edit-video detail-edit-text-text-transform">
+                                                <Menu className="dropdown">
+                                                    <MenuItem
+                                                        className="slider-container text-content-edit content-text-edit"
+                                                        id="text-content-edit">
+                                                        <textarea
+                                                            value={textContent}
+                                                            onChange={handleTextChange}
+                                                        />
+                                                    </MenuItem>
+                                                    <MenuItem className="slider-container text-font-edit font-text-edit"
+                                                              id="text-font-edit">
+                                                        <label>Font</label>
+                                                        <select
+                                                            name="mode-text-type"
+                                                            id="mode-text-type"
+                                                            className="text-type-option mode-video-type"
+                                                            value={fontText}
+                                                            onChange={handleFontTextChange}
+                                                        >
+                                                            <option value="arial">Arial</option>
+                                                            <option value="helvetica">Helvetica</option>
+                                                            <option value="timesNewRoman">Times New Roman</option>
+                                                            <option value="courierNew">Courier New</option>
+                                                            <option value="verdana">Verdana</option>
+                                                            <option value="georgia">Georgia</option>
+                                                            <option value="tahoma">Tahoma</option>
+                                                            <option value="comicSansMS">Comic Sans MS</option>
+                                                            <option value="trebuchetMS">Trebuchet MS</option>
+                                                            <option value="impact">Impact</option>
+                                                        </select>
+                                                    </MenuItem>
+                                                    <MenuItem className="slider-container font-size-text-edit">
+                                                        <label htmlFor="scale-text-slider">Font Size</label>
+                                                        <input
+                                                            type="range"
+                                                            id="font-size-text-slider"
+                                                            className="slider slider-text"
+                                                            min="5"
+                                                            max="300"
+                                                            value={fontSizeText}
+                                                            onChange={updateFontSizeTextValue}
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            id="font-size-text-slider-value"
+                                                            className="font-size-text-slider-value slider-value"
+                                                            value={fontSizeText}
+                                                            onInput={(e) => updateFontSizeText(e.target.value)}
+                                                        />
+                                                        <div className="text-buttons slider-buttons">
+                                                            <button className="slider-text-up"
+                                                                    onClick={() => increaseFontSizeText()}>
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                     height="24"
+                                                                     viewBox="0 0 24 24"
+                                                                     fill="none" stroke="currentColor"
+                                                                     strokeWidth="2"
+                                                                     strokeLinecap="round"
+                                                                     strokeLinejoin="round"
+                                                                     className="lucide lucide-chevron-up">
+                                                                    <path d="m18 15-6-6-6 6"/>
+                                                                </svg>
+                                                            </button>
+                                                            <button className="slider-text-down"
+                                                                    onClick={() => decreaseFontSizeText()}>
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                     height="24"
+                                                                     viewBox="0 0 24 24"
+                                                                     fill="none" stroke="currentColor"
+                                                                     strokeWidth="2"
+                                                                     strokeLinecap="round"
+                                                                     strokeLinejoin="round"
+                                                                     className="lucide lucide-chevron-down">
+                                                                    <path d="m6 9 6 6 6-6"/>
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    </MenuItem>
+                                                    <MenuItem
+                                                        className="slider-container text-pattern-edit pattern-text-edit"
+                                                        id="text-pattern-edit">
+                                                        <label>Pattern</label>
+                                                        <button className="bold-btn" onClick={() => (setBlod(!blod))}>
+                                                            <FaBold/></button>
+                                                        <button className="underline-btn"
+                                                                onClick={() => (setUnderline(!underline))}>
+                                                            <FaUnderline/></button>
+                                                        <button className="italic-btn"
+                                                                onClick={() => (setItalic(!italic))}><FaItalic/>
+                                                        </button>
+                                                    </MenuItem>
+                                                    <MenuItem className="slider-container text-case-edit case-text-edit"
+                                                              id="text-case-edit">
+                                                        <label>Case</label>
+                                                        <button className="upper-case-btn"
+                                                                onClick={() => (setStyleOfText("uppercase"))}>
+                                                            <RxLetterCaseUppercase/></button>
+                                                        <button className="lower-case-btn"
+                                                                onClick={() => (setStyleOfText("lowercase"))}>
+                                                            <RxLetterCaseLowercase/></button>
+                                                        <button className="letter-case-btn"
+                                                                onClick={() => (setStyleOfText("lettercase"))}>
+                                                            <RxLetterCaseToggle/></button>
+                                                    </MenuItem>
+                                                    <SubMenu title="Transform" label="Transform" id="btn-dropdown"
+                                                             className="btn-dropdown">
+                                                        <MenuItem className="slider-container scale-text-edit">
+                                                            <label htmlFor="scale-slider">Scale</label>
+                                                            <input
+                                                                type="range"
+                                                                id="scale-text-slider"
+                                                                className="slider slider-text"
+                                                                min="1"
+                                                                max="400"
+                                                                value={scaleText}
+                                                                onChange={updateScaleTextValue}
+                                                            />
+                                                            <input
+                                                                type="text"
+                                                                id="slider-text-value"
+                                                                className="slider-value slider-text-value"
+                                                                value={`${scaleText}%`}
+                                                                onInput={(e) => updateSliderScaleText(e.target.value)}
+                                                            />
+                                                            <div className="slider-buttons slider-text-buttons">
+                                                                <button className="slider-text-up"
+                                                                        onClick={() => increaseSliderScaleText()}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24"
+                                                                         fill="none" stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round"
+                                                                         strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-up">
+                                                                        <path d="m18 15-6-6-6 6"/>
+                                                                    </svg>
+                                                                </button>
+                                                                <button className="slider-text-down"
+                                                                        onClick={() => decreaseSliderScaleText()}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24"
+                                                                         fill="none" stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round"
+                                                                         strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-down">
+                                                                        <path d="m6 9 6 6 6-6"/>
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        </MenuItem>
+                                                        <MenuItem
+                                                            className="slider-container slider-width-container scale-width-text-edit">
+                                                            <label htmlFor="scale-slider scale-width-text-slider">Scale
+                                                                width</label>
+                                                            <input type="range" id="scale-width-text-slider"
+                                                                   className="slider slider-text"
+                                                                   min="1"
+                                                                   max="400"
+                                                                   value={scaleWidthText}
+                                                                   onChange={updateSliderScaleWidthTextValue}/>
+                                                            <input type="text" id="slider-width-text-value"
+                                                                   className="slider-value slider-text-value"
+                                                                   value={`${scaleWidthText}%`}
+                                                                   onInput={(e) => updateSliderWidthText(e.target.value)}/>
+                                                            <div className="slider-buttons slider-width-text-buttons">
+                                                                <button className="slider-up slider-width-text-up"
+                                                                        onClick={() => increaseSliderWidthText()}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24"
+                                                                         fill="none" stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round"
+                                                                         strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-up">
+                                                                        <path d="m18 15-6-6-6 6"/>
+                                                                    </svg>
+                                                                </button>
+                                                                <button className="slider-down slider-width-text-down"
+                                                                        onClick={() => decreaseSliderWidthText()}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24"
+                                                                         fill="none" stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round"
+                                                                         strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-down">
+                                                                        <path d="m6 9 6 6 6-6"/>
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        </MenuItem>
+                                                        <MenuItem
+                                                            className="slider-container slider-height-container scale-height-text-edit">
+                                                            <label htmlFor="scale-slider scale-height-text-slide">Scale
+                                                                height</label>
+                                                            <input type="range" id="scale-height-text-slider"
+                                                                   className="slider slider-text"
+                                                                   min="1"
+                                                                   max="400"
+                                                                   value={scaleHeightText}
+                                                                   onChange={updateSliderScaleHeightTextValue}/>
+                                                            <input type="text" id="slider-height-text-value"
+                                                                   className="slider-value slider-text-value"
+                                                                   value={`${scaleHeightText}%`}
+                                                                   onInput={(e) => updateSliderHeightText(e.target.value)}/>
+                                                            <div className="slider-buttons slider-height-text-buttons">
+                                                                <button className="slider-up slider-height-text-up"
+                                                                        onClick={() => increaseSliderHeightText()}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24"
+                                                                         fill="none" stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round"
+                                                                         strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-up">
+                                                                        <path d="m18 15-6-6-6 6"/>
+                                                                    </svg>
+                                                                </button>
+                                                                <button className="slider-down slider-height-text-down"
+                                                                        onClick={() => decreaseSliderHeightText()}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24"
+                                                                         fill="none" stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round"
+                                                                         strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-down">
+                                                                        <path d="m6 9 6 6 6-6"/>
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        </MenuItem>
+                                                        <MenuItem className="uniform-slider uniform-text-slider">
+                                                            <span>Uniform scale</span>
+                                                            <label>
+                                                                <input type="checkbox"
+                                                                       className="uniform-slider-check uniform-slider-text-check"
+                                                                       id="uniform-slider-text-check"/>
+                                                                <div className="slider-text-check"></div>
+                                                            </label>
+                                                        </MenuItem>
+                                                        <MenuItem
+                                                            className="slider-container position-video position-text-edit">
+                                                            <span>position</span>
+                                                            <div
+                                                                className="position-video position-x position-x-text-edit">
+                                                                <label htmlFor="position-x-value">X</label>
+                                                                <input type="text" id="position-x-text-value"
+                                                                       className="slider-value position-x-text-value"
+                                                                       value={positionXText}
+                                                                       onInput={(e) => updatePositionXText(Math.max(0, Math.min(e.target.value, 5000)))}/>
+                                                                <div
+                                                                    className="slider-buttons position-x-buttons position-x-text-buttons">
+                                                                    <button className="slider-up position-x-text-up"
+                                                                            onClick={() => increasePositionXText()}>
+                                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                                             width="24"
+                                                                             height="24"
+                                                                             viewBox="0 0 24 24"
+                                                                             fill="none" stroke="currentColor"
+                                                                             strokeWidth="2"
+                                                                             strokeLinecap="round"
+                                                                             strokeLinejoin="round"
+                                                                             className="lucide lucide-chevron-up">
+                                                                            <path d="m18 15-6-6-6 6"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                    <button className="slider-down position-x-down"
+                                                                            onClick={() => decreasePositionXText()}>
+                                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                                             width="24"
+                                                                             height="24"
+                                                                             viewBox="0 0 24 24"
+                                                                             fill="none" stroke="currentColor"
+                                                                             strokeWidth="2"
+                                                                             strokeLinecap="round"
+                                                                             strokeLinejoin="round"
+                                                                             className="lucide lucide-chevron-down">
+                                                                            <path d="m6 9 6 6 6-6"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            <div
+                                                                className="position-video position-y position-y-text-edit">
+                                                                <label htmlFor="position-y-value">Y</label>
+                                                                <input type="text" id="position-y-text-value"
+                                                                       className="slider-value position-y-text-value"
+                                                                       value={positionYText}
+                                                                       onInput={(e) => updatePositionYText(Math.max(0, Math.min(e.target.value, 5000)))}/>
+                                                                <div
+                                                                    className="slider-buttons position-y-buttons position-y-text-buttons">
+                                                                    <button className="slider-up position-y-text-up"
+                                                                            onClick={() => increasePositionYText()}>
+                                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                                             width="24"
+                                                                             height="24"
+                                                                             viewBox="0 0 24 24"
+                                                                             fill="none" stroke="currentColor"
+                                                                             strokeWidth="2"
+                                                                             strokeLinecap="round"
+                                                                             strokeLinejoin="round"
+                                                                             className="lucide lucide-chevron-up">
+                                                                            <path d="m18 15-6-6-6 6"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                    <button className="slider-down position-y-text-down"
+                                                                            onClick={() => decreasePositionYText()}>
+                                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                                             width="24"
+                                                                             height="24"
+                                                                             viewBox="0 0 24 24"
+                                                                             fill="none" stroke="currentColor"
+                                                                             strokeWidth="2"
+                                                                             strokeLinecap="round"
+                                                                             strokeLinejoin="round"
+                                                                             className="lucide lucide-chevron-down">
+                                                                            <path d="m6 9 6 6 6-6"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </MenuItem>
+                                                        <MenuItem
+                                                            className="slider-container rotate-video rotate-text-edit">
+                                                            <span>rotate</span>
+                                                            <div className="position-video rotate">
+                                                                <input type="text" id="rotate-text-value"
+                                                                       className="slider-value rotate-value rotate-text-value"
+                                                                       value={rotateText}
+                                                                       onInput={(e) => updateRotateText(e.target.value)}/>
+                                                                <div
+                                                                    className="slider-buttons rotate-buttons rotate-text-buttons">
+                                                                    <button className="slider-up rotate-text-up"
+                                                                            onClick={() => increaseRotateText()}>
+                                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                                             width="24"
+                                                                             height="24"
+                                                                             viewBox="0 0 24 24"
+                                                                             fill="none" stroke="currentColor"
+                                                                             strokeWidth="2"
+                                                                             strokeLinecap="round"
+                                                                             strokeLinejoin="round"
+                                                                             className="lucide lucide-chevron-up">
+                                                                            <path d="m18 15-6-6-6 6"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                    <button className="slider-down rotate-text-down"
+                                                                            onClick={() => decreaseRotateText()}>
+                                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                                             width="24"
+                                                                             height="24"
+                                                                             viewBox="0 0 24 24"
+                                                                             fill="none" stroke="currentColor"
+                                                                             strokeWidth="2"
+                                                                             strokeLinecap="round"
+                                                                             strokeLinejoin="round"
+                                                                             className="lucide lucide-chevron-down">
+                                                                            <path d="m6 9 6 6 6-6"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </MenuItem>
+                                                    </SubMenu>
+                                                    <SubMenu title="Blend" label="Blend" id="btn-dropdown"
+                                                             className="btn-dropdown">
+                                                        <MenuItem
+                                                            className="slider-container opacity-text-basic-blend text-basic-option-edit">
+                                                            <label>Opacity</label>
+                                                            <input
+                                                                type="range"
+                                                                id="opacity-text-slider"
+                                                                className="slider slider-text"
+                                                                min="0"
+                                                                max="100"
+                                                                value={opacityText}
+                                                                onInput={(e) => updateOpacityValueText(e.target.value)}
+                                                            />
+                                                            <input
+                                                                type="text"
+                                                                id="opacity-text-value"
+                                                                className="slider-value slider-text-value"
+                                                                value={`${opacityText}%`}
+                                                                onInput={(e) => updateOpacityText(e.target.value)}
+                                                            />
+                                                            <div
+                                                                className="slider-buttons slider-opacity-buttons slider-opacity-text-buttons">
+                                                                <button className="slider-up slider-up-text-opacity"
+                                                                        onClick={increaseOpacityText}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24" viewBox="0 0 24 24" fill="none"
+                                                                         stroke="currentColor" strokeWidth="2"
+                                                                         strokeLinecap="round" strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-up">
+                                                                        <path d="m18 15-6-6-6 6"/>
+                                                                    </svg>
+                                                                </button>
+                                                                <button className="slider-down slider-down-text-opacity"
+                                                                        onClick={decreaseOpacityText}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24" viewBox="0 0 24 24" fill="none"
+                                                                         stroke="currentColor" strokeWidth="2"
+                                                                         strokeLinecap="round" strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-down">
+                                                                        <path d="m6 9 6 6 6-6"/>
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        </MenuItem>
+                                                    </SubMenu>
+                                                </Menu>
+                                            </Sidebar>
+                                        </ul>
+                                    }
+                                    {editTextOption.animation &&
+                                        <>
+                                            <ul className="detail-edit-video-in-wrap edit-parameters-wrap"
+                                                id="video-animation-in-option">
+                                            </ul>
+                                            <ul className="detail-edit-video-out-wrap edit-parameters-wrap"
+                                                id="video-animation-out-option">
+                                            </ul>
+                                            <ul className="detail-edit-video-combo-wrap edit-parameters-wrap"
+                                                id="video-animation-combo-option">
+                                            </ul>
+                                        </>
+                                    }
+                                    {editTextOption.text_to_speed &&
+                                        <>
+                                            <ul className="detail-edit-video-in-wrap edit-parameters-wrap"
+                                                id="video-animation-in-option">
+                                            </ul>
+                                            <ul className="detail-edit-video-out-wrap edit-parameters-wrap"
+                                                id="video-animation-out-option">
+                                            </ul>
+                                            <ul className="detail-edit-video-combo-wrap edit-parameters-wrap"
+                                                id="video-animation-combo-option">
+                                            </ul>
+                                        </>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        {editType.sticker &&
+                            <div className="detail-edit-sticker-type detail-edit-wrapper">
+                                <div className="detail-edit-sticker-sticker detail-edit-wrap">
+                                    {editStickerOption.sticker &&
+                                        <ul className="detail-edit-sticker-sticker-wrap edit-parameters-wrap"
+                                            id="sticker-sticker-basic-option">
+                                            <Sidebar
+                                                className="detail-edit-video detail-edit-sticker-sticker-transform">
+                                                <Menu className="dropdown">
+                                                    <SubMenu title="Transform" label="Transform" id="btn-dropdown"
+                                                             className="btn-dropdown">
+                                                        <MenuItem className="slider-container slider-sticker-container">
+                                                            <label htmlFor="scale-slider">Scale</label>
+                                                            <input
+                                                                type="range"
+                                                                id="scale-sticker-slider"
+                                                                className="slider slider-sticker"
+                                                                min="1"
+                                                                max="400"
+                                                                value={scaleValueSticker}
+                                                                onChange={updateSliderValueSticker}
+                                                            />
+                                                            <input
+                                                                type="text"
+                                                                id="slider-sticker-value"
+                                                                className="slider-value slider-sticker-value"
+                                                                value={`${scaleValueSticker}%`}
+                                                                onInput={(e) => updateSliderSticker(e.target.value)}
+                                                            />
+                                                            <div className="slider-buttons slider-sticker-buttons">
+                                                                <button className="slider-sticker-up"
+                                                                        onClick={() => increaseSliderSticker()}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24"
+                                                                         fill="none" stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round"
+                                                                         strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-up">
+                                                                        <path d="m18 15-6-6-6 6"/>
+                                                                    </svg>
+                                                                </button>
+                                                                <button className="slider-sticker-down"
+                                                                        onClick={() => decreaseSliderSticker()}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24"
+                                                                         fill="none" stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round"
+                                                                         strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-down">
+                                                                        <path d="m6 9 6 6 6-6"/>
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        </MenuItem>
+                                                        <MenuItem
+                                                            className="slider-container slider-width-sticker-container">
+                                                            <label htmlFor="scale-slider scale-width-sticker-slider">Scale
+                                                                width</label>
+                                                            <input type="range" id="scale-width-sticker-slider"
+                                                                   className="slider slider-sticker"
+                                                                   min="1"
+                                                                   max="400"
+                                                                   value={scaleValueWidthSticker}
+                                                                   onChange={updateSliderWidthValueSticker}/>
+                                                            <input type="text" id="slider-width-sticker-value"
+                                                                   className="slider-value slider-sticker-value"
+                                                                   value={`${scaleValueWidthSticker}%`}
+                                                                   onInput={(e) => updateSliderWidthSticker(e.target.value)}/>
+                                                            <div
+                                                                className="slider-buttons slider-width-sticker-buttons">
+                                                                <button className="slider-up slider-width-sticker-up"
+                                                                        onClick={() => increaseSliderWidthSticker()}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24"
+                                                                         fill="none" stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round"
+                                                                         strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-up">
+                                                                        <path d="m18 15-6-6-6 6"/>
+                                                                    </svg>
+                                                                </button>
+                                                                <button
+                                                                    className="slider-down slider-width-sticker-down"
+                                                                    onClick={() => decreaseSliderWidthSticker()}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24"
+                                                                         fill="none" stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round"
+                                                                         strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-down">
+                                                                        <path d="m6 9 6 6 6-6"/>
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        </MenuItem>
+                                                        <MenuItem
+                                                            className="slider-container slider-height-sticker-container">
+                                                            <label htmlFor="scale-slider scale-height-sticker-slide">Scale
+                                                                height</label>
+                                                            <input type="range" id="scale-height-sticker-slider"
+                                                                   className="slider slider-sticker"
+                                                                   min="1"
+                                                                   max="400"
+                                                                   value={scaleValueHeightSticker}
+                                                                   onChange={updateSliderHeightValueSticker}/>
+                                                            <input type="text" id="slider-height-sticker-value"
+                                                                   className="slider-value slider-sticker-value"
+                                                                   value={`${scaleValueHeightSticker}%`}
+                                                                   onInput={(e) => updateSliderHeightSticker(e.target.value)}/>
+                                                            <div
+                                                                className="slider-buttons slider-height-sticker-buttons">
+                                                                <button className="slider-up slider-height-sticker-up"
+                                                                        onClick={() => increaseSliderHeightSticker()}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24"
+                                                                         fill="none" stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round"
+                                                                         strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-up">
+                                                                        <path d="m18 15-6-6-6 6"/>
+                                                                    </svg>
+                                                                </button>
+                                                                <button
+                                                                    className="slider-down slider-height-sticker-down"
+                                                                    onClick={() => decreaseSliderHeightSticker()}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24"
+                                                                         viewBox="0 0 24 24"
+                                                                         fill="none" stroke="currentColor"
+                                                                         strokeWidth="2"
+                                                                         strokeLinecap="round"
+                                                                         strokeLinejoin="round"
+                                                                         className="lucide lucide-chevron-down">
+                                                                        <path d="m6 9 6 6 6-6"/>
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        </MenuItem>
+                                                        <MenuItem className="uniform-slider uniform-sticker-slider">
+                                                            <span>Uniform scale</span>
+                                                            <label>
+                                                                <input type="checkbox"
+                                                                       className="uniform-slider-check uniform-slider-sticker-check"
+                                                                       id="uniform-slider-sticker-check"/>
+                                                                <div className="slider-sticker-check"></div>
+                                                            </label>
+                                                        </MenuItem>
+                                                        <MenuItem
+                                                            className="slider-container position-video position-sticker">
+                                                            <span>position</span>
+                                                            <div
+                                                                className="position-video position-x position-x-sticker">
+                                                                <label htmlFor="position-x-value">X</label>
+                                                                <input type="text" id="position-x-sticker-value"
+                                                                       className="slider-value position-x-sticker-value"
+                                                                       value={positionXSticker}
+                                                                       onInput={(e) => updatePositionXSticker(Math.max(0, Math.min(e.target.value, 5000)))}/>
+                                                                <div
+                                                                    className="slider-buttons position-x-buttons position-x-sticker-buttons">
+                                                                    <button className="slider-up position-x-sticker-up"
+                                                                            onClick={() => increasePositionXSticker()}>
+                                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                                             width="24"
+                                                                             height="24"
+                                                                             viewBox="0 0 24 24"
+                                                                             fill="none" stroke="currentColor"
+                                                                             strokeWidth="2"
+                                                                             strokeLinecap="round"
+                                                                             strokeLinejoin="round"
+                                                                             className="lucide lucide-chevron-up">
+                                                                            <path d="m18 15-6-6-6 6"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                    <button
+                                                                        className="slider-down position-x-sticker-down"
+                                                                        onClick={() => decreasePositionXSticker()}>
+                                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                                             width="24"
+                                                                             height="24"
+                                                                             viewBox="0 0 24 24"
+                                                                             fill="none" stroke="currentColor"
+                                                                             strokeWidth="2"
+                                                                             strokeLinecap="round"
+                                                                             strokeLinejoin="round"
+                                                                             className="lucide lucide-chevron-down">
+                                                                            <path d="m6 9 6 6 6-6"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            <div
+                                                                className="position-video position-y position-y-sticker">
+                                                                <label htmlFor="position-y-value">Y</label>
+                                                                <input type="text" id="position-y-sticker-value"
+                                                                       className="slider-value position-y-sticker-value"
+                                                                       value={positionYSticker}
+                                                                       onInput={(e) => updatePositionYSticker(Math.max(0, Math.min(e.target.value, 5000)))}/>
+                                                                <div
+                                                                    className="slider-buttons position-y-buttons position-y-sticker-buttons">
+                                                                    <button className="slider-up position-y-sticker-up"
+                                                                            onClick={() => increasePositionYSticker()}>
+                                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                                             width="24"
+                                                                             height="24"
+                                                                             viewBox="0 0 24 24"
+                                                                             fill="none" stroke="currentColor"
+                                                                             strokeWidth="2"
+                                                                             strokeLinecap="round"
+                                                                             strokeLinejoin="round"
+                                                                             className="lucide lucide-chevron-up">
+                                                                            <path d="m18 15-6-6-6 6"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                    <button
+                                                                        className="slider-down position-y-sticker-down"
+                                                                        onClick={() => decreasePositionYSticker()}>
+                                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                                             width="24"
+                                                                             height="24"
+                                                                             viewBox="0 0 24 24"
+                                                                             fill="none" stroke="currentColor"
+                                                                             strokeWidth="2"
+                                                                             strokeLinecap="round"
+                                                                             strokeLinejoin="round"
+                                                                             className="lucide lucide-chevron-down">
+                                                                            <path d="m6 9 6 6 6-6"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </MenuItem>
+                                                        <MenuItem
+                                                            className="slider-container rotate-video rotate-sticker">
+                                                            <span>rotate</span>
+                                                            <div className="position-video rotate">
+                                                                <input type="text" id="rotate-value"
+                                                                       className="slider-value rotate-value rotate-sticker-value"
+                                                                       value={rotateValueSticker}
+                                                                       onInput={(e) => updateRotateSticker(e.target.value)}/>
+                                                                <div
+                                                                    className="slider-buttons rotate-buttons rotate-sticker-buttons">
+                                                                    <button className="slider-up rotate-sticker-up"
+                                                                            onClick={() => increaseRotateSticker()}>
+                                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                                             width="24"
+                                                                             height="24"
+                                                                             viewBox="0 0 24 24"
+                                                                             fill="none" stroke="currentColor"
+                                                                             strokeWidth="2"
+                                                                             strokeLinecap="round"
+                                                                             strokeLinejoin="round"
+                                                                             className="lucide lucide-chevron-up">
+                                                                            <path d="m18 15-6-6-6 6"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                    <button className="slider-down rotate-sticker-down"
+                                                                            onClick={() => decreaseRotateSticker()}>
+                                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                                             width="24"
+                                                                             height="24"
+                                                                             viewBox="0 0 24 24"
+                                                                             fill="none" stroke="currentColor"
+                                                                             strokeWidth="2"
+                                                                             strokeLinecap="round"
+                                                                             strokeLinejoin="round"
+                                                                             className="lucide lucide-chevron-down">
+                                                                            <path d="m6 9 6 6 6-6"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </MenuItem>
+                                                    </SubMenu>
+                                                </Menu>
+                                            </Sidebar>
+                                        </ul>
+                                    }
+                                    {editStickerOption.animation &&
+                                        <>
+                                            <ul className="detail-edit-video-in-wrap edit-parameters-wrap"
+                                                id="video-animation-in-option">
+                                            </ul>
+                                            <ul className="detail-edit-video-out-wrap edit-parameters-wrap"
+                                                id="video-animation-out-option">
+                                            </ul>
+                                            <ul className="detail-edit-video-combo-wrap edit-parameters-wrap"
+                                                id="video-animation-combo-option">
+                                            </ul>
+                                        </>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        {editType.effect &&
+                            <div className="detail-edit-effect-type detail-edit-wrapper">
+                                <div className="detail-edit-effect-effect detail-edit-wrap">
+                                    <ul className="detail-edit-effect-effect-wrap edit-parameters-wrap"
+                                        id="effect-effect-basic-option">
+                                        <Sidebar className="detail-edit-video detail-edit-effect-effect-transform">
+                                            <Menu className="dropdown">
+                                                <MenuItem className="slider-container name-effect-container">
+                                                    <label>Name: {effectName}</label>
+                                                </MenuItem>
+                                            </Menu>
+                                        </Sidebar>
+                                    </ul>
+                                </div>
+                            </div>
+                        }
+                        {editType.filter &&
+                            <div className="detail-edit-video-type detail-edit-wrapper">
+                                <div className="detail-edit-video-video detail-edit-wrap">
+                                    <ul className="detail-edit-video-basic-wrap edit-parameters-wrap"
+                                        id="video-video-basic-option">
+                                        <Sidebar className="detail-edit-video detail-edit-filter-filter-transform">
+                                            <Menu className="dropdown">
+                                                <MenuItem className="slider-container name-filter-container">
+                                                    <label>Name: {filterName}</label>
+                                                </MenuItem>
+                                            </Menu>
+                                        </Sidebar>
+                                    </ul>
+                                </div>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
@@ -5707,14 +7260,18 @@ const HomePage = () => {
                     ))}
                 </div>
                 <input
+        ref={seekBarRef}
                     className="seek-bar"
                     type="range"
                     min="0"
                     max="100"
-                    value={(currentTime / duration) * 100}
-                    onChange={handleSeek}
-                    orient="vertical"
+                    value={(currentTime / totalDuration) * 100}
+                    onInput={(e) => {
+      console.log('Seek-bar input:', e.target.value);
+      handleSeek(e);
+  }}
                     style={{width: `${widthTime}%`}}
+
                 />
                 <div className="video-timeline">
                     {(timelineVideos?.length > 0 || timelinesText?.length > 0 || timelinesAudio?.length > 0 || timelinesSticker?.length > 0 || timelinesEffect?.length > 0 || timelinesFilter?.length > 0) && (
@@ -5723,6 +7280,7 @@ const HomePage = () => {
                             onDrop={(e) => handleDrop(e, null)}
                             onDragOver={handleDragOver}
                             onDragLeave={handleDragLeave}
+  onDragEnd={(e) => handleDragEnd(e)}
                         >
                         </div>
                     )}
@@ -5738,7 +7296,12 @@ const HomePage = () => {
                                      style={{left: `${file.position}%`, width: `${file.width}%`}}
                                      draggable="true"
                                      onDragStart={(e) => handleDragStart(e, file, timelineIndex, "video")}
-                                     onClick={() => handleClick(file, "video")}
+                                     onClick={() => {
+                                         handleMenuEditType("video");
+                                         handleClick(file, "video");
+                                         handleVideoSelect(file, timelineIndex, index);
+                                     }}
+
                                      onDoubleClick={() => handleDoubleClick(file, "video")}>
                                     <div
                                         className="resize-handle resize-handle-left"
@@ -5776,7 +7339,11 @@ const HomePage = () => {
                                     }}
                                     draggable="true"
                                     onDragStart={(e) => handleDragStart(e, textSegment, timelineIndex, "text")}
-                                    onClick={() => handleClick(textSegment, "text")}
+                                    onClick={() => {
+                                        handleMenuEditType("text");
+                                        handleClick(textSegment, "text");
+                                        handleTextSelect(textSegment, timelineIndex, index);
+                                    }}
                                     onDoubleClick={() => handleDoubleClick(textSegment, "text")}>
                                     <div
                                         className="resize-handle resize-handle-left"
@@ -5811,7 +7378,11 @@ const HomePage = () => {
                                     }}
                                     draggable="true"
                                     onDragStart={(e) => handleDragStart(e, audioSegment, timelineIndex, "audio")}
-                                    onClick={() => handleClick(audioSegment, "audio")}
+                                    onClick={() => {
+                                        handleMenuEditType("audio");
+                                        handleClick(audioSegment, "audio");
+                                        handleTextSelect(audioSegment, timelineIndex, index);
+                                    }}
                                     onDoubleClick={() => handleDoubleClick(audioSegment, "audio")}>
                                     <div
                                         className="resize-handle resize-handle-left"
@@ -5846,7 +7417,11 @@ const HomePage = () => {
                                     }}
                                     draggable="true"
                                     onDragStart={(e) => handleDragStart(e, stickerSegment, timelineIndex, "sticker")}
-                                    onClick={() => handleClick(stickerSegment, "sticker")}
+                                    onClick={() => {
+                                        handleMenuEditType("sticker");
+                                        handleClick(stickerSegment, "sticker");
+                                        handleTextSelect(stickerSegment, timelineIndex, index);
+                                    }}
                                     onDoubleClick={() => handleDoubleClick(stickerSegment, "sticker")}>
                                     <div
                                         className="resize-handle resize-handle-left"
@@ -5881,7 +7456,11 @@ const HomePage = () => {
                                     }}
                                     draggable="true"
                                     onDragStart={(e) => handleDragStart(e, effectSegment, timelineIndex, "effect")}
-                                    onClick={() => handleClick(effectSegment, "effect")}
+                                    onClick={() => {
+                                        handleMenuEditType("effect");
+                                        handleClick(effectSegment, "effect");
+                                        handleTextSelect(effectSegment, timelineIndex, index);
+                                    }}
                                     onDoubleClick={() => handleDoubleClick(effectSegment, "effect")}>
                                     <div
                                         className="resize-handle resize-handle-left"
@@ -5916,7 +7495,11 @@ const HomePage = () => {
                                     }}
                                     draggable="true"
                                     onDragStart={(e) => handleDragStart(e, filterSegment, timelineIndex, "filter")}
-                                    onClick={() => handleClick(filterSegment, "filter")}
+                                    onClick={() => {
+                                        handleMenuEditType("filter");
+                                        handleClick(filterSegment, "filter");
+                                        handleTextSelect(filterSegment, timelineIndex, index);
+                                    }}
                                     onDoubleClick={() => handleDoubleClick(filterSegment, "filter")}>
                                     <div
                                         className="resize-handle resize-handle-left"
@@ -5941,6 +7524,7 @@ const HomePage = () => {
                             onDrop={(e) => handleDrop(e, null)}
                             onDragOver={handleDragOver}
                             onDragLeave={handleDragLeave}
+  onDragEnd={(e) => handleDragEnd(e)}
                         >
                         </div>
                     ) : (
@@ -5949,10 +7533,12 @@ const HomePage = () => {
                             onDrop={(e) => handleDrop(e, null)}
                             onDragOver={handleDragOver}
                             onDragLeave={handleDragLeave}
+  onDragEnd={(e) => handleDragEnd(e)}
                         >
                         </div>
                     )}
                 </div>
+
             </div>
         </div>
         </body>
