@@ -3,7 +3,7 @@ import {TextField, Button, MenuItem} from '@mui/material';
 import {supabase} from '../../supabaseClient';
 import {v4 as uuidv4} from 'uuid';
 import axios from 'axios';
-import {Link} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 
 const AudioCreate = ({onOptionSelect}) => {
     const [audioFile, setAudioFile] = useState(null);
@@ -13,6 +13,7 @@ const AudioCreate = ({onOptionSelect}) => {
     const [category, setCategory] = useState('');
     const [audioDuration, setAudioDuration] = useState('');
     const token = localStorage.getItem('access_token');
+    const navigate = useNavigate();
 
     const categories = [
         {value: 'vlog', label: 'Vlog'},
@@ -108,6 +109,7 @@ const AudioCreate = ({onOptionSelect}) => {
 
             if (response.status === 201) {
                 alert('File uploaded and saved successfully!');
+                navigate('/admin/audio', { state: { onOptionSelectValue: 'audio' } });
             } else {
                 alert('Failed to save audio details to database');
             }

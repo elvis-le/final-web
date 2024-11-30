@@ -1,5 +1,5 @@
 import {Button, MenuItem, TextField} from "@mui/material";
-import {Link} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 import React, {useState} from "react";
 import {v4 as uuidv4} from "uuid";
 import {supabase} from "../../supabaseClient";
@@ -19,6 +19,7 @@ const TextCreate = ({ onOptionSelect }) => {
 { value: 'basic', label: 'Basic' },
 { value: 'multicolor', label: 'Multicolor' }
     ];
+    const navigate = useNavigate();
 
     function handleJsonChange(event) {
   const file = event.target.files[0];
@@ -73,6 +74,7 @@ const TextCreate = ({ onOptionSelect }) => {
 
             if (response.status === 201) {
                 alert('File uploaded and saved successfully!');
+            navigate('/admin/text', { state: { onOptionSelectValue: 'text' } });
             } else {
                 alert('Failed to save text details to database');
             }

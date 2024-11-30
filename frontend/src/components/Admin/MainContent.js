@@ -14,13 +14,21 @@ import EffectEdit from "./EffectEdit";
 import FilterManage from "./FilterManage";
 import FilterCreate from "./FilterCreate";
 import FilterEdit from "./FilterEdit";
-import {useParams} from "react-router-dom";
+import {useParams, useLocation} from "react-router-dom";
 import UserManage from "./UserManage";
 import Profile from "./Profile";
 
 const MainContent = ({ selectedOption }) => {
     const { type, id } = useParams();
     const [selectedOptionContent, setSelectedOptionContent] = useState('audio')
+    const location = useLocation();
+    const { onOptionSelectValue } = location.state || {};
+
+    useEffect(() => {
+        if (onOptionSelectValue) {
+            setSelectedOptionContent(onOptionSelectValue); // Gọi onOptionSelect nếu giá trị được truyền
+        }
+    }, [onOptionSelectValue, selectedOptionContent]);
 
     const handleOptionContentSelect = (option) => {
     setSelectedOptionContent(option);

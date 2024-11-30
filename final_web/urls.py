@@ -8,6 +8,6 @@ from myapp import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('myapp/', include('myapp.urls')),
+    path('myapp/', include(('myapp.urls', 'myapp'), namespace='myapp')),
     path('media/<str:filename>', views.serve_video, name='serve_video'),
 ]

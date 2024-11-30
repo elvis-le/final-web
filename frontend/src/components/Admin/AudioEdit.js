@@ -7,7 +7,8 @@ import {
 import axios from 'axios';
 import {supabase} from '../../supabaseClient';
 import {v4 as uuidv4} from "uuid";
-import {Link} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
+import {FiEdit} from "react-icons/fi";
 
 const AudioEdit = ({ onOptionSelect, audioId }) => {
     console.log('Audio Edit ID:', audioId);
@@ -19,6 +20,7 @@ const AudioEdit = ({ onOptionSelect, audioId }) => {
     const [artist, setArtist] = useState('');
     const [category, setCategory] = useState('');
     const [audioDuration, setAudioDuration] = useState('');
+    const navigate = useNavigate();
 
     const categories = [
         {value: 'vlog', label: 'Vlog'},
@@ -135,13 +137,14 @@ const AudioEdit = ({ onOptionSelect, audioId }) => {
         });
 
         if (response.status === 201) {
-            alert('File đã được cập nhật thành công!');
+            alert('File update successful!');
+            navigate('/admin/audio', { state: { onOptionSelectValue: 'audio' } });
         } else {
-            alert('Không thể cập nhật file');
+            alert('Can not update file');
         }
     } catch (error) {
-        console.error('Lỗi khi cập nhật file:', error.message);
-        alert('Lỗi khi cập nhật file');
+        console.error('Error to update file:', error.message);
+        alert('Error to update file');
     }
 };
 

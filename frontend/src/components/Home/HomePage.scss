@@ -318,6 +318,7 @@
         display: flex;
         width: 100%;
         height: 10%;
+        margin-bottom: 3%;
         color: var(--white-color);
         font-size: var(--normal-font-size);
         text-transform: capitalize;
@@ -341,12 +342,12 @@
 
           .import-file {
             width: 100%;
-            height: 80%;
+            height: 5rem;
             flex-direction: column;
 
             .file {
               width: 100%;
-              height: 90%;
+              height: 100%;
               border-radius: 4px;
               position: relative;
 
@@ -414,19 +415,19 @@
           .audio-file {
             display: inline-flex;
             width: 100%;
-            height: 16%;
+            height: 28%;
             margin-bottom: 3%;
             border-radius: 5px;
             background-color: var(--black-color);
-            flex-direction: column;
 
             .file {
-              display: grid;
+              display: inline-flex;
               width: 100%;
               height: 100%;
-              grid-template-columns: 8% 70% 20%;
+            flex-direction: row;
 
               .file-image {
+                width: 30%;
                 img {
                   width: 100%;
                   object-fit: cover;
@@ -436,7 +437,7 @@
 
               .file-information {
                 display: inline-flex;
-                width: 80%;
+                width: 100%;
                 height: 100%;
                 padding: 3px;
                 flex-wrap: wrap;
@@ -444,6 +445,7 @@
                 color: var(--text-frame);
                 justify-content: center;
                 align-items: center;
+                flex-direction: row;
 
                 .file-name {
                   display: flex;
@@ -455,29 +457,28 @@
 
                 .file-artist {
                   display: flex;
-                  width: 20%;
+                  width: 70%;
                   height: 50%;
                 }
 
                 .file-time {
                   display: flex;
-                  width: 80%;
+                  width: 30%;
                   height: 50%;
                 }
               }
 
               .favorite-file {
                 display: flex;
-                width: 100%;
+                width: 15%;
                 height: 90%;
                 color: var(--white-color);
                 align-items: center;
-                justify-content: end;
 
                 label {
                   display: flex;
                   background-color: var(--text-frame);
-                  width: 18%;
+                  width: 40%;
                   height: 40%;
                   border-radius: 1rem;
                   align-items: center;
@@ -489,7 +490,7 @@
                   }
 
                   svg {
-                    width: 60%;
+                  width: 60%;
                   }
                 }
 
@@ -620,18 +621,18 @@
         scrollbar-color: var(--nav-frame) var(--thumb-color);
 
         .list-sticker-file {
-          display: grid;
+          display: inline-flex;
           width: 100%;
           height: 100%;
-          gap: 5%;
-          grid-template-columns: 21.25% 21.25% 21.25% 21.25%;
+            flex-wrap: wrap;
 
           .sticker-file {
-            width: 100%;
-            height: 80px;
+            width: 21.25%;
+            margin-right: 1.5%;
+            margin-left: 1.5%;
+            height: 32%;
             border-radius: 5px;
             background-color: var(--thumb-color);
-            flex-direction: column;
 
             .file {
               display: flex;
@@ -659,8 +660,8 @@
               }
 
               img {
-                width: 80%;
-                height: 50%;
+                width: 100%;
+                height: 100%;
                 object-fit: cover;
               }
             }
@@ -679,18 +680,18 @@
         scrollbar-color: var(--nav-frame) var(--thumb-color);
 
         .list-effect-file {
-          display: grid;
+          display: inline-flex;
           width: 100%;
           height: 100%;
-          gap: 5%;
-          grid-template-columns: 21.25% 21.25% 21.25% 21.25%;
+            flex-wrap: wrap;
 
           .effect-file {
-            width: 100%;
-            height: 80px;
+            width: 21.25%;
+            margin-right: 1.5%;
+            margin-left: 1.5%;
+            height: 32%;
             border-radius: 5px;
             background-color: var(--thumb-color);
-            flex-direction: column;
 
             .file {
               display: flex;
@@ -718,8 +719,8 @@
               }
 
               img {
-                width: 80%;
-                height: 50%;
+                width: 100%;
+                height: 100%;
                 object-fit: cover;
               }
             }
@@ -738,18 +739,18 @@
         scrollbar-color: var(--nav-frame) var(--thumb-color);
 
         .list-filter-file {
-          display: grid;
+          display: inline-flex;
           width: 100%;
           height: 100%;
-          gap: 5%;
-          grid-template-columns: 21.25% 21.25% 21.25% 21.25%;
+            flex-wrap: wrap;
 
           .filter-file {
-            width: 100%;
-            height: 80px;
+            width: 21.25%;
+            margin-right: 1.5%;
+            margin-left: 1.5%;
+            height: 32%;
             border-radius: 5px;
             background-color: var(--thumb-color);
-            flex-direction: column;
 
             .file {
               display: flex;
@@ -777,8 +778,8 @@
               }
 
               img {
-                width: 80%;
-                height: 50%;
+                width: 100%;
+                height: 100%;
                 object-fit: cover;
               }
             }
@@ -1080,6 +1081,14 @@
       align-items: center;
       background-color: transparent;
 
+      textarea{
+        margin-left: 1rem;
+        border: none;
+        resize: none;
+        width: 90%;
+        height: 100%;
+      }
+
       .ps-menu-button {
         padding: 0;
         width: 100%;
@@ -1332,22 +1341,39 @@
 
 .edit-wrapper {
   position: relative;
-  width: 99%;
+  min-width: 99%;
   margin: 0 .5%;
   height: 43%;
   border-radius: 10px;
   background-color: var(--background-color);
   overflow-x: scroll;
-  overflow-y: auto;
+  overflow-y: hidden;
+
+  .edit-video-funtion{
+    display: inline-flex;
+    min-width: 100%;
+    position: sticky;
+    height: 10%;
+    background-color: var(--nav-color);
+    align-items: center;
+    .cut-video-funtion{
+      display: flex;
+      width: 20%;
+      height: 100%;
+    align-items: center;
+      margin-left: 5%;
+      button{
+        background-color: transparent;
+        border: none;
+      color: white;
+      }
+    }
+  }
 
 
 .timestamps {
-    position: relative;
-    width: 100%;
-    height: 40px;
-    background-color: white;
-    border-top: 1px solid #ccc;
-    border-bottom: 1px solid #ccc;
+    min-width: 100%;
+    height: 10%;
     overflow: hidden;
 }
 
@@ -1356,8 +1382,8 @@
     font-size: 12px;
     color: #666;
     text-align: center;
-    top: 0;
-    height: 100%;
+    top: 10%;
+    height: 10%;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1421,7 +1447,7 @@
 
     .timeline {
       display: inline-flex;
-      width: 100%;
+      min-width: 100%;
       height: 100%;
       background-color: var(--nav-color);
       border-top: 1px solid var(--gray-color);
@@ -1449,7 +1475,7 @@
 
     .timeline-text {
       display: inline-flex;
-      width: 100%;
+      min-width: 100%;
       height: 30%;
       background-color: var(--nav-color);
       border-top: 1px solid var(--gray-color);
@@ -1478,7 +1504,7 @@
 
     .timeline-audio {
       display: inline-flex;
-      width: 100%;
+      min-width: 100%;
       height: 30%;
       background-color: var(--nav-color);
       border-top: 1px solid var(--gray-color);
@@ -1507,7 +1533,7 @@
 
     .timeline-sticker {
       display: inline-flex;
-      width: 100%;
+      min-width: 100%;
       height: 30%;
       background-color: var(--nav-color);
       border-top: 1px solid var(--gray-color);
@@ -1537,7 +1563,7 @@
 
     .timeline-effect {
       display: inline-flex;
-      width: 100%;
+      min-width: 100%;
       height: 30%;
       background-color: var(--nav-color);
       border-top: 1px solid var(--gray-color);
@@ -1567,7 +1593,7 @@
 
     .timeline-filter {
       display: inline-flex;
-      width: 100%;
+      min-width: 100%;
       height: 30%;
       background-color: var(--nav-color);
       border-top: 1px solid var(--gray-color);
@@ -1650,7 +1676,6 @@
 
   .timestamps {
     display: flex;
-    margin: 10px 0;
     padding: 5px;
 
     span {

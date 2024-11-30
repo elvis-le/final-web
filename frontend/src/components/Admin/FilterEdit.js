@@ -1,6 +1,6 @@
 import {Button, MenuItem, TextField} from "@mui/material";
 import React, {useEffect, useState} from "react";
-import {Link} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 import {v4 as uuidv4} from "uuid";
 import {supabase} from "../../supabaseClient";
 import axios from "axios";
@@ -13,6 +13,7 @@ const FilterEdit = ({ onOptionSelect, filterId }) => {
     const [category, setCategory] = useState('');
     const [config, setConfig] = useState({});
     const token = localStorage.getItem('access_token');
+    const navigate = useNavigate();
 
     const categories = [
         { value: 'featured', label: 'Featured' },
@@ -104,13 +105,14 @@ const FilterEdit = ({ onOptionSelect, filterId }) => {
         });
 
         if (response.status === 201) {
-            alert('File đã được cập nhật thành công!');
+            alert('File update successful!');
+            navigate('/admin/filter', { state: { onOptionSelectValue: 'filter' } });
         } else {
-            alert('Không thể cập nhật file');
+            alert('Can not update file');
         }
     } catch (error) {
-        console.error('Lỗi khi cập nhật file:', error.message);
-        alert('Lỗi khi cập nhật file');
+        console.error('Error to update file:', error.message);
+        alert('Error to update file');
     }
 };
 

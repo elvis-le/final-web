@@ -1,31 +1,48 @@
+import random
+import urllib
+import uuid
+
+import jwt
+from django.utils.http import urlencode
+from django.contrib.auth.tokens import default_token_generator
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, JsonResponse, FileResponse
 from django.contrib.auth import authenticate
-from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip, concatenate_videoclips, AudioFileClip, ImageClip, ImageSequenceClip, ColorClip
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from moviepy.editor import CompositeAudioClip, VideoFileClip, TextClip, CompositeVideoClip, concatenate_videoclips, AudioFileClip, ImageClip, ImageSequenceClip, ColorClip
 from moviepy.config import change_settings
 from tempfile import NamedTemporaryFile
 from django.views.decorators.csrf import csrf_exempt
 from tempfile import NamedTemporaryFile
 from django.conf import settings
 from django.utils.timezone import now
-from rest_framework_simplejwt.tokens import RefreshToken
+from moviepy.video.fx.colorx import colorx
+import importlib
+from django.utils.encoding import force_bytes, force_str
+from django.contrib.auth.tokens import default_token_generator
+from django.conf import settings
+from django.http import JsonResponse
+from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import AllowAny
-from PIL import Image
+from django.contrib.auth.hashers import make_password
+from PIL import Image, ImageFilter, ImageDraw, ImageFont
 from io import BytesIO
 from final_web.settings import supabase
 from .serializers import *
 from rest_framework import status
-from moviepy.editor import CompositeAudioClip
 import moviepy.editor as mp
 from moviepy.video.fx.crop import crop
 from moviepy.video.fx.resize import resize
 from moviepy.video.fx.rotate import rotate
 from moviepy.audio.fx.volumex import volumex
+from django.shortcuts import get_object_or_404
 from moviepy.video.fx import all as vfx
+from django.core.mail import send_mail
+from django.urls import reverse
 import numpy as np
 import os
 import json
@@ -33,9 +50,11 @@ import logging
 import requests
 import tempfile
 import cv2
-
+from pydub import AudioSegment
 
 os.environ['TMPDIR'] = '/home/khanh123/my_temp'
+
+
 def home(request):
     return render(request, 'home.html')
 
@@ -153,7 +172,9 @@ def cut_video(request):
             return JsonResponse({'message': f'Error while processing video: {str(e)}'}, status=500)
     return JsonResponse({'message': 'Invalid request method'}, status=400)
 
+
 change_settings({"IMAGEMAGICK_BINARY": "/usr/bin/convert"})
+
 
 @csrf_exempt
 def add_text_to_video(request):
@@ -181,16 +202,11 @@ def add_text_to_video(request):
 
     return JsonResponse({'error': 'Invalid request method'}, status=400)
 
-def apply_filter_in_time_range(clip, config, start_time, end_time):
-
-    sub_clip = clip.subclip(start_time, end_time)
-    return sub_clip
 
 def apply_effect_in_time_range(clip, config, startTime, endTime):
     effect_name = config.get('name', 'default')
-    print(f"Effect {effect_name} applied from {startTime} to {endTime}")  # Logging để kiểm tra
+    print(f"Effect {effect_name} applied from {startTime} to {endTime}")
 
-    # Tạo một subclip trong khoảng thời gian startTime đến endTime
     subclip = clip.subclip(startTime, endTime)
 
     if effect_name == 'blur':
@@ -228,44 +244,40 @@ def apply_effect_in_time_range(clip, config, startTime, endTime):
     elif effect_name == 'echo_effect':
         subclip = apply_echo_effect(clip, config, startTime, endTime)
 
-    # Thay vì cắt và nối lại các đoạn, ta có thể áp dụng hiệu ứng trực tiếp lên đoạn thời gian đã cắt bằng CompositeVideoClip
     final_clip = CompositeVideoClip([clip, subclip.set_start(startTime)])
 
     return final_clip
+
 
 def apply_blur_effect(clip, config, startTime, endTime):
     blur_value = 61
     print(f"Applying blur with value: {blur_value} from {startTime} to {endTime}")
 
-    # Đảm bảo blur_value là số lẻ và lớn hơn 0
     if blur_value % 2 == 0:
         blur_value += 1
     if blur_value <= 0:
         blur_value = 1
 
     def blur_frame(frame):
-        # Chuyển đổi kiểu dữ liệu của khung hình từ float64 sang uint8 nếu cần
-        if frame.dtype != 'uint8':
-            frame = (frame * 255).astype('uint8')  # Chuyển đổi từ float64 (0-1) sang uint8 (0-255)
 
-        # Chuyển đổi từ RGB sang BGR (OpenCV sử dụng BGR)
+        if frame.dtype != 'uint8':
+            frame = (frame * 255).astype('uint8')
+
         frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
-        # Áp dụng GaussianBlur nhiều lần để tăng cường hiệu ứng mờ
-        for _ in range(3):  # Áp dụng hiệu ứng blur 3 lần để tăng độ mờ
+        for _ in range(3):
             frame_bgr = cv2.GaussianBlur(frame_bgr, (blur_value, blur_value), 0)
 
-        # Chuyển đổi ngược lại từ BGR sang RGB
         blurred_frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
 
         return blurred_frame_rgb
 
-    # Áp dụng hiệu ứng blur lên toàn bộ đoạn clip từ startTime đến endTime
     blur_clip = clip.fl_image(blur_frame)
 
     return blur_clip.subclip(startTime, endTime)
 
-def apply_glitch_effect(clip, config):
+
+def apply_glitch_effect(clip, config, startTime, endTime):
     min_x = config.get('min_x', -20)
     max_x = config.get('max_x', 20)
     min_skewX = config.get('min_skewX', -10)
@@ -285,57 +297,52 @@ def apply_glitch_effect(clip, config):
     glitch_clip = clip.fl(glitch_frame)
     return glitch_clip
 
+
 def apply_tilt_shift_effect(clip, config, startTime, endTime):
     blur_value = config.get('blur', 10)
     clipPath = config.get('clipPath', None)
 
-    # Hàm để cắt video dần dần theo thời gian dựa trên clipPath
     def apply_clip_path_dynamic(frame, progress):
         height, width = frame.shape[:2]
-        mask = np.ones_like(frame) * 255  # Mặt nạ mặc định trắng toàn bộ
+        mask = np.ones_like(frame) * 255
 
         if clipPath:
-            # Thay đổi cách tính top_inset và bottom_inset để đóng từ ngoài vào
-            top_inset = 0.6 * progress  # Tiến độ càng lớn, phần ngoài càng bị cắt
-            bottom_inset = 0.6 * progress  # Tiến độ càng lớn, phần dưới càng bị cắt
+            top_inset = 0.6 * progress
+            bottom_inset = 0.6 * progress
 
-            # Áp dụng cắt phần trên và dưới của video dần dần
-            mask[:int(height * top_inset), :] = 0  # Cắt phần trên dần dần từ ngoài vào
-            mask[int(height * (1 - bottom_inset)):, :] = 0  # Cắt phần dưới dần dần từ ngoài vào
+            mask[:int(height * top_inset), :] = 0
+            mask[int(height * (1 - bottom_inset)):, :] = 0
 
-        # Áp dụng mặt nạ (mask)
         return cv2.bitwise_and(frame, mask)
 
-    # Hàm áp dụng Gaussian blur và clipPath động theo thời gian
     def tilt_shift_frame(get_frame, t):
         frame = get_frame(t)
-        # Đảm bảo frame là Numpy array
+
         if not isinstance(frame, np.ndarray):
-            frame = np.array(frame)  # Chuyển đổi frame thành Numpy array nếu cần
+            frame = np.array(frame)
 
-        # Tính toán tiến độ (progress) theo thời gian
         progress = (t - startTime) / (endTime - startTime)
-        progress = max(0, min(1, progress))  # Giới hạn progress trong khoảng [0, 1]
+        progress = max(0, min(1, progress))
 
-        # Áp dụng Gaussian blur
         blurred_frame = cv2.GaussianBlur(frame, (blur_value, blur_value), 0)
 
-        # Áp dụng cắt động (clipPath) theo progress
         if clipPath:
             blurred_frame = apply_clip_path_dynamic(blurred_frame, progress)
 
         return blurred_frame
 
-    # Sử dụng `fl` thay vì `fl_image` để truyền thêm thời gian `t`
     tilt_shift_clip = clip.fl(tilt_shift_frame)
 
     return tilt_shift_clip.subclip(startTime, endTime)
+
+
 def apply_invert_colors_effect(clip, config, startTime, endTime):
     def invert_frame(frame):
-        return 255 - frame  # Đảo ngược màu sắc
+        return 255 - frame
 
     inverted_clip = clip.fl_image(invert_frame)
     return inverted_clip.subclip(startTime, endTime)
+
 
 def apply_pixelate_effect(clip, config, startTime, endTime):
     def pixelate_frame(frame):
@@ -344,6 +351,7 @@ def apply_pixelate_effect(clip, config, startTime, endTime):
 
     pixelated_clip = clip.fl_image(pixelate_frame)
     return pixelated_clip.subclip(startTime, endTime)
+
 
 def apply_sepia_tone_effect(clip, config, startTime, endTime):
     def sepia_frame(frame):
@@ -354,6 +362,7 @@ def apply_sepia_tone_effect(clip, config, startTime, endTime):
 
     sepia_clip = clip.fl_image(sepia_frame)
     return sepia_clip.subclip(startTime, endTime)
+
 
 def apply_hue_rotate_effect(clip, config, startTime, endTime):
     hue_value = config.get('hue', 180)
@@ -366,15 +375,14 @@ def apply_hue_rotate_effect(clip, config, startTime, endTime):
     hue_rotated_clip = clip.fl_image(hue_rotate_frame)
     return hue_rotated_clip.subclip(startTime, endTime)
 
+
 def apply_ghost_effect(clip, config, startTime, endTime):
-    # Lấy giá trị từ config
     blur_value = 61
     opacity = 0.3
     darkness = config.get('darkness', 0.5)
     yoyo = config.get('yoyo', False)
     repeat = config.get('repeat', 0)
 
-    # Đảm bảo blur_value là số lẻ và lớn hơn 0
     if blur_value % 2 == 0:
         blur_value += 1
     if blur_value <= 0:
@@ -383,31 +391,26 @@ def apply_ghost_effect(clip, config, startTime, endTime):
     def ghost_effect_frame(frame):
         print(f"Frame dtype: {frame.dtype}, shape: {frame.shape}")
 
-        # Chuyển đổi kiểu dữ liệu của khung hình từ float64 sang uint8 nếu cần
         if frame.dtype != 'uint8':
-            frame = (frame * 255).astype('uint8')  # Chuyển đổi từ float64 (0-1) sang uint8 (0-255)
+            frame = (frame * 255).astype('uint8')
 
-        # Áp dụng Gaussian Blur
         frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         blurred_frame_bgr = cv2.GaussianBlur(frame_bgr, (blur_value, blur_value), 0)
         blurred_frame_rgb = cv2.cvtColor(blurred_frame_bgr, cv2.COLOR_BGR2RGB)
 
-        # Áp dụng opacity bằng cách giảm trọng số của khung hình gốc để nó tối hơn
         blended_frame = cv2.addWeighted(blurred_frame_rgb, 1 - opacity, frame, opacity, 0)
 
         darkened_frame = (blended_frame * darkness).clip(0, 255).astype('uint8')
         return darkened_frame
 
-    # Áp dụng hiệu ứng ghost cho clip
     ghost_clip = clip.fl_image(ghost_effect_frame)
 
-    # Nếu yoyo được kích hoạt, lặp lại và đảo ngược hiệu ứng
     if yoyo:
         reversed_clip = ghost_clip.fx(vfx.time_mirror)
         ghost_clip = concatenate_videoclips([ghost_clip, reversed_clip])
 
-    # Áp dụng subclip để giới hạn thời gian hiệu ứng
     return ghost_clip.subclip(startTime, endTime)
+
 
 def apply_lens_zoom_effect(clip, config, startTime, endTime):
     zoom_level = config.get('zoom_level', 1.5)
@@ -421,6 +424,7 @@ def apply_lens_zoom_effect(clip, config, startTime, endTime):
     zoom_clip = clip.fl(zoom_frame)
     return zoom_clip.subclip(startTime, endTime)
 
+
 def apply_shake_effect(clip, config, startTime, endTime):
     def shake_frame(get_frame, t):
         frame = get_frame(t)
@@ -431,6 +435,7 @@ def apply_shake_effect(clip, config, startTime, endTime):
     shake_clip = clip.fl(shake_frame)
     return shake_clip.subclip(startTime, endTime)
 
+
 def apply_old_film_effect(clip, config, startTime, endTime):
     def old_film_frame(get_frame, t):
         frame = get_frame(t)
@@ -440,6 +445,7 @@ def apply_old_film_effect(clip, config, startTime, endTime):
 
     old_film_clip = clip.fl_image(old_film_frame)
     return old_film_clip.subclip(startTime, endTime)
+
 
 def apply_zoom_in_out_effect(clip, config, startTime, endTime):
     zoom_level = config.get('zoom_level', 1.5)
@@ -453,6 +459,7 @@ def apply_zoom_in_out_effect(clip, config, startTime, endTime):
     zoom_clip = clip.fl(zoom_frame)
     return zoom_clip.subclip(startTime, endTime)
 
+
 def apply_zoom_blur_effect(clip, config, startTime, endTime):
     blur_value = config.get('blur', 10)
 
@@ -462,6 +469,7 @@ def apply_zoom_blur_effect(clip, config, startTime, endTime):
 
     zoom_blur_clip = clip.fl_image(zoom_blur_frame)
     return zoom_blur_clip.subclip(startTime, endTime)
+
 
 def apply_color_shift_effect(clip, config, startTime, endTime):
     hue_shift_value = 60
@@ -474,6 +482,7 @@ def apply_color_shift_effect(clip, config, startTime, endTime):
     color_shift_clip = clip.fl_image(color_shift_frame)
     return color_shift_clip.subclip(startTime, endTime)
 
+
 def apply_echo_effect(clip, config, startTime, endTime):
     def echo_frame(get_frame, t):
         frame = get_frame(t)
@@ -481,6 +490,7 @@ def apply_echo_effect(clip, config, startTime, endTime):
 
     echo_clip = clip.fl_image(echo_frame)
     return echo_clip.subclip(startTime, endTime)
+
 
 def apply_ripple_effect(clip, config, startTime, endTime):
     def ripple_frame(get_frame, t):
@@ -497,6 +507,7 @@ def apply_ripple_effect(clip, config, startTime, endTime):
     ripple_clip = clip.fl(ripple_frame)
     return ripple_clip.subclip(startTime, endTime)
 
+
 def apply_radial_zoom_effect(clip, config, startTime, endTime):
     def radial_zoom_frame(get_frame, t):
         frame = get_frame(t)
@@ -507,53 +518,624 @@ def apply_radial_zoom_effect(clip, config, startTime, endTime):
     radial_zoom_clip = clip.fl(radial_zoom_frame)
     return radial_zoom_clip.subclip(startTime, endTime)
 
+
+def apply_filter_in_time_range(clip, config, startTime, endTime):
+    filter_name = config.get('name', 'default')
+    print(f"Filter {filter_name} applied from {startTime} to {endTime}")
+
+    subclip = clip.subclip(startTime, endTime)
+
+    if filter_name == 'vibrant':
+        subclip = vibrant_filter(clip, config, startTime, endTime)
+    elif filter_name == 'crisp':
+        subclip = crisp_filter(clip, config, startTime, endTime)
+    elif filter_name == 'bright_life':
+        subclip = bright_life_filter(clip, config, startTime, endTime)
+    elif filter_name == 'faded':
+        subclip = faded_filter(clip, config, startTime, endTime)
+    elif filter_name == 'blue_sky':
+        subclip = blue_sky_filter(clip, config, startTime, endTime)
+    elif filter_name == 'dreamy':
+        subclip = dreamy_filter(clip, config, startTime, endTime)
+    elif filter_name == 'enhance':
+        subclip = enhance_filter(clip, config, startTime, endTime)
+    elif filter_name == 'highlight':
+        subclip = highlight_filter(clip, config, startTime, endTime)
+    elif filter_name == 'fresh':
+        subclip = fresh_filter(clip, config, startTime, endTime)
+    elif filter_name == 'sunny':
+        subclip = sunny_filter(clip, config, startTime, endTime)
+    elif filter_name == 'cinematic':
+        subclip = cinematic_filter(clip, config, startTime, endTime)
+    elif filter_name == 'dramatic':
+        subclip = dramatic_filter(clip, config, startTime, endTime)
+    elif filter_name == 'film_noir':
+        subclip = film_noir_filter(clip, config, startTime, endTime)
+    elif filter_name == 'gritty':
+        subclip = gritty_filter(clip, config, startTime, endTime)
+    elif filter_name == 'muted':
+        subclip = muted_filter(clip, config, startTime, endTime)
+    elif filter_name == 'sepia':
+        subclip = sepia_filter(clip, config, startTime, endTime)
+    elif filter_name == 'vintage':
+        subclip = enhance_filter(clip, config, startTime, endTime)
+    elif filter_name == 'green_boost':
+        subclip = green_boost_filter(clip, config, startTime, endTime)
+    elif filter_name == 'nature_boost':
+        subclip = nature_boost_filter(clip, config, startTime, endTime)
+    elif filter_name == 'sunrise':
+        subclip = sunrise_filter(clip, config, startTime, endTime)
+    elif filter_name == 'neon':
+        subclip = neon_filter(clip, config, startTime, endTime)
+    elif filter_name == 'pastel':
+        subclip = pastel_filter(clip, config, startTime, endTime)
+    elif filter_name == 'vintage_glow':
+        subclip = vintage_glow_filter(clip, config, startTime, endTime)
+    elif filter_name == 'soft_focus':
+        subclip = soft_focus_filter(clip, config, startTime, endTime)
+
+    final_clip = CompositeVideoClip([clip, subclip.set_start(startTime)])
+
+    return final_clip
+
+
+def crisp_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    brightness = params.get("brightness", 1.15)
+    contrast = params.get("contrast", 1.4)
+
+    clip = colorx(clip, factor=brightness)
+
+    clip = lum_contrast(clip, contrast)
+
+    return clip.subclip(startTime, endTime)
+
+
+def blue_sky_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    saturation = params.get("saturation", 1.3)
+    blue_factor = params.get("blue_factor", 1.5)
+    green_factor = params.get("green_factor", 1.2)
+
+    def enhance_blue_sky(frame):
+        hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
+
+        hsv[:, :, 1] = np.clip(hsv[:, :, 1] * saturation, 0, 255)
+
+        enhanced_frame = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+
+        enhanced_frame[:, :, 2] = np.clip(enhanced_frame[:, :, 2] * blue_factor, 0, 255)
+        enhanced_frame[:, :, 1] = np.clip(enhanced_frame[:, :, 1] * green_factor, 0, 255)
+
+        return enhanced_frame.astype(np.uint8)
+
+    return clip.fl_image(enhance_blue_sky).subclip(startTime, endTime)
+
+
+def adjust_brightness(clip, factor):
+    return colorx(clip, factor)
+
+
+def adjust_hue(clip, hue_shift):
+    def hue_transform(frame):
+        hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
+        hsv[:, :, 0] = (hsv[:, :, 0] + hue_shift * 180) % 180
+        return cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+
+    return clip.fl_image(hue_transform)
+
+
+def add_grain(clip, intensity=0.3):
+    def grain_effect(frame):
+        noise = np.random.normal(0, intensity * 255, frame.shape).astype(np.uint8)
+        return cv2.addWeighted(frame, 1 - intensity, noise, intensity, 0)
+
+    return clip.fl_image(grain_effect)
+
+
+def apply_blur(image_array, blur_strength=10):
+    img = Image.fromarray(image_array)
+    img = img.filter(ImageFilter.GaussianBlur(blur_strength))
+    return np.array(img)
+
+
+def blur(clip, blur_strength=10):
+    return clip.fl_image(lambda frame: apply_blur(frame, blur_strength))
+
+
+def lum_contrast(clip, contrast=1.0):
+    def adjust_contrast(image_array):
+        factor = (259 * (contrast + 255)) / (255 * (259 - contrast))
+
+        def contrast_pixel(value):
+            return 128 + factor * (value - 128)
+
+        return np.clip(contrast_pixel(image_array), 0, 255).astype(np.uint8)
+
+    return clip.fl_image(adjust_contrast)
+
+
+def enhance_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    color_factor = params.get("color_factor", 1.5)
+    clip = colorx(clip, factor=color_factor)
+    return clip.subclip(startTime, endTime)
+
+
+def vintage_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    color_factor = params.get("color_factor", 0.6)
+    clip = colorx(clip, factor=color_factor)
+    return clip.subclip(startTime, endTime)
+
+
+def pastel_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    color_factor = params.get("color_factor", 0.9)
+    clip = colorx(clip, factor=color_factor)
+    return clip.subclip(startTime, endTime)
+
+
+def highlight_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    brightness = params.get("brightness", 1.3)
+    saturation = params.get("saturation", 1.4)
+    clip = colorx(clip, factor=brightness)
+    clip = colorx(clip, factor=saturation)
+    return clip.subclip(startTime, endTime)
+
+
+def dramatic_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    contrast = params.get("contrast", 1.4)
+    color_factor = params.get("color_factor", 0.7)
+    clip = lum_contrast(clip, contrast)
+    clip = colorx(clip, factor=color_factor)
+    return clip.subclip(startTime, endTime)
+
+
+def sepia_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    color_factor = params.get("color_factor", 0.8)
+    saturation = params.get("saturation", 0.6)
+    clip = colorx(clip, factor=color_factor)
+    clip = colorx(clip, factor=saturation)
+    return clip.subclip(startTime, endTime)
+
+
+def vintage_glow_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    brightness = params.get("brightness", 1.2)
+    color_factor = params.get("color_factor", 0.8)
+    blur_strength = params.get("blur_strength", 20)
+    contrast = params.get("contrast", 1.4)
+
+    clip = colorx(clip, factor=brightness).subclip(startTime, endTime)
+
+    def add_vintage_glow(frame):
+        frame = cv2.convertScaleAbs(frame, alpha=contrast, beta=0)
+        blurred_frame = cv2.GaussianBlur(frame, (0, 0), blur_strength)
+
+        glow_frame = cv2.addWeighted(frame, 0.7, blurred_frame, 0.3, 0)
+
+        hsv = cv2.cvtColor(glow_frame, cv2.COLOR_RGB2HSV)
+        hsv[:, :, 1] = np.clip(hsv[:, :, 1] * color_factor, 0, 255)
+        vintage_glow_frame = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+
+        return vintage_glow_frame
+
+    return clip.fl_image(add_vintage_glow).subclip(startTime, endTime)
+
+
+def soft_focus_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    blur_strength = params.get("blur_strength", 15)
+    brightness = params.get("brightness", 1.1)
+    contrast = params.get("contrast", 1.2)
+
+    def add_soft_focus(frame):
+        adjusted_frame = cv2.convertScaleAbs(frame, alpha=contrast, beta=brightness * 50)
+
+        blurred_frame = cv2.GaussianBlur(adjusted_frame, (0, 0), blur_strength)
+
+        soft_focus_frame = cv2.addWeighted(adjusted_frame, 0.6, blurred_frame, 0.4, 0)
+
+        return soft_focus_frame
+
+    return clip.fl_image(add_soft_focus).subclip(startTime, endTime)
+
+
+def film_noir_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    contrast = params.get("contrast", 1.8)
+    saturation = params.get("saturation", 0.2)
+    clip = lum_contrast(clip, contrast)
+    clip = colorx(clip, factor=saturation)
+    return clip.subclip(startTime, endTime)
+
+
+def faded_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    saturation = params.get("saturation", 0.6)
+    brightness = params.get("brightness", 0.9)
+    clip = colorx(clip, factor=saturation)
+    clip = colorx(clip, factor=brightness)
+    return clip.subclip(startTime, endTime)
+
+
+def dreamy_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    blur_strength = params.get("blur_strength", 15)
+    brightness = params.get("brightness", 1.2)
+    clip = blur(clip, blur_strength)
+    clip = colorx(clip, factor=brightness)
+    return clip.subclip(startTime, endTime)
+
+
+def bright_life_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    brightness = params.get("brightness", 1.5)
+    warmth = params.get("warmth", 1.2)
+    contrast = params.get("contrast", 1.3)
+
+    clip = colorx(clip, brightness)
+    clip = lum_contrast(clip, contrast)
+    return clip.fl_image(lambda img: cv2.addWeighted(img, 1, img, warmth - 1, 0)).subclip(startTime, endTime)
+
+
+def vibrant_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    brightness = params.get("brightness", 1.1)
+    saturation = params.get("saturation", 1.4)
+    contrast = params.get("contrast", 1.15)
+
+    clip = colorx(clip, brightness)
+    return lum_contrast(clip, contrast).fl_image(
+        lambda img: cv2.cvtColor(cv2.convertScaleAbs(img, alpha=saturation), cv2.COLOR_BGR2HSV)).subclip(startTime,
+                                                                                                         endTime)
+
+
+def fresh_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    brightness = params.get("brightness", 1.15)
+    saturation = params.get("saturation", 1.2)
+    contrast = params.get("contrast", 1.05)
+    cool_tone = params.get("cool_tone", 0.9)
+
+    clip = colorx(clip, brightness)
+    clip = lum_contrast(clip, contrast)
+    clip = colorx(clip, cool_tone)
+    return clip.subclip(startTime, endTime)
+
+
+def sunny_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    brightness = params.get("brightness", 1.2)
+    warmth = params.get("warmth", 1.3)
+    color_factor = params.get("color_factor", 1.05)
+
+    clip = colorx(clip, brightness)
+    clip = colorx(clip, warmth)
+    clip = colorx(clip, color_factor)
+    return clip.subclip(startTime, endTime)
+
+
+def sunrise_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    brightness = params.get("brightness", 1.1)
+    warmth = params.get("warmth", 1.25)
+    hue_shift = params.get("hue_shift", 0.05)
+
+    def apply_warm_tone(img):
+        hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+        hsv[:, :, 0] = np.clip(hsv[:, :, 0] + hue_shift * 10, 0, 180)
+        return cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+
+    clip = colorx(clip, brightness)
+    return clip.fl_image(apply_warm_tone).subclip(startTime, endTime)
+
+
+def green_boost_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    saturation = params.get("saturation", 1.3)
+    color_factor = params.get("color_factor", 1.2)
+    green_intensity = params.get("green_intensity", 1.4)
+
+    clip = colorx(clip, color_factor)
+    clip = colorx(clip, saturation)
+    clip = colorx(clip, green_intensity)
+    return clip.subclip(startTime, endTime)
+
+
+def nature_boost_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    saturation = params.get("saturation", 1.4)
+    green_intensity = params.get("green_intensity", 1.5)
+
+    def apply_green_boost(img):
+        hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+        hsv[:, :, 1] = np.clip(hsv[:, :, 1] * saturation, 0, 255)
+        hsv[:, :, 0] = np.clip(hsv[:, :, 0] * green_intensity, 0, 255)
+        return cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+
+    return clip.fl_image(apply_green_boost).subclip(startTime, endTime)
+
+
+def muted_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    color_factor = params.get("color_factor", 0.7)
+    contrast = params.get("contrast", 0.85)
+    brightness = params.get("brightness", 0.9)
+
+    clip = colorx(clip, factor=color_factor)
+
+    clip = lum_contrast(clip, contrast)
+    clip = adjust_brightness(clip, brightness)
+
+    return clip.subclip(startTime, endTime)
+
+
+def cinematic_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    contrast = params.get("contrast", 1.5)
+    saturation = params.get("saturation", 0.8)
+    brightness = params.get("brightness", 1.05)
+    warmth = params.get("warmth", 1.1)
+    blue_tone = params.get("blue_tone", 0.9)
+
+    clip = colorx(clip, factor=brightness)
+    clip = lum_contrast(clip, contrast)
+
+    def adjust_saturation(frame):
+        hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
+        hsv[:, :, 1] = np.clip(hsv[:, :, 1] * saturation, 0, 255)
+        return cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+
+    clip = clip.fl_image(adjust_saturation)
+
+    def apply_cinematic_tone(frame):
+        b, g, r = cv2.split(frame)
+
+        r = np.clip(r * warmth, 0, 255).astype(np.uint8)
+        b = np.clip(b * blue_tone, 0, 255).astype(np.uint8)
+
+        return cv2.merge((b, g, r))
+
+    clip = clip.fl_image(apply_cinematic_tone)
+
+    return clip.subclip(startTime, endTime)
+
+
+def gritty_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    contrast = params.get("contrast", 1.8)
+    brightness = params.get("brightness", 0.85)
+    grain_intensity = params.get("grain_intensity", 0.3)
+
+    clip = lum_contrast(clip, contrast)
+    clip = adjust_brightness(clip, brightness)
+    clip = add_grain(clip, grain_intensity)
+    return clip.subclip(startTime, endTime)
+
+
+def neon_filter(clip, config, startTime, endTime):
+    params = config.get('params', {})
+    saturation = params.get("saturation", 1.7)
+    contrast = params.get("contrast", 1.25)
+    brightness = params.get("brightness", 1.1)
+    hue_shift = params.get("hue_shift", 0.1)
+
+    clip = colorx(clip, factor=saturation)
+    clip = lum_contrast(clip, contrast)
+    clip = adjust_brightness(clip, brightness)
+    clip = adjust_hue(clip, hue_shift)
+    return clip.subclip(startTime, endTime)
+
+def is_video(url):
+    video_extensions = ['.mp4', '.avi', '.mov', '.mkv']
+    image_extensions = ['.jpg', '.jpeg', '.png', '.gif']
+
+    _, ext = os.path.splitext(url)
+    ext = ext.lower()
+    if ext in video_extensions:
+        return True
+    elif ext in image_extensions:
+        return False
+    else:
+        return None
+
+def download_video(url):
+    try:
+        response = requests.get(url, stream=True)
+        if response.status_code == 200:
+            temp_file = NamedTemporaryFile(delete=False, suffix=".mp4")
+            for chunk in response.iter_content(chunk_size=1024):
+                temp_file.write(chunk)
+            temp_file.close()
+            return temp_file.name
+        else:
+            raise Exception(f"Failed to download video. Status code: {response.status_code}")
+    except Exception as e:
+        logger.error(f"Error downloading video: {e}")
+        raise
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def export_video(request):
+def split_video(request):
     try:
-        total_duration = float(request.POST.get('total_duration', 0.0))  
+        logger.info("Splitting video started.")
+        video_id = request.POST.get("videoId")
+        video_position = request.POST.get("videoPosition")
+        current_time = float(request.POST.get("currentTime"))
+
+        if not video_id or current_time is None:
+            logger.error("Missing videoId or currentTime.")
+            return JsonResponse({"error": "Missing videoId or currentTime"}, status=400)
+
+        try:
+            video = Video.objects.get(id=video_id)
+        except Video.DoesNotExist:
+            logger.error(f"Video with ID {video_id} not found.")
+            return JsonResponse({"error": "Video not found"}, status=404)
+
+        video_url = video.video_url
+        logger.info(f"Video URL: {video_url}")
+
+
+        local_video_path = download_video(video_url)
+        logger.info(f"Downloaded video to {local_video_path}")
+
+
+        with VideoFileClip(local_video_path) as clip:
+            logger.info(f"Video duration: {clip.duration}")
+            if current_time >= clip.duration or current_time <= 0:
+                logger.error("Invalid split time.")
+                return JsonResponse({"error": "Invalid split time"}, status=400)
+
+            part1 = clip.subclip(0, current_time)
+            part2 = clip.subclip(current_time, clip.duration)
+
+            part1_path = f"{settings.MEDIA_ROOT}/part1_{video_id}.mp4"
+            part1_name = f"part1_{video_id}.mp4"
+            part2_path = f"{settings.MEDIA_ROOT}/part2_{video_id}.mp4"
+            part2_name = f"part2_{video_id}.mp4"
+            part1_url = f"{settings.MEDIA_URL}part1_{video_id}.mp4"
+            part2_url = f"{settings.MEDIA_URL}part2_{video_id}.mp4"
+
+            part1.write_videofile(part1_path, codec="libx264")
+            part2.write_videofile(part2_path, codec="libx264")
+
+        return JsonResponse({
+            "oldVideoId": video_id,
+            "part1": {
+                "id": f"part1_{video_id}",
+                "name" : part1_name,
+                "duration": current_time,
+                "startTime": 0,
+                "endTime": current_time,
+                "url": f"http://localhost:8000{part1_url}",
+                "position": video_position,
+            },
+            "part2": {
+                "id": f"part2_{video_id}",
+                "name" : part2_name,
+                "duration": clip.duration - current_time,
+                "startTime": current_time,
+                "endTime": clip.duration,
+                "url": f"http://localhost:8000{part2_url}",
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"Error during video splitting: {e}", exc_info=True)
+        return JsonResponse({"error": str(e)}, status=500)
+
+import requests
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def split_audio(request):
+    try:
+        logger.info("Splitting audio started.")
+        audio_id = request.POST.get("audioId")
+        audio_position = request.POST.get("audioPosition")
+        audio_image = request.POST.get("audioImage")
+        current_time = float(request.POST.get("currentTime"))
+
+        print(f"current_time: {current_time}")
+
+        if not audio_id or current_time is None:
+            logger.error("Missing audioId or currentTime.")
+            return JsonResponse({"error": "Missing audioId or currentTime"}, status=400)
+
+        try:
+            audio = Audio.objects.get(id=audio_id)
+        except Audio.DoesNotExist:
+            logger.error(f"Audio with ID {audio_id} not found.")
+            return JsonResponse({"error": "Audio not found"}, status=404)
+
+        audio_url = audio.audio_file
+        logger.info(f"Audio file: {audio_url}")
+
+
+        local_audio_path = os.path.join(settings.MEDIA_ROOT, f"{audio_id}.mp3")
+        response = requests.get(audio_url, stream=True)
+
+        if response.status_code == 200:
+            with open(local_audio_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            logger.info(f"Downloaded audio to {local_audio_path}")
+        else:
+            logger.error(f"Failed to download audio file from {audio_url}")
+            return JsonResponse({"error": "Failed to download audio file"}, status=400)
+
+
+        audio_clip = AudioSegment.from_file(local_audio_path)
+        logger.info(f"Audio duration: {len(audio_clip) / 1000} seconds")
+
+        if current_time * 1000 >= len(audio_clip) or current_time <= 0:
+            logger.error("Invalid split time.")
+            return JsonResponse({"error": "Invalid split time"}, status=400)
+
+        part1 = audio_clip[:int(current_time * 1000)]
+        part2 = audio_clip[int(current_time * 1000):]
+
+        part1_path = os.path.join(settings.MEDIA_ROOT, f"part1_{audio_id}.mp3")
+        part1_name = f"part1_{audio_id}.mp3"
+        part2_path = os.path.join(settings.MEDIA_ROOT, f"part2_{audio_id}.mp3")
+        part2_name = f"part2_{audio_id}.mp3"
+        part1_url = os.path.join(settings.MEDIA_URL, f"part1_{audio_id}.mp3")
+        part2_url = os.path.join(settings.MEDIA_URL, f"part2_{audio_id}.mp3")
+
+        part1.export(part1_path, format="mp3")
+        part2.export(part2_path, format="mp3")
+
+
+        if os.path.exists(local_audio_path):
+            os.remove(local_audio_path)
+
+        return JsonResponse({
+            "oldAudioId": audio_id,
+            "part1": {
+                "id": f"part1_{audio_id}",
+                "name": part1_name,
+                "duration": current_time,
+                "startTime": 0,
+                "endTime": current_time,
+                "url": f"http://localhost:8000{part1_url}",
+                "position": audio_position,
+                "image": audio_image,
+            },
+            "part2": {
+                "id": f"part2_{audio_id}",
+                "name": part2_name,
+                "duration": (len(audio_clip) / 1000) - current_time,
+                "startTime": current_time,
+                "endTime": len(audio_clip) / 1000,
+                "url": f"http://localhost:8000{part2_url}",
+                "image": audio_image,
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"Error during audio splitting: {e}", exc_info=True)
+        return JsonResponse({"error": str(e)}, status=500)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def merge_video(request):
+    try:
+        total_duration = float(request.POST.get('total_duration', 0.0))
         video_width, video_height = 1272, 720
 
-        
         black_clip = ColorClip(size=(video_width, video_height), color=(0, 0, 0), duration=total_duration).set_fps(24)
-
 
         videos_data = request.POST.getlist('videos')
         videos = [json.loads(video_data) for video_data in videos_data]
 
-        audios_data = request.POST.getlist('audios')
-        audios = [json.loads(audio_data) for audio_data in audios_data]
-
-        texts_data = request.POST.getlist('texts')
-        texts = [json.loads(text_data) for text_data in texts_data]
-
-        stickers_data = request.POST.getlist('stickers')
-        stickers = [json.loads(sticker_data) for sticker_data in stickers_data]
-
-        effects_data = request.POST.getlist('effects')
-        effects = [json.loads(effect_data) for effect_data in effects_data]
-
-        filters_data = request.POST.getlist('filters')
-        filters = [json.loads(filter_data) for filter_data in filters_data]
-
-
         print(f"Duration videos: {total_duration}")
         print(f"Received videos: {videos}")
-        print(f"Received audios: {audios}")
-        print(f"Received texts: {texts}")
-        print(f"Received stickers: {stickers}")
-        print(f"Received effects: {effects}")
-        print(f"Received filters: {filters}")
-
-        
-        try:
-            texts = json.loads(texts) if isinstance(texts, str) else texts
-            stickers = json.loads(stickers) if isinstance(stickers, str) else stickers
-            effects = json.loads(effects) if isinstance(effects, str) else effects
-            filters = json.loads(filters) if isinstance(filters, str) else filters
-        except json.JSONDecodeError as e:
-            return JsonResponse({'error': f'Error decoding JSON: {str(e)}'}, status=400)
-
 
         video_clips = []
         for video in videos:
@@ -569,76 +1151,159 @@ def export_video(request):
             voice = float(video.get('voice', 1.0))
             speed = float(video.get('speed', 1.0))
             print(f"Rotate angle: {rotate_angle}")
+            is_video_file = is_video(url)
 
-            response = requests.get(url)
+            if is_video_file is True:
+                response = requests.get(url)
+                video_file = BytesIO(response.content)
+
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_video:
+                    temp_video.write(video_file.getvalue())
+                    video_path = temp_video.name
+
+                video_clip = VideoFileClip(video_path).subclip(0, duration)
+                video_clip = video_clip.set_start(startTime)
+
+                scale_video = scale / 100
+
+                if scale_video != 1.0:
+
+                    video_clip = resize(video_clip, scale_video)
+
+                video_clip = rotate(video_clip, -rotate_angle, expand=True)
+
+                new_width, new_height = video_clip.size
+                print(f"New video size after rotation: {new_width}, {new_height}")
+
+                new_width, new_height = video_clip.size
+                print(f"Video size after resize: {new_width}, {new_height}")
+
+                centerX = (video_width - new_width) / 2 + positionX
+
+                centerY = (video_height - new_height) / 2 + positionY
+
+                video_clip = video_clip.set_position((centerX, centerY))
+
+                if opacity < 1.0:
+                    video_clip = video_clip.set_opacity(opacity)
+                #
+
+                if speed != 1.0:
+                    video_clip = video_clip.fx(vfx.speedx, speed)
+
+                voice_dB = min(max(voice, -60), 6)
+                linear_multiplier = 10 ** (voice_dB / 20)
+
+                if video_clip.audio:
+                    video_clip = video_clip.volumex(linear_multiplier)
+
+                video_clips.append(video_clip)
+
+            elif is_video_file is False:
+
+                response = requests.get(url)
+                if response.status_code == 200:
+                    image_data = BytesIO(response.content)
+
+                    pil_image = Image.open(image_data).convert("RGBA")
+                    np_image = np.array(pil_image)
+
+                    image_clip = ImageClip(np_image).set_duration(duration).subclip(0, duration)
+                    image_clip = image_clip.set_start(startTime)
+
+                    scale_image = scale / 100
+
+                    if scale_image != 1.0:
+                        image_clip = resize(image_clip, scale_image)
+
+
+                    image_clip = rotate(image_clip, -rotate_angle, expand=True)
+
+                    new_width, new_height = image_clip.size
+
+                    new_width, new_height = image_clip.size
+
+                    centerX = (video_width - new_width) / 2 + positionX
+
+                    centerY = (video_height - new_height) / 2 + positionY
+
+                    image_clip = image_clip.set_position((centerX, centerY))
+
+                    if opacity < 1.0:
+                        image_clip = image_clip.set_opacity(opacity)
+                    #
+
+                    if speed != 1.0:
+                        image_clip = image_clip.fx(vfx.speedx, speed)
+
+                    video_clips.append(image_clip)
+
+        print(f"video_clips: {len(video_clips)}")
+
+        if not len(video_clips) > 0:
+            print("No video clips available, using black_clip as final_clip.")
+            final_clip = black_clip
+        else:
+            final_clip = CompositeVideoClip([black_clip] + video_clips)
+
+        filename = 'output_video.mp4'
+        output_file_path = os.path.join(settings.MEDIA_ROOT, filename)
+        final_clip.write_videofile(output_file_path, codec='libx264', audio_codec='aac',
+                                   temp_audiofile="temp-audio.m4a", remove_temp=True,
+                                   write_logfile=False, preset='medium', ffmpeg_params=['-movflags', 'faststart'],
+                                   fps=24)
+        return JsonResponse({'merged_video_url': f'{settings.MEDIA_URL}{filename}'})
+    except Exception as e:
+
+        print(f"Error processing request: {str(e)}")
+
+        import traceback
+
+        traceback.print_exc()
+
+        return JsonResponse({'error': f'Internal server error: {str(e)}'}, status=500)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def apply_audio(request):
+    try:
+        total_duration = float(request.POST.get('total_duration', 0.0))
+        video_width, video_height = 1272, 720
+
+        black_clip = ColorClip(size=(video_width, video_height), color=(0, 0, 0), duration=total_duration).set_fps(24)
+
+        edited_video_url = request.POST.get('linkVideo', None)
+        print(edited_video_url)
+
+        audios_data = request.POST.getlist('audios')
+        audios = [json.loads(audio_data) for audio_data in audios_data]
+
+        print(f"Duration videos: {total_duration}")
+        print(f"Received audios: {audios}")
+
+        video_clips = []
+        if edited_video_url:
+            response = requests.get(edited_video_url)
             video_file = BytesIO(response.content)
 
             with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_video:
                 temp_video.write(video_file.getvalue())
                 video_path = temp_video.name
 
-            video_clip = VideoFileClip(video_path).subclip(0, duration)
-            video_clip = video_clip.set_start(startTime)
+            video_clip = VideoFileClip(video_path)
+            video_clip = video_clip.set_start(0)
 
-            scale_video = scale/100
-            #
-            if scale_video != 1.0:
-                video_clip = crop(video_clip, width=video_clip.w / scale_video, height=video_clip.h / scale_video,
-                                  x_center=video_clip.w / scale_video, y_center=video_clip.h / scale_video)
-                video_clip = resize(video_clip, scale_video)
-            #
-            # Xoay video với expand=True để giữ nguyên toàn bộ nội dung
-            video_clip = rotate(video_clip, -rotate_angle, expand=True)
 
-            # Lấy kích thước mới của video sau khi xoay
-            new_width, new_height = video_clip.size
-            print(f"New video size after rotation: {new_width}, {new_height}")
-
-            # Kích thước màn hình đã cho (1272x720)
-            screen_width = 1272
-            screen_height = 720
-
-            # Tính toán tỉ lệ resize để đảm bảo video có cùng chiều rộng hoặc chiều cao với màn hình
-            scale_factor = max(screen_width / new_width, screen_height / new_height)
-
-            # Resize video để đảm bảo video vừa khít màn hình theo chiều rộng hoặc chiều cao
+            scale_factor = max(video_width / video_clip.w, video_height / video_clip.h)
             video_clip = video_clip.resize(scale_factor)
 
-            # Lấy lại kích thước sau khi resize
-            new_width, new_height = video_clip.size
-            print(f"Video size after resize: {new_width}, {new_height}")
 
-            # Tính toán vị trí để video nằm giữa màn hình
-            centerX = (screen_width - new_width) / 2
-            centerY = (screen_height - new_height) / 2
-
-            # Đặt video vào giữa màn hình, các phần góc tràn ra ngoài
-            video_clip = video_clip.set_position((centerX + positionX, centerY + positionY))
-
-            if opacity < 1.0:
-                video_clip = video_clip.set_opacity(opacity)
-            #
-            # # Adjust playback speed
-            if speed != 1.0:
-                video_clip = video_clip.fx(vfx.speedx, speed)
-
-            voice_dB = min(max(voice, -60), 6)
-            linear_multiplier = 10 ** (voice_dB / 20)
-
-            # Set volume for audio
-            if video_clip.audio:
-
-                video_clip = video_clip.volumex(linear_multiplier)
+            centerX = (video_width - video_clip.size[0]) / 2
+            centerY = (video_height - video_clip.size[1]) / 2
+            video_clip = video_clip.set_position((centerX, centerY))
 
             video_clips.append(video_clip)
-
-        print(f"video_clips: {len(video_clips)}")
-
-        if not len(video_clips) > 0:
-            print("No video clips available, using black_clip as final_clip.")
-            final_clip = black_clip  # Dùng black_clip nếu không có video
-        else:
-            final_clip = CompositeVideoClip([black_clip] + video_clips)
+        final_clip = CompositeVideoClip([black_clip] + video_clips)
 
         original_audio = final_clip.audio
         if original_audio is not None:
@@ -654,10 +1319,8 @@ def export_video(request):
             voice = float(audio.get('voice', 1.0))
             speed = float(audio.get('speed', 1.0))
 
-
             response = requests.get(url)
             audio_file = BytesIO(response.content)
-
 
             with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as temp_audio:
                 temp_audio.write(audio_file.getvalue())
@@ -678,34 +1341,204 @@ def export_video(request):
 
             audio_clips.append(audio_clip)
 
-        if len(audio_clips) > 0:  # Chỉ ghép nếu có audio clips
+        if len(audio_clips) > 0:
             final_audio = CompositeAudioClip(audio_clips)
             final_clip = final_clip.set_audio(final_audio)
         else:
             print("No audio clips to process.")
 
-        for filter_data in filters:
-            config = filter_data.get('config', {})
-            startTime = float(filter_data.get('startTime', 0.0))
-            endTime = float(filter_data.get('endTime', total_duration))
-            duration = endTime - startTime
+
+        filename = 'output_video.mp4'
+        output_file_path = os.path.join(settings.MEDIA_ROOT, filename)
+        final_clip.write_videofile(output_file_path, codec='libx264', audio_codec='aac',
+                                   temp_audiofile="temp-audio.m4a", remove_temp=True,
+                                   write_logfile=False, preset='medium', ffmpeg_params=['-movflags', 'faststart'],
+                                   fps=24)
+
+        return JsonResponse({'merged_video_url': f'{settings.MEDIA_URL}{filename}'})
+    except Exception as e:
+
+        print(f"Error processing request: {str(e)}")
+
+        import traceback
+
+        traceback.print_exc()
+
+        return JsonResponse({'error': f'Internal server error: {str(e)}'}, status=500)
+
+def resize_gif(gif_path, scale):
+    gif = VideoFileClip(gif_path)
+    frames = []
+    for frame in gif.iter_frames(fps=gif.fps, dtype="uint8"):
+        image = Image.fromarray(frame)
+        image = image.resize((int(image.width * scale), int(image.height * scale)))
+        frames.append(np.array(image))
+    new_gif = ImageSequenceClip(frames, fps=gif.fps)
+    return new_gif
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def apply_sticker(request):
+    try:
+        total_duration = float(request.POST.get('total_duration', 0.0))
+        video_width, video_height = 1272, 720
+
+        black_clip = ColorClip(size=(video_width, video_height), color=(0, 0, 0), duration=total_duration).set_fps(24)
+
+        edited_video_url = request.POST.get('linkVideo', None)
+        print(edited_video_url)
+
+        stickers_data = request.POST.getlist('stickers')
+        stickers = [json.loads(sticker_data) for sticker_data in stickers_data]
+
+        print(f"Duration videos: {total_duration}")
+        print(f"Received stickers: {stickers}")
+
+        try:
+            stickers = json.loads(stickers) if isinstance(stickers, str) else stickers
+        except json.JSONDecodeError as e:
+            return JsonResponse({'error': f'Error decoding JSON: {str(e)}'}, status=400)
+
+        video_clips = []
+        if edited_video_url:
+            response = requests.get(edited_video_url)
+            video_file = BytesIO(response.content)
+
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_video:
+                temp_video.write(video_file.getvalue())
+                video_path = temp_video.name
+
+            video_clip = VideoFileClip(video_path)
+            video_clip = video_clip.set_start(0)
 
 
-            contrast = config.get('contrast', {}).get('default', 1)
-            brightness = config.get('brightness', {}).get('default', 1)
-            saturation = config.get('saturation', {}).get('default', 1)
+            scale_factor = max(video_width / video_clip.w, video_height / video_clip.h)
+            video_clip = video_clip.resize(scale_factor)
 
-            color_tone = config.get('color_tone', {})
-            hue_shift = color_tone.get('hue_shift', {}).get('default', 0)
-            shadow_tint = color_tone.get('shadow_tint', {}).get('default', [0, 0, 0])
-            highlight_tint = color_tone.get('highlight_tint', {}).get('default', [255, 255, 255])
 
-            subclip = final_clip.subclip(startTime, endTime)
-            subclip = apply_filter_in_time_range(subclip, config, startTime, endTime)
+            centerX = (video_width - video_clip.size[0]) / 2
+            centerY = (video_height - video_clip.size[1]) / 2
+            video_clip = video_clip.set_position((centerX, centerY))
 
-            # Thay thế subclip đã được áp dụng hiệu ứng vào vị trí trong video chính
-            final_clip = concatenate_videoclips(
-                [final_clip.subclip(0, startTime), subclip, final_clip.subclip(endTime)])
+            video_clips.append(video_clip)
+        final_clip = CompositeVideoClip([black_clip] + video_clips)
+
+        for sticker in stickers:
+            url = sticker.get('url')
+            print(url)
+            startTime = float(sticker.get('startTime', 0.0))
+            endTime = float(sticker.get('endTime', total_duration))
+            duration = float(sticker.get('duration', 5.0))
+            scale = int(sticker.get('scale', 100))/100
+            scaleWidth = int(sticker.get('scaleWidth', 100))/100
+            scaleHeight = int(sticker.get('scale', 100))/100
+            positionX = float(sticker.get('positionX', 0.0)) * 3
+            positionY = float(sticker.get('positionY', 0.0)) * 3
+            rotate_angle = float(sticker.get('rotate', 0.0))
+
+            response = requests.get(url)
+            print(f"GIF response status: {response.status_code}")
+            sticker_bytes = BytesIO(response.content)
+
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_gif:
+                temp_gif.write(sticker_bytes.getbuffer())
+                temp_gif_path = temp_gif.name
+
+            sticker_clip = VideoFileClip(temp_gif_path, has_mask=True)
+            print(f"GIF Info: {sticker_clip.size}")
+
+
+            if scale != 1.0:
+                sticker_clip = sticker_clip.resize(scale)
+            if rotate_angle != 0:
+                sticker_clip = rotate(sticker_clip, -rotate_angle, expand=True)
+
+            repeat_count = int(duration // sticker_clip.duration) + 1
+            sticker_clips = []
+            for i in range(repeat_count):
+                sticker_clip = VideoFileClip(temp_gif_path, has_mask=True)
+                loop_start_time = startTime + i * sticker_clip.duration
+                loop_end_time = endTime + i * sticker_clip.duration
+                if i == repeat_count:
+                    sticker_copy = sticker_clip.copy().set_position((positionX, positionY)).set_start(
+                        loop_start_time).set_duration(endTime - loop_start_time)
+                else:
+                    sticker_copy = sticker_clip.copy().set_position((positionX, positionY)).set_start(
+                        loop_start_time).set_duration(sticker_clip.duration)
+                    print(f'i: {i}')
+                    print(f'loop_start_time: {loop_start_time}')
+                    print(f'sticker_copy: {sticker_copy}')
+                sticker_clips.append(sticker_copy)
+
+            final_clip = CompositeVideoClip([final_clip] + sticker_clips)
+
+            os.remove(temp_gif_path)
+
+        filename = 'output_video.mp4'
+        output_file_path = os.path.join(settings.MEDIA_ROOT, filename)
+        final_clip.write_videofile(output_file_path, codec='libx264', audio_codec='aac',
+                                   temp_audiofile="temp-audio.m4a", remove_temp=True,
+                                   write_logfile=False, preset='medium', ffmpeg_params=['-movflags', 'faststart'],
+                                   fps=24)
+
+        return JsonResponse({'merged_video_url': f'{settings.MEDIA_URL}{filename}'})
+    except Exception as e:
+
+        print(f"Error processing request: {str(e)}")
+
+        import traceback
+
+        traceback.print_exc()
+
+        return JsonResponse({'error': f'Internal server error: {str(e)}'}, status=500)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def apply_text(request):
+    try:
+        total_duration = float(request.POST.get('total_duration', 0.0))
+        video_width, video_height = 1272, 720
+
+        black_clip = ColorClip(size=(video_width, video_height), color=(0, 0, 0), duration=total_duration).set_fps(24)
+
+        edited_video_url = request.POST.get('linkVideo', None)
+        print(f"edited video texts: {edited_video_url}")
+
+        texts_data = request.POST.getlist('texts')
+        texts = [json.loads(text_data) for text_data in texts_data]
+
+        print(f"Duration videos: {total_duration}")
+        print(f"Received texts: {texts}")
+
+        try:
+            texts = json.loads(texts) if isinstance(texts, str) else texts
+        except json.JSONDecodeError as e:
+            return JsonResponse({'error': f'Error decoding JSON: {str(e)}'}, status=400)
+
+
+        video_clips = []
+        if edited_video_url:
+            response = requests.get(edited_video_url)
+            video_file = BytesIO(response.content)
+
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_video:
+                temp_video.write(video_file.getvalue())
+                video_path = temp_video.name
+
+            video_clip = VideoFileClip(video_path)
+            video_clip = video_clip.set_start(0)
+
+
+            scale_factor = max(video_width / video_clip.w, video_height / video_clip.h)
+            video_clip = video_clip.resize(scale_factor)
+
+
+            centerX = (video_width - video_clip.size[0]) / 2
+            centerY = (video_height - video_clip.size[1]) / 2
+            video_clip = video_clip.set_position((centerX, centerY))
+
+            video_clips.append(video_clip)
+        final_clip = CompositeVideoClip([black_clip] + video_clips)
 
         for text in texts:
             content = text.get('content', "Default")
@@ -723,6 +1556,139 @@ def export_video(request):
             ).set_position(('center', 'center')).set_start(startTime).set_duration(duration)
             final_clip = CompositeVideoClip([final_clip, text_clip])
 
+        filename = 'output_video.mp4'
+        output_file_path = os.path.join(settings.MEDIA_ROOT, filename)
+        final_clip.write_videofile(output_file_path, codec='libx264', audio_codec='aac',
+                                   temp_audiofile="temp-audio.m4a", remove_temp=True,
+                                   write_logfile=False, preset='medium', ffmpeg_params=['-movflags', 'faststart'],
+                                   fps=24)
+
+        return JsonResponse({'merged_video_url': f'{settings.MEDIA_URL}{filename}'})
+    except Exception as e:
+
+        print(f"Error processing request: {str(e)}")
+
+        import traceback
+
+        traceback.print_exc()
+
+        return JsonResponse({'error': f'Internal server error: {str(e)}'}, status=500)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def apply_filter(request):
+    try:
+        total_duration = float(request.POST.get('total_duration', 0.0))
+        video_width, video_height = 1272, 720
+
+        black_clip = ColorClip(size=(video_width, video_height), color=(0, 0, 0), duration=total_duration).set_fps(24)
+
+        edited_video_url = request.POST.get('linkVideo', None)
+        print(edited_video_url)
+
+        filters_data = request.POST.getlist('filters')
+        filters = [json.loads(filter_data) for filter_data in filters_data]
+
+        print(f"Duration videos: {total_duration}")
+        print(f"Received filters: {filters}")
+
+        try:
+            filters = json.loads(filters) if isinstance(filters, str) else filters
+        except json.JSONDecodeError as e:
+            return JsonResponse({'error': f'Error decoding JSON: {str(e)}'}, status=400)
+
+
+        video_clips = []
+        if edited_video_url:
+            response = requests.get(edited_video_url)
+            video_file = BytesIO(response.content)
+
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_video:
+                temp_video.write(video_file.getvalue())
+                video_path = temp_video.name
+
+            video_clip = VideoFileClip(video_path)
+            video_clip = video_clip.set_start(0)
+
+
+            scale_factor = max(video_width / video_clip.w, video_height / video_clip.h)
+            video_clip = video_clip.resize(scale_factor)
+
+
+            centerX = (video_width - video_clip.size[0]) / 2
+            centerY = (video_height - video_clip.size[1]) / 2
+            video_clip = video_clip.set_position((centerX, centerY))
+
+            video_clips.append(video_clip)
+        final_clip = CompositeVideoClip([black_clip] + video_clips)
+
+        for filter in filters:
+            config = filter.get('config', {})
+            startTime = float(filter.get('startTime', 0.0))
+            endTime = float(filter.get('endTime', total_duration))
+
+            final_clip = apply_filter_in_time_range(final_clip, config, startTime, endTime)
+
+        filename = 'output_video.mp4'
+        output_file_path = os.path.join(settings.MEDIA_ROOT, filename)
+        final_clip.write_videofile(output_file_path, codec='libx264', audio_codec='aac',
+                                   temp_audiofile="temp-audio.m4a", remove_temp=True,
+                                   write_logfile=False, preset='medium', ffmpeg_params=['-movflags', 'faststart'],
+                                   fps=24)
+
+        return JsonResponse({'merged_video_url': f'{settings.MEDIA_URL}{filename}'})
+    except Exception as e:
+
+        print(f"Error processing request: {str(e)}")
+
+        import traceback
+
+        traceback.print_exc()
+
+        return JsonResponse({'error': f'Internal server error: {str(e)}'}, status=500)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def apply_effect(request):
+    try:
+        total_duration = float(request.POST.get('total_duration', 0.0))
+        video_width, video_height = 1272, 720
+
+        black_clip = ColorClip(size=(video_width, video_height), color=(0, 0, 0), duration=total_duration).set_fps(24)
+
+        edited_video_url = request.POST.get('linkVideo', None)
+        print(edited_video_url)
+
+        effects_data = request.POST.getlist('effects')
+        effects = [json.loads(effect_data) for effect_data in effects_data]
+
+        print(f"Duration videos: {total_duration}")
+        print(f"Received effects: {effects}")
+
+        video_clips = []
+        if edited_video_url:
+            response = requests.get(edited_video_url)
+            video_file = BytesIO(response.content)
+
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_video:
+                temp_video.write(video_file.getvalue())
+                video_path = temp_video.name
+
+            video_clip = VideoFileClip(video_path)
+            video_clip = video_clip.set_start(0)
+
+
+            scale_factor = max(video_width / video_clip.w, video_height / video_clip.h)
+            video_clip = video_clip.resize(scale_factor)
+
+
+            centerX = (video_width - video_clip.size[0]) / 2
+            centerY = (video_height - video_clip.size[1]) / 2
+            video_clip = video_clip.set_position((centerX, centerY))
+
+            video_clips.append(video_clip)
+        final_clip = CompositeVideoClip([black_clip] + video_clips)
+
         for effect in effects:
             config = effect.get('config', {})
             startTime = float(effect.get('startTime', 0.0))
@@ -730,67 +1696,223 @@ def export_video(request):
 
             final_clip = apply_effect_in_time_range(final_clip, config, startTime, endTime)
 
-        for sticker in stickers:
-            url = sticker.get('url')
-            print(url)
-            startTime = float(sticker.get('startTime', 0.0))
-            endTime = float(sticker.get('endTime', total_duration))
-            duration = float(sticker.get('duration', 5.0))
-
-            response = requests.get(url)
-            print(f"GIF response status: {response.status_code}")
-            sticker_bytes = BytesIO(response.content)
-
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".gif") as temp_gif:
-                temp_gif.write(sticker_bytes.getbuffer())
-                temp_gif_path = temp_gif.name
-
-            sticker_clip = VideoFileClip(temp_gif_path, has_mask=True)
-            repeat_count = int(duration // sticker_clip.duration) + 1
-            print(repeat_count)
-            sticker_clips = []
-            for i in range(repeat_count):
-                sticker_clip = VideoFileClip(temp_gif_path, has_mask=True)
-                loop_start_time = startTime + i * sticker_clip.duration
-                loop_end_time = endTime + i * sticker_clip.duration
-                if i == repeat_count - 1:
-                    sticker_copy = sticker_clip.copy().set_position(('center', 'center')).set_start(
-                        loop_start_time).set_duration(endTime - loop_start_time)
-                else:
-                    sticker_copy = sticker_clip.copy().set_position(('center', 'center')).set_start(
-                        loop_start_time).set_duration(sticker_clip.duration)
-                    print(f'i: {i}')
-                    print(f'loop_start_time: {loop_start_time}')
-                    print(f'sticker_copy: {sticker_copy}')
-                sticker_clips.append(sticker_copy)
-
-            final_clip = CompositeVideoClip([final_clip] + sticker_clips)
-
-            os.remove(temp_gif_path)
 
         filename = 'output_video.mp4'
         output_file_path = os.path.join(settings.MEDIA_ROOT, filename)
         final_clip.write_videofile(output_file_path, codec='libx264', audio_codec='aac',
                                    temp_audiofile="temp-audio.m4a", remove_temp=True,
-                                   write_logfile=False, preset='medium', ffmpeg_params=['-movflags', 'faststart'], fps=24)
+                                   write_logfile=False, preset='medium', ffmpeg_params=['-movflags', 'faststart'],
+                                   fps=24)
 
         return JsonResponse({'merged_video_url': f'{settings.MEDIA_URL}{filename}'})
-
-
     except Exception as e:
 
         print(f"Error processing request: {str(e)}")
 
         import traceback
 
-        traceback.print_exc()  # In ra toàn bộ lỗi
+        traceback.print_exc()
 
         return JsonResponse({'error': f'Internal server error: {str(e)}'}, status=500)
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def export_video(request):
+    try:
+        total_duration = float(request.POST.get('total_duration', 0.0))
+        video_width, video_height = 1272, 720
+
+        black_clip = ColorClip(size=(video_width, video_height), color=(0, 0, 0), duration=total_duration).set_fps(24)
+
+        edited_video_url = request.POST.get('linkVideo', None)
+        print(edited_video_url)
+
+        audios_data = request.POST.getlist('audios')
+        audios = [json.loads(audio_data) for audio_data in audios_data]
+
+        texts_data = request.POST.getlist('texts')
+        texts = [json.loads(text_data) for text_data in texts_data]
+
+        print(f"Duration videos: {total_duration}")
+        print(f"Received audios: {audios}")
+        print(f"Received texts: {texts}")
+
+        try:
+            texts = json.loads(texts) if isinstance(texts, str) else texts
+        except json.JSONDecodeError as e:
+            return JsonResponse({'error': f'Error decoding JSON: {str(e)}'}, status=400)
+
+        video_clips = []
+        if edited_video_url:
+            response = requests.get(edited_video_url)
+            video_file = BytesIO(response.content)
+
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_video:
+                temp_video.write(video_file.getvalue())
+                video_path = temp_video.name
+
+            video_clip = VideoFileClip(video_path)
+            video_clip = video_clip.set_start(0)
+
+
+            scale_factor = max(video_width / video_clip.w, video_height / video_clip.h)
+            video_clip = video_clip.resize(scale_factor)
+
+
+            centerX = (video_width - video_clip.size[0]) / 2
+            centerY = (video_height - video_clip.size[1]) / 2
+            video_clip = video_clip.set_position((centerX, centerY))
+
+            video_clips.append(video_clip)
+        final_clip = CompositeVideoClip([black_clip] + video_clips)
+
+        original_audio = final_clip.audio
+        if original_audio is not None:
+            audio_clips = [original_audio]
+        else:
+            audio_clips = []
+
+        for audio in audios:
+            url = audio.get('url')
+            startTime = float(audio.get('startTime', 0.0))
+            endTime = float(audio.get('endTime', total_duration))
+            duration = float(audio.get('duration', 5.0))
+            voice = float(audio.get('voice', 1.0))
+            speed = float(audio.get('speed', 1.0))
+
+            response = requests.get(url)
+            audio_file = BytesIO(response.content)
+
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as temp_audio:
+                temp_audio.write(audio_file.getvalue())
+                audio_path = temp_audio.name
+
+            audio_clip = AudioFileClip(audio_path)
+
+            audio_clip = audio_clip.subclip(0, min(duration, audio_clip.duration))
+            audio_clip = audio_clip.set_start(startTime)
+
+            if speed != 1.0:
+                audio_clip = audio_clip.fx(vfx.speedx, speed)
+
+            voice_dB = min(max(voice, -60), 6)
+            linear_multiplier = 10 ** (voice_dB / 20)
+
+            audio_clip = audio_clip.volumex(linear_multiplier)
+
+            audio_clips.append(audio_clip)
+
+        if len(audio_clips) > 0:
+            final_audio = CompositeAudioClip(audio_clips)
+            final_clip = final_clip.set_audio(final_audio)
+        else:
+            print("No audio clips to process.")
+
+        for text in texts:
+            content = text.get('content', "Default")
+            style = text.get('style', {})
+            color = style.get('color', '#FFFFFF')
+            stroke_color = style.get('strokeColor', '#FFFFFF')
+            backgroundColor = style.get('backgroundColor', '#FFFFFF')
+            strokeWidth = style.get('strokeWidth', 1)
+            scale = int(text.get('scale', 100))
+            fontSize = (int(text.get('fontSize', 20)) * 3) * (scale/100)
+            position = float(text.get('position', 0.0)) * 3
+            positionX = float(text.get('positionX', 0.0)) * 3
+            positionY = float(text.get('positionY', 0.0)) * 3
+            rotate_angle = float(text.get('rotate', 0.0))
+            opacity = float(text.get('opacity', 100.0)) / 100.0
+            voice = float(text.get('voice', 0.0))
+            speed = float(text.get('speed', 0.0))
+            startTime = float(text.get('startTime', 0.0))
+            endTime = float(text.get('endTime', total_duration))
+            duration = float(text.get('duration', 5.0))
+            fontStyle = text.get('fontStyle', "Arial")
+            pattern = text.get('pattern', "normal")
+            case = text.get('case', "normal")
+            blod = text.get('blod', False)
+            underline = text.get('underline', False)
+            italic = text.get('italic', False)
+            if text.get('italic', False) and text.get('bold', False):
+                fontStyle = "/usr/share/fonts/truetype/msttcorefonts/" + fontStyle +  "_Bold_Italic.ttf"
+            elif text.get('italic', False):
+                fontStyle = "/usr/share/fonts/truetype/msttcorefonts/" + fontStyle +  "_Italic.ttf"
+            elif text.get('bold', False):
+                fontStyle = "/usr/share/fonts/truetype/msttcorefonts/" + fontStyle +  "_Bold.ttf"
+            else:
+                fontStyle = "/usr/share/fonts/truetype/msttcorefonts/" + fontStyle +  ".ttf"
+
+            print(f"bold: {text.get('bold', False)}")
+            print(f"fontStyle: {fontStyle}")
+
+            styleOfText = text.get('styleOfText', "lettercase").lower()
+            if styleOfText == "uppercase":
+                content = content.upper()
+            elif styleOfText == "lowercase":
+                content = content.lower()
+            elif styleOfText == "lettercase":
+                content = content.capitalize()
+
+            
+            print(f"fontSize: {fontSize}")
+            text_clip = TextClip(
+                content,
+                fontsize=fontSize,
+                color=color,
+                font= fontStyle,
+                stroke_color = stroke_color,
+                stroke_width = strokeWidth,
+            ).set_position((positionX, positionY)).set_start(startTime).set_duration(duration)
+
+            if rotate_angle != 0:
+                text_clip = text_clip.rotate(-rotate_angle, resample="bilinear")
+
+            if opacity < 1.0:
+                text_clip = text_clip.set_opacity(opacity)
+
+            if speed != 1.0:
+                text_clip = text_clip.fx(vfx.speedx, speed)
+
+            clips = [text_clip]
+
+            def hex_to_rgb(hex_color):
+                hex_color = hex_color.lstrip('#')
+                return tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
+
+            rgb_color = hex_to_rgb(color)
+
+            if underline:
+                text_width, text_height = text_clip.size
+                underline_clip = ColorClip(
+                    size=(text_width, 5),  
+                    color=rgb_color
+                ).set_position((positionX, positionY + text_height + 5))  
+                underline_clip = underline_clip.set_start(startTime).set_duration(duration)
+                clips.append(underline_clip)
+
+            final_clip = CompositeVideoClip([final_clip] + clips)
+
+        filename = 'download_video.mp4'
+        output_file_path = os.path.join(settings.MEDIA_ROOT, filename)
+        final_clip.write_videofile(output_file_path, codec='libx264', audio_codec='aac',
+                                   temp_audiofile="temp-audio.m4a", remove_temp=True,
+                                   write_logfile=False, preset='medium', ffmpeg_params=['-movflags', 'faststart'],
+                                   fps=24)
+
+        return JsonResponse({'merged_video_url': f'{settings.MEDIA_URL}{filename}'})
+    except Exception as e:
+
+        print(f"Error processing request: {str(e)}")
+
+        import traceback
+
+        traceback.print_exc()
+
+        return JsonResponse({'error': f'Internal server error: {str(e)}'}, status=500)
 
 def serve_video(request, filename):
     try:
-        print(f"Serving video file: {filename}")  # Thêm dòng này để kiểm tra
+        print(f"Serving video file: {filename}")
         file_path = os.path.join(settings.MEDIA_ROOT, filename)
 
         file = open(file_path, 'rb')
@@ -802,8 +1924,9 @@ def serve_video(request, filename):
         return response
 
     except FileNotFoundError:
-        print(f"File not found: {filename}")  # Thêm dòng này nếu file không tìm thấy
+        print(f"File not found: {filename}")
         return JsonResponse({'error': 'File not found'}, status=404)
+
 
 @csrf_exempt
 def add_audio_to_video(request):
@@ -837,6 +1960,7 @@ def add_audio_to_video(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid request method'}, status=400)
+
 
 @csrf_exempt
 def add_sticker_to_video(request):
@@ -880,12 +2004,173 @@ def add_sticker_to_video(request):
 
     return JsonResponse({'error': 'Invalid request method'}, status=400)
 
+
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
     return {
         'refresh': str(refresh),
         'access': str(refresh.access_token),
     }
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def google_auth_init(request):
+    url = (
+        f"https://accounts.google.com/o/oauth2/auth?"
+        f"client_id={settings.GOOGLE_CLIENT_ID}&"
+        f"redirect_uri={settings.GOOGLE_REDIRECT_URI}&"
+        f"scope=openid email profile&"
+        f"response_type=code"
+    )
+    return JsonResponse({"url": url})
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def google_login_init(request):
+    url = (
+        f"https://accounts.google.com/o/oauth2/auth?"
+        f"client_id={settings.GOOGLE_CLIENT_ID}&"
+        f"redirect_uri={settings.GOOGLE_REDIRECT_URI}&"
+        f"scope=openid email profile&"
+        f"response_type=code"
+    )
+    return JsonResponse({"url": url})
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def google_auth_callback(request):
+    code = request.GET.get("code")
+    if not code:
+        print("No code provided in callback")
+        return JsonResponse({"error": "No code provided"}, status=400)
+
+    token_url = "https://oauth2.googleapis.com/token"
+    token_data = {
+        "code": code,
+        "client_id": settings.GOOGLE_CLIENT_ID,
+        "client_secret": settings.GOOGLE_CLIENT_SECRET,
+        "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+        "grant_type": "authorization_code",
+    }
+    token_response = requests.post(token_url, data=token_data)
+    token_response_data = token_response.json()
+
+    if "access_token" not in token_response_data:
+        print("Failed to retrieve access token:", token_response_data)
+        return JsonResponse({"error": "Authentication failed"}, status=400)
+
+    print("Received access token:", token_response_data["access_token"])
+
+    user_info_url = "https://www.googleapis.com/oauth2/v1/userinfo"
+    headers = {"Authorization": f"Bearer {token_response_data['access_token']}"}
+    user_info_response = requests.get(user_info_url, headers=headers)
+    user_info = user_info_response.json()
+    print("User info retrieved:", user_info)
+
+    email = user_info.get("email")
+    if not email:
+        print("No email found in user info")
+        return JsonResponse({"error": "No email found"}, status=400)
+
+    name = user_info.get("name", "")
+    username = email.split('@')[0]
+    user, created = User.objects.get_or_create(
+        email=email,
+        defaults={"fullname": name, "username": username}
+    )
+
+    if created:
+        print("New user created:", user.username)
+
+        user.set_unusable_password()
+        user.save()
+
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        reset_token = RefreshToken.for_user(user).access_token
+        reset_url = (
+            f"http://localhost:3000/set-password?uidb64={uidb64}"
+            f"&token={reset_token}"
+        )
+        try:
+            send_mail(
+                'Set up your password',
+                f'Thank you for signing up. Please set up your password by clicking the link: {reset_url}',
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            print("Failed to send email:", e)
+            return JsonResponse({"error": "Failed to send verification email"}, status=500)
+
+        login_url = (
+            f"http://localhost:3000/login"
+        )
+
+        return redirect(login_url)
+
+    elif user.is_delete:
+        return JsonResponse({"error": "Please verify your email to log in."}, status=403)
+
+    refresh = RefreshToken.for_user(user)
+    response_data = {
+        "refresh": str(refresh),
+        "access": str(refresh.access_token),
+    }
+
+    serializer = UserSerializer(instance=user)
+
+    role = serializer.data['role']
+    if role == 'admin':
+        redirect_url = '/admin'
+    else:
+        redirect_url = '/user'
+
+    response_data.update({
+        "user": serializer.data,
+        "redirect_url": redirect_url
+    })
+
+    print("Generated JWT tokens and user info:", response_data)
+
+    encoded_user = urllib.parse.quote(json.dumps(serializer.data))
+    frontend_redirect_url = (
+        f"http://localhost:3000/login?access={response_data['access']}"
+        f"&refresh={response_data['refresh']}&user={encoded_user}"
+    )
+    print("Redirecting to frontend with tokens and encoded user:", frontend_redirect_url)
+
+    return redirect(frontend_redirect_url)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def set_password(request, uidb64, token):
+    password = request.data.get('password')
+
+    if not password:
+        return Response({"error": "Password is required."}, status=400)
+
+    try:
+
+        user_id = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=user_id)
+
+        try:
+            AccessToken(token)
+        except Exception:
+            return Response({"error": "Invalid token."}, status=400)
+
+        user.set_password(password)
+        user.save()
+        return Response({"message": "Password has been reset successfully."}, status=200)
+
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        return Response({"error": "Invalid user or uid."}, status=400)
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -914,22 +2199,85 @@ def login_user(request):
     else:
         return Response({'error': 'Invalid email or password'}, status=status.HTTP_400_BAD_REQUEST)
 
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def set_password(request, uidb64, token):
+    password = request.data.get('password')
+
+    if not password:
+        return Response({"error": "Password is required."}, status=400)
+
+    try:
+        user_id = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=user_id)
+
+        try:
+            AccessToken(token)
+        except Exception:
+            return Response({"error": "Invalid token."}, status=400)
+
+        user.set_password(password)
+        user.save()
+        return Response({"message": "Password has been reset successfully."}, status=200)
+
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        return Response({"error": "Invalid user or uid."}, status=400)
+
+def send_verification_email(user):
+    token = default_token_generator.make_token(user)
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    set_password_url = f"{settings.FRONTEND_URL}/set-password/{uid}/{token}/"
+
+    subject = "Set Your Password for Your New Account"
+    message = f"Thank you for signing up. Please set your password by clicking the link: {set_password_url}"
+    send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
+
+def send_verification_email_with_set_password_link(user):
+    token = default_token_generator.make_token(user)
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    set_password_url = f"{settings.FRONTEND_URL}/set-password/{uid}/{token}/"
+
+    subject = "Set Your Password for Your New Account"
+    message = f"Thank you for signing up. Please set your password by clicking the link: {set_password_url}"
+    send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
     try:
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
+
             user = serializer.save()
+            user.is_delete = True
+            user.save()
+            send_verification_email(user)
             logger.info(f"Created user: {user}")
 
-            tokens = get_tokens_for_user(user)
+            try:
+                tokens = get_tokens_for_user(user)
+            except Exception as token_error:
+                logger.error(f"Token generation failed: {token_error}")
+                return JsonResponse({'error': 'Token generation failed'}, status=500)
+
             return JsonResponse({'tokens': tokens, 'user': serializer.data}, status=201)
         else:
-            logger.error(f"Serializer validation errors: {serializer.errors}")
+            print("Validation errors:", serializer.errors)
             return JsonResponse({'error': serializer.errors}, status=400)
     except Exception as e:
+        logger.error(f"Unexpected error during registration: {e}")
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def verify_email(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+    user.is_delete = False
+    user.save()
+    return JsonResponse({"message": "Email verified successfully. You can now log in."})
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -943,6 +2291,7 @@ def logout_user(request):
         return Response({"message": "Đăng xuất thành công."}, status=200)
     except Exception as e:
         return Response({"error": str(e)}, status=400)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -958,8 +2307,8 @@ def update_user(request, userId):
         serializer.save()
         return Response(serializer.data, status=200)
     else:
-        print("Received data:", request.data)  # Log dữ liệu nhận được
-        print("Serializer errors:", serializer.errors)  # Log lỗi của serializer
+        print("Received data:", request.data)
+        print("Serializer errors:", serializer.errors)
         return JsonResponse({'error': serializer.errors}, status=400)
 
 
@@ -969,6 +2318,7 @@ def get_all_users(request):
     users = User.objects.filter(is_delete=False, role="user")
     serializer = UserSerializer(users, many=True)
     return Response(serializer.data)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -984,13 +2334,13 @@ def delete_user(request):
 
     return JsonResponse({'message': 'User deleted successfully'}, status=201)
 
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def change_password(request, userId):
     current_password = request.data.get('currentPassword')
     new_password = request.data.get('newPassword')
 
-    # Kiểm tra nếu thiếu dữ liệu
     if not current_password or not new_password:
         return JsonResponse({'message': 'Thiếu dữ liệu cần thiết'}, status=400)
 
@@ -999,15 +2349,12 @@ def change_password(request, userId):
     except User.DoesNotExist:
         return JsonResponse({'message': 'User not found'}, status=404)
 
-    # So sánh mật khẩu hiện tại với mật khẩu đã mã hóa
     if not user.check_password(current_password):
         return JsonResponse({'message': 'Mật khẩu hiện tại không chính xác'}, status=400)
 
-    # Mã hóa và lưu mật khẩu mới
     user.set_password(new_password)
     user.save()
 
-    # Serialize and return the updated user data
     user_serializer = UserSerializer(user)
 
     return Response(user_serializer.data, status=200)
@@ -1020,6 +2367,7 @@ def get_user_projects(request):
     projects = Project.objects.filter(user=user, is_delete=False)
     serializer = ProjectSerializer(projects, many=True)
     return Response({'projects': serializer.data}, status=200)
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -1044,6 +2392,7 @@ def create_project(request):
     serializer = ProjectSerializer(project)
     return Response({'project': serializer.data}, status=201)
 
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def delete_project(request):
@@ -1057,6 +2406,7 @@ def delete_project(request):
     project.save()
 
     return JsonResponse({'message': 'Project deleted successfully'}, status=201)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

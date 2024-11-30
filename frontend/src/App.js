@@ -2,11 +2,11 @@ import logo from './logo.svg';
 import React, { useState } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import './App.scss';
-import AuthContainer from "./components/AuthContainer";
+import Login from "./components/Login";
 
 function App() {
     return (
-        <AuthContainer></AuthContainer>
+        <Login></Login>
     );
 }
 

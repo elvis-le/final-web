@@ -3,7 +3,7 @@ import {v4 as uuidv4} from "uuid";
 import {supabase} from "../../supabaseClient";
 import axios from "axios";
 import {Button, MenuItem, TextField} from "@mui/material";
-import {Link} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 
 const StickerEdit = ({ onOptionSelect, stickerId }) => {
     const [stickerData, setStickerData] = useState([]);
@@ -20,6 +20,7 @@ const StickerEdit = ({ onOptionSelect, stickerId }) => {
         {value: 'gaming', label: 'Gaming'},
         {value: 'emoji', label: 'Emoji'}
     ];
+    const navigate = useNavigate();
 
 
     useEffect(() => {
@@ -106,13 +107,14 @@ const StickerEdit = ({ onOptionSelect, stickerId }) => {
         });
 
         if (response.status === 201) {
-            alert('File đã được cập nhật thành công!');
+            alert('File update successful!');
+            navigate('/admin/sticker', { state: { onOptionSelectValue: 'sticker' } });
         } else {
-            alert('Không thể cập nhật file');
+            alert('Can not update file');
         }
     } catch (error) {
-        console.error('Lỗi khi cập nhật file:', error.message);
-        alert('Lỗi khi cập nhật file');
+        console.error('Error to update file:', error.message);
+        alert('Error to update file');
     }
 };
 

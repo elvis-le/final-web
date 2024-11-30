@@ -7,7 +7,7 @@ import {
 import axios from 'axios';
 import {supabase} from '../../supabaseClient';
 import {v4 as uuidv4} from "uuid";
-import {Link} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 
 const EffectEdit = ({ onOptionSelect, effectId }) => {
     const [effectData, setEffectData] = useState([]);
@@ -15,6 +15,7 @@ const EffectEdit = ({ onOptionSelect, effectId }) => {
     const [name, setName] = useState('');
     const [category, setCategory] = useState('');
     const [config, setConfig] = useState({});
+    const navigate = useNavigate();
 
     const token = localStorage.getItem('access_token');
 
@@ -113,13 +114,14 @@ const EffectEdit = ({ onOptionSelect, effectId }) => {
         });
 
         if (response.status === 201) {
-            alert('File đã được cập nhật thành công!');
+            alert('File update successful!');
+            navigate('/admin/effect', { state: { onOptionSelectValue: 'effect' } });
         } else {
-            alert('Không thể cập nhật file');
+            alert('Can not update file');
         }
     } catch (error) {
-        console.error('Lỗi khi cập nhật file:', error.message);
-        alert('Lỗi khi cập nhật file');
+        console.error('Error to update file:', error.message);
+        alert('Error to update file');
     }
 };
 

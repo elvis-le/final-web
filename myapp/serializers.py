@@ -11,19 +11,19 @@ class UserSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
+        email = validated_data.pop('email')
+        username = validated_data.pop('username')
+        password = validated_data.pop('password')
+
+        # Gọi create_user với các trường bắt buộc và truyền các extra fields còn lại
         user = User.objects.create_user(
-            email=validated_data['email'],
-            fullname=validated_data['fullname'],
-            image=validated_data['image'],
-            username=validated_data['username'],
-            password=validated_data['password'],
-            role=validated_data.get('role', 'user'),
-            birth_date=validated_data.get('birth_date', None),
-            sex=validated_data.get('sex', None),
-            address=validated_data.get('address', None),
-            is_delete=validated_data.get('is_delete', False)
+            email=email,
+            username=username,
+            password=password,
+            **validated_data  # Truyền các trường bổ sung còn lại
         )
         return user
+
 
 class ProjectSerializer(serializers.ModelSerializer):
     class Meta:

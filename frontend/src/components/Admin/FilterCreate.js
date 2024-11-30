@@ -1,6 +1,6 @@
 import {Button, MenuItem, TextField} from "@mui/material";
 import React, {useState} from "react";
-import {Link} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 import {v4 as uuidv4} from "uuid";
 import {supabase} from "../../supabaseClient";
 import axios from "axios";
@@ -11,6 +11,7 @@ const FilterCreate = ({ onOptionSelect }) => {
     const [category, setCategory] = useState('');
     const [config, setConfig] = useState({});
     const token = localStorage.getItem('access_token');
+    const navigate = useNavigate();
 
     const categories = [
         { value: 'featured', label: 'Featured' },
@@ -73,6 +74,7 @@ const FilterCreate = ({ onOptionSelect }) => {
 
     if (response.status === 201) {
         alert('Files uploaded and saved successfully!');
+            navigate('/admin/filter', { state: { onOptionSelectValue: 'filter' } });
     } else {
         alert('Failed to save filter and image details to database');
     }

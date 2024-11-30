@@ -91,4 +91,19 @@
     }
     }
   }
+
+  .login-option-icon{
+    display: flex;
+    color: white;
+    border: 1px solid white;
+    margin: 1% 45% 4% 45%;
+    height: 30px;
+    border-radius: 15px;
+    align-items: center;
+    justify-content: center;
+    &:hover {
+      border: 1px solid rgba(255, 0, 0, 1);
+      color: rgba(255, 0, 0, 1);
+    }
+  }
 }

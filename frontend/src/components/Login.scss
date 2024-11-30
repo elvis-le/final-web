@@ -3,7 +3,7 @@
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background-image: url('../assets/images/Nitro_Wallpaper_01_3840x2400.jpg'); // Replace with an actual image URL
+  background-image: url('../assets/images/Nitro_Wallpaper_01_3840x2400.jpg');
   background-size: cover;
   background-position: center;
   .form-box {
@@ -89,6 +89,23 @@
         text-decoration: none;
       }
     }
+    }
+  }
+  .login-option-icon{
+    display: flex;
+    color: white;
+    border: 1px solid white;
+    width: 10%;
+    margin: 1% 45% 4% 45%;
+    height: 30px;
+    border-radius: 15px;
+    align-items: center;
+    justify-content: center;
+    transition: all .3s ease-in-out;
+
+    &:hover{
+    border: 1px solid rgba(255, 0, 0, 1);
+    color: rgba(255, 0, 0, 1);
     }
   }
 }

@@ -3,7 +3,7 @@ import React, {useState} from "react";
 import {v4 as uuidv4} from "uuid";
 import {supabase} from "../../supabaseClient";
 import axios from "axios";
-import {Link} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 
 const StickerCreate = ({ onOptionSelect }) => {
     const [stickerFile, setStickerFile] = useState(null);
@@ -19,6 +19,7 @@ const StickerCreate = ({ onOptionSelect }) => {
         {value: 'gaming', label: 'Gaming'},
         {value: 'emoji', label: 'Emoji'}
     ];
+    const navigate = useNavigate();
 
     const handleFileChange = (e) => {
         setStickerFile(e.target.files[0]);
@@ -61,6 +62,7 @@ const StickerCreate = ({ onOptionSelect }) => {
 
             if (response.status === 201) {
                 alert('Files uploaded and saved successfully!');
+            navigate('/admin/sticker', { state: { onOptionSelectValue: 'sticker' } });
             } else {
                 alert('Failed to save sticker and image details to database');
             }

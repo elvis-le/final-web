@@ -7,13 +7,14 @@ import {
 import axios from 'axios';
 import {supabase} from '../../supabaseClient';
 import {v4 as uuidv4} from "uuid";
-import {Link} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 
 const EffectCreate = ({ onOptionSelect }) => {
     const [imageFile, setImageFile] = useState(null);
     const [name, setName] = useState('');
     const [category, setCategory] = useState('');
     const [config, setConfig] = useState({});
+    const navigate = useNavigate();
 
     const token = localStorage.getItem('access_token');
 
@@ -84,6 +85,7 @@ const EffectCreate = ({ onOptionSelect }) => {
 
             if (response.status === 201) {
                 alert('Files uploaded and saved successfully!');
+                 navigate('/admin/effect', { state: { onOptionSelectValue: 'effect' } });
             } else {
                 alert('Failed to save effect and image details to database');
             }

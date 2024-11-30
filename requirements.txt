@@ -19,6 +19,10 @@ dj-database-url
 python-dotenv
 djangorestframework-simplejwt
 opencv-python
+google-auth
+google-auth-oauthlib
+google
+pydub
 
 
 

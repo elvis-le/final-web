@@ -1,5 +1,5 @@
 import {Button, MenuItem, TextField} from "@mui/material";
-import {Link} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 import React, {useEffect, useState} from "react";
 import {v4 as uuidv4} from "uuid";
 import {supabase} from "../../supabaseClient";
@@ -20,6 +20,7 @@ const TextEdit = ({ onOptionSelect, textId }) => {
 { value: 'basic', label: 'Basic' },
 { value: 'multicolor', label: 'Multicolor' }
     ];
+    const navigate = useNavigate();
 
     useEffect(() => {
         async function fetchTextData() {
@@ -115,13 +116,14 @@ const TextEdit = ({ onOptionSelect, textId }) => {
         });
 
         if (response.status === 201) {
-            alert('File đã được cập nhật thành công!');
+            alert('File update successful!');
+            navigate('/admin/text', { state: { onOptionSelectValue: 'text' } });
         } else {
-            alert('Không thể cập nhật file');
+            alert(`Can not update file`);
         }
     } catch (error) {
-        console.error('Lỗi khi cập nhật file:', error.message);
-        alert('Lỗi khi cập nhật file');
+        console.error('Error to update file:', error.message);
+        alert('Error to update file');
     }
 };
 

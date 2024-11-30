@@ -10,12 +10,8 @@ import axios from 'axios';
 import {v4 as uuidv4} from 'uuid';
 import {supabase} from '../../supabaseClient';
 import {Stage, Layer, Text, Image} from "react-konva";
-import {FaBold, FaItalic, FaUnderline} from "react-icons/fa";
+import {FaBold, FaCut, FaItalic, FaUnderline} from "react-icons/fa";
 import {RxLetterCaseLowercase, RxLetterCaseToggle, RxLetterCaseUppercase} from "react-icons/rx";
-import {FFmpeg} from '@ffmpeg/ffmpeg';
-import {gsap} from 'gsap';
-
-const ffmpeg = new FFmpeg({log: true});
 
 const HomePage = () => {
     const [isLogin, setIsLogin] = useState(false);
@@ -33,7 +29,6 @@ const HomePage = () => {
     const [timelineDuration, setTimelineDuration] = useState(0);
     const [timestamps, setTimestamps] = useState([])
     const [videoDuration, setVideoDuration] = useState(0);
-
 
     const [listVideo, setListVideo] = useState([]);
 
@@ -140,24 +135,20 @@ const HomePage = () => {
     const [voiceValue, setVoiceValue] = useState(0);
     const [speedValue, setSpeedValue] = useState(1);
 
-
-    const [textContent, setTextContent] = useState("Default text")
-    const [fontText, setFontText] = useState("arial");
+    const [textContent, setTextContent] = useState("Default Text")
+    const [fontText, setFontText] = useState("Arial");
     const [fontSizeText, setFontSizeText] = useState(10);
     const [patternText, setPatternText] = useState("normal");
     const [caseText, setCaseText] = useState("normal");
     const [scaleText, setScaleText] = useState(100);
-    const [scaleWidthText, setScaleWidthText] = useState(100);
-    const [scaleHeightText, setScaleHeightText] = useState(100);
     const [positionXText, setPositionXText] = useState(0);
     const [positionYText, setPositionYText] = useState(0);
     const [rotateText, setRotateText] = useState(0);
     const [opacityText, setOpacityText] = useState(100);
-    const [blod, setBlod] = useState(false);
+    const [bold, setBold] = useState(false);
     const [underline, setUnderline] = useState(false);
     const [italic, setItalic] = useState(false);
     const [styleOfText, setStyleOfText] = useState("lettercase");
-
 
     const [voiceValueAudio, setVoiceValueAudio] = useState(0);
     const [speedValueAudio, setSpeedValueAudio] = useState(1);
@@ -181,17 +172,17 @@ const HomePage = () => {
     const [stickerIndex, setStickerIndex] = useState(0);
     const [timelineStickerIndex, setTimelineStickerIndex] = useState(0);
 
-    const [frameIndex, setFrameIndex] = useState(0);
-    const [frames, setFrames] = useState([]);
-    const [currentImage, setCurrentImage] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [gifFileUrl, setGifFileUrl] = useState("");
-    const [translateSticker, setTranslateSticker] = useState(false)
     const [stickerFrames, setStickerFrames] = useState({});
     const [currentFrameIndex, setCurrentFrameIndex] = useState({});
     const [videoUrlTranslate, setVideoUrlTranslate] = useState("");
+    const [videoUrlVideo, setVideoUrlVideo] = useState("");
     const [selectedElement, setSelectedElement] = useState(null);
-  const seekBarRef = useRef(null);
+    const seekBarRef = useRef(null);
+    const [isTimerRunning, setIsTimerRunning] = useState(false);
+    const [elementType, setElementType] = useState("");
+    const [element, setElement] = useState("")
 
 
     const audioRefs = useRef({});
@@ -252,17 +243,42 @@ const HomePage = () => {
     };
 
     const handleEffectClick = () => {
+        const hasContent =
+            timelineVideos.some(timeline => timeline.videos.length > 0) ||
+            timelinesAudio.some(timeline => timeline.audios.length > 0) ||
+            timelinesSticker.some(timeline => timeline.stickers.length > 0) ||
+            timelinesText.some(timeline => timeline.texts.length > 0) ||
+            timelinesEffect.some(timeline => timeline.effects.length > 0) ||
+            timelinesFilter.some(timeline => timeline.filters.length > 0);
+
+        if (!hasContent) {
+            alert('Không có nội dung nào để phát. Hãy thêm video, âm thanh, hoặc các thành phần khác.');
+            return;
+        }
         if (videoRef.current) {
             if (!playVideo) {
                 videoRef.current.play();
-                setPlayVideo(!playVideo);
+                Object.values(audioRefs.current).forEach(audio => audio.play());
+                setPlayVideo(true);
+                setIsTimerRunning(true);
             } else {
                 videoRef.current.pause();
-                setPlayVideo(!playVideo);
+                Object.values(audioRefs.current).forEach(audio => audio.pause());
+                setPlayVideo(false);
+                setIsTimerRunning(false);
+            }
+        } else {
+            if (!playVideo) {
+                Object.values(audioRefs.current).forEach(audio => audio.play());
+                setPlayVideo(true);
+                setIsTimerRunning(true);
+            } else {
+                Object.values(audioRefs.current).forEach(audio => audio.pause());
+                setPlayVideo(false);
+                setIsTimerRunning(false);
             }
         }
     };
-
 
     const [editType, setEditType] = useState({
         video: false,
@@ -614,7 +630,6 @@ const HomePage = () => {
         const stickerUrl = e.dataTransfer.getData("stickerUrl");
 
 
-
         if (videoUrl && fileName) {
             setVideoUrl(videoUrl);
             setCurrentTime(0);
@@ -649,17 +664,17 @@ const HomePage = () => {
 
 
         if (seekBarRef.current) {
-      seekBarRef.current.style.pointerEvents = 'auto';
-      console.log(seekBarRef.current.style.pointerEvents)
-    }
+            seekBarRef.current.style.pointerEvents = 'auto';
+            console.log(seekBarRef.current.style.pointerEvents)
+        }
 
     };
 
     const handleDragStart = (e, item, timelineIndex, type) => {
         if (seekBarRef.current) {
-      seekBarRef.current.style.pointerEvents = 'none';
-      console.log(seekBarRef.current.style.pointerEvents)
-    }
+            seekBarRef.current.style.pointerEvents = 'none';
+            console.log(seekBarRef.current.style.pointerEvents)
+        }
         if (isResizing) {
             e.preventDefault();
             return;
@@ -709,90 +724,128 @@ const HomePage = () => {
         const fileName = e.dataTransfer.getData("fileName");
         const videoId = e.dataTransfer.getData("videoId");
         const instanceId = e.dataTransfer.getData("instanceId");
-        const video = listVideo.find(video => video.video_url === videoUrl);
-        const duration = video.duration;
-
+        const duration = parseFloat(e.dataTransfer.getData("duration"));
 
         const totalTimelineDuration = Math.max(totalDuration, 30);
-        const segmentWidth = (duration / totalTimelineDuration) * 100;
-
-        setTimelineDuration(duration);
-        setTimestamps(generateTimestamps(totalTimelineDuration));
-
-        if (!video) {
-            console.error("Video not found in listVideo.");
-            return;
-        }
-
         const dropX = e.clientX - e.target.getBoundingClientRect().left;
         const timelineWidth = e.target.clientWidth;
+
         const dropPositionPercentage = (dropX / timelineWidth) * 100;
 
-        const startTime = (dropPositionPercentage / 100) * totalTimelineDuration;
-        const endTime = startTime + duration;
-
         setTimelineVideos((prevTimelineVideos) => {
-            const updatedTimelineVideos = [...prevTimelineVideos];
+            let updatedTimelineVideos = [...prevTimelineVideos];
 
-            const newVideoSegment = {
-                instanceId: instanceId,
-                id: videoId,
-                url: videoUrl,
-                fileName,
-                position: dropPositionPercentage,
-                width: segmentWidth,
-                startTime: startTime,
-                duration: duration,
-                endTime: endTime,
-                scale: 100,
-                scaleWidth: 100,
-                scaleHeight: 100,
-                positionX: 0,
-                positionY: 0,
-                rotate: 0,
-                opacity: 100,
-                voice: 0,
-                speed: 1,
-            };
 
-            if (selectedVideo.timelineIndex === timelineIndex) {
-                updatedTimelineVideos[timelineIndex].videos = updatedTimelineVideos[timelineIndex].videos.map(video => {
-                    if (video.instanceId === selectedVideo.instanceId) {
-                        return {
-                            ...video,
-                            position: dropPositionPercentage,
-                        };
+            for (let i = 0; i < updatedTimelineVideos.length; i++) {
+                updatedTimelineVideos[i].videos = updatedTimelineVideos[i].videos.filter(
+                    video => video.instanceId !== instanceId
+                );
+            }
+
+            if (timelineIndex !== null && updatedTimelineVideos[timelineIndex]) {
+                const timeline = updatedTimelineVideos[timelineIndex];
+
+
+                const overlappingVideo = timeline.videos.find(video =>
+                    dropPositionPercentage >= video.position &&
+                    dropPositionPercentage < video.position + video.width
+                );
+
+
+                const adjustedStartPosition = overlappingVideo
+                    ? overlappingVideo.position + overlappingVideo.width
+                    : dropPositionPercentage;
+
+                const adjustedEndPosition = adjustedStartPosition + (duration / 30) * 100;
+
+                const newVideoSegment = {
+                    instanceId: instanceId,
+                    id: videoId,
+                    url: videoUrl,
+                    fileName,
+                    position: adjustedStartPosition,
+                    startTime: (adjustedStartPosition / 100) * totalTimelineDuration,
+                    endTime: (adjustedEndPosition / 100) * totalTimelineDuration,
+                    duration,
+                    durationSpeed: duration,
+                    width: (duration / 30) * 100,
+                    scale: 100,
+                    scaleWidth: 100,
+                    scaleHeight: 100,
+                    positionX: 0,
+                    positionY: 0,
+                    rotate: 0,
+                    opacity: 100,
+                    voice: 0,
+                    speed: 1,
+                };
+
+
+                timeline.videos.push(newVideoSegment);
+
+
+                timeline.videos.sort((a, b) => a.position - b.position);
+
+
+                for (let i = 0; i < timeline.videos.length - 1; i++) {
+                    const currentVideo = timeline.videos[i];
+                    const nextVideo = timeline.videos[i + 1];
+
+                    if (currentVideo.position + currentVideo.width > nextVideo.position) {
+                        nextVideo.position = currentVideo.position + currentVideo.width;
+                        nextVideo.startTime = (nextVideo.position / 100) * totalTimelineDuration;
+                        nextVideo.endTime = nextVideo.startTime + nextVideo.duration;
                     }
-
-                    return video;
-                });
-
-            } else if (selectedVideo.timelineIndex !== null &&
-                selectedVideo.timelineIndex !== undefined &&
-                selectedVideo.timelineIndex !== timelineIndex &&
-                updatedTimelineVideos[selectedVideo.timelineIndex]) {
-
-                if (selectedVideo.timelineIndex !== null && selectedVideo.timelineIndex !== undefined) {
-                    updatedTimelineVideos[selectedVideo.timelineIndex].videos = updatedTimelineVideos[selectedVideo.timelineIndex].videos.filter(video => video.instanceId !== selectedVideo.instanceId);
                 }
-                if (updatedTimelineVideos[selectedVideo.timelineIndex].videos.length === 0) {
-                    delete updatedTimelineVideos[selectedVideo.timelineIndex];
-                }
-            }
+            } else if (timelineIndex === null) {
 
-            if (timelineIndex === null) {
                 updatedTimelineVideos.push({
-                    videos: [newVideoSegment],
+                    videos: [{
+                        instanceId: instanceId,
+                        id: videoId,
+                        url: videoUrl,
+                        fileName,
+                        position: 0,
+                        startTime: 0,
+                        endTime: duration,
+                        duration,
+                        durationSpeed: duration,
+                        width: (duration / 30) * 100,
+                        scale: 100,
+                        scaleWidth: 100,
+                        scaleHeight: 100,
+                        positionX: 0,
+                        positionY: 0,
+                        rotate: 0,
+                        opacity: 100,
+                        voice: 0,
+                        speed: 1,
+                    }],
                 });
-            } else if (updatedTimelineVideos[timelineIndex] && !updatedTimelineVideos[timelineIndex].videos.some(video => video.instanceId === selectedVideo.instanceId)) {
-                updatedTimelineVideos[timelineIndex].videos.push(newVideoSegment);
             }
+
+
+            if (selectedVideo && selectedVideo.timelineIndex !== null && selectedVideo.timelineIndex !== timelineIndex) {
+                const previousTimelineIndex = selectedVideo.timelineIndex;
+
+                if (updatedTimelineVideos[previousTimelineIndex]) {
+                    updatedTimelineVideos[previousTimelineIndex].videos = updatedTimelineVideos[previousTimelineIndex].videos.filter(
+                        video => video.instanceId !== selectedVideo.instanceId
+                    );
+                }
+            }
+
+
+            updatedTimelineVideos = updatedTimelineVideos.filter(timeline => timeline.videos.length > 0);
+
 
             if (updatedTimelineVideos.length > 0 && updatedTimelineVideos[0].videos.length > 0) {
-                updatedTimelineVideos[0].videos[0].position = 0;
-                updatedTimelineVideos[0].videos[0].startTime = 0;
-                updatedTimelineVideos[0].videos[0].endTime = duration;
+                const firstVideo = updatedTimelineVideos[0].videos[0];
+                firstVideo.position = 0;
+                firstVideo.startTime = 0;
+                firstVideo.endTime = firstVideo.duration;
             }
+
             return updatedTimelineVideos;
         });
     };
@@ -805,89 +858,120 @@ const HomePage = () => {
         const instanceId = e.dataTransfer.getData("instanceId");
         const image = e.dataTransfer.getData("image");
         const style = JSON.parse(e.dataTransfer.getData("style"));
-        const duration = 5;
+        const duration = parseFloat(e.dataTransfer.getData("duration"));
 
         const dropX = e.clientX - e.target.getBoundingClientRect().left;
         const timelineWidth = e.target.clientWidth;
         const dropPositionPercentage = (dropX / timelineWidth) * 100;
 
         const totalTimelineDuration = Math.max(totalDuration, 30);
-        const segmentWidth = (duration / totalTimelineDuration) * 100;
-
-        const startTime = (dropPositionPercentage / 100)* totalTimelineDuration;
-        const endTime = startTime + duration;
-
-        const x = (videoWidth / 2) - (style?.fontSize ? parseInt(style.fontSize) * content.length / 2 : 8 * content.length / 2);
-        const y = (videoHeight / 2) - (style?.fontSize ? parseInt(style.fontSize) / 2 : 8);
 
         setTimelinesText((prevTimelinesText) => {
-            const updatedTimelinesText = [...prevTimelinesText];
+            let updatedTimelinesText = [...prevTimelinesText];
 
-            const newTextSegment = {
-                instanceId: instanceId,
-                id: textId,
-                image,
-                content,
-                position: dropPositionPercentage,
-                width: segmentWidth,
-                style: style,
-                startTime: startTime,
-                duration: duration,
-                endTime: endTime,
 
-                fontStyle: "arial",
-                fontSize: parseInt(style.fontSize),
-                pattern: "normal",
-                case: "normal",
+            for (let i = 0; i < updatedTimelinesText.length; i++) {
+                updatedTimelinesText[i].texts = updatedTimelinesText[i].texts.filter(
+                    text => text.instanceId !== instanceId
+                );
+            }
 
-                scale: 100,
-                scaleWidth: 100,
-                scaleHeight: 100,
-                positionX: x,
-                positionY: y,
-                rotate: 0,
-                opacity: 100,
-                voice: 0,
-                speed: 1,
-                blod: false,
-                underline: false,
-                italic: false,
-                styleOfText: styleOfText,
-            };
+            if (timelineIndex !== null && updatedTimelinesText[timelineIndex]) {
+                const timeline = updatedTimelinesText[timelineIndex];
 
-            if (selectedText.timelineIndex === timelineIndex) {
-                updatedTimelinesText[timelineIndex].texts = updatedTimelinesText[timelineIndex].texts.map(text => {
-                    if (text.instanceId === selectedText.instanceId) {
-                        return {
-                            ...text,
-                            position: dropPositionPercentage,
-                            startTime: startTime,
-                            endTime: endTime
-                        };
+
+                const overlappingText = timeline.texts.find(text =>
+                    dropPositionPercentage >= text.position &&
+                    dropPositionPercentage < text.position + text.width
+                );
+
+
+                const adjustedStartPosition = overlappingText
+                    ? overlappingText.position + overlappingText.width
+                    : dropPositionPercentage;
+
+                const adjustedEndPosition = adjustedStartPosition + (duration / 30) * 100;
+
+                const x = (videoWidth / 2) - (style?.fontSize ? parseInt(style.fontSize) * content.length / 2 : 8 * content.length / 2);
+                const y = (videoHeight / 2) - (style?.fontSize ? parseInt(style.fontSize) / 2 : 8);
+
+                const newTextSegment = {
+                    instanceId,
+                    id: textId,
+                    image,
+                    content,
+                    position: adjustedStartPosition,
+                    startTime: (adjustedStartPosition / 100) * totalTimelineDuration,
+                    endTime: (adjustedEndPosition / 100) * totalTimelineDuration,
+                    duration,
+                    width: (duration / 30) * 100,
+                    style,
+                    fontStyle: "Arial",
+                    fontSize: parseInt(style.fontSize),
+                    pattern: "normal",
+                    case: "normal",
+                    positionX: x,
+                    positionY: y,
+                    scale: 100,
+                    rotate: 0,
+                    opacity: 100,
+                    voice: 0,
+                    speed: 1,
+                    bold: false,
+                    underline: false,
+                    italic: false,
+                };
+
+
+                timeline.texts.push(newTextSegment);
+
+
+                timeline.texts.sort((a, b) => a.position - b.position);
+
+
+                for (let i = 0; i < timeline.texts.length - 1; i++) {
+                    const currentText = timeline.texts[i];
+                    const nextText = timeline.texts[i + 1];
+
+                    if (currentText.position + currentText.width > nextText.position) {
+                        nextText.position = currentText.position + currentText.width;
+                        nextText.startTime = (nextText.position / 100) * totalTimelineDuration;
+                        nextText.endTime = nextText.startTime + nextText.duration;
                     }
-                    return text;
-                });
-
-            } else if (selectedText.timelineIndex !== null &&
-                selectedText.timelineIndex !== undefined &&
-                selectedText.timelineIndex !== timelineIndex &&
-                updatedTimelinesText[selectedText.timelineIndex]) {
-
-                if (selectedText.timelineIndex !== null && selectedText.timelineIndex !== undefined) {
-                    updatedTimelinesText[selectedText.timelineIndex].texts = updatedTimelinesText[selectedText.timelineIndex].texts.filter(text => text.instanceId !== selectedText.instanceId);
                 }
-                if (updatedTimelinesText[selectedText.timelineIndex].texts.length === 0) {
-                    delete updatedTimelinesText[selectedText.timelineIndex];
-                }
-            }
+            } else {
 
-            if (timelineIndex === null) {
                 updatedTimelinesText.push({
-                    texts: [newTextSegment],
+                    texts: [{
+                        instanceId,
+                        id: textId,
+                        image,
+                        content,
+                        position: 0,
+                        startTime: 0,
+                        endTime: duration,
+                        duration,
+                        width: (duration / 30) * 100,
+                        style,
+                        fontStyle: "Arial",
+                        fontSize: parseInt(style.fontSize),
+                        pattern: "normal",
+                        case: "normal",
+                        positionX: (videoWidth / 2) - (parseInt(style.fontSize) * content.length / 2),
+                        positionY: (videoHeight / 2) - parseInt(style.fontSize) / 2,
+                        rotate: 0,
+                        opacity: 100,
+                        scale: 100,
+                        voice: 0,
+                        speed: 1,
+                        bold: false,
+                        underline: false,
+                        italic: false,
+                    }],
                 });
-            } else if (updatedTimelinesText[timelineIndex] && !updatedTimelinesText[timelineIndex].texts.some(text => text.instanceId === selectedText.instanceId)) {
-                updatedTimelinesText[timelineIndex].texts.push(newTextSegment);
             }
+
+            updatedTimelinesText = updatedTimelinesText.filter(timeline => timeline.texts.length > 0);
 
             return updatedTimelinesText;
         });
@@ -903,6 +987,7 @@ const HomePage = () => {
         const image = e.dataTransfer.getData("image");
         const duration = parseFloat(e.dataTransfer.getData("duration"));
 
+
         if (!audio) {
             console.error("Audio not found in audioFiles");
             return;
@@ -913,63 +998,87 @@ const HomePage = () => {
         const dropPositionPercentage = (dropX / timelineWidth) * 100;
 
         const totalTimelineDuration = Math.max(totalDuration, 30);
-        const segmentWidth = (duration / totalTimelineDuration) * 100;
-
-
-        const startTime = (dropPositionPercentage / 100)* totalTimelineDuration;
-        const endTime = startTime + duration;
 
         setTimelinesAudio((prevTimelinesAudio) => {
-            const updatedTimelinesAudio = [...prevTimelinesAudio];
+            let updatedTimelinesAudio = [...prevTimelinesAudio];
 
-            const newAudioSegment = {
-                instanceId: instanceId,
-                id: audioId,
-                url: audioUrl,
-                fileName,
-                image,
-                position: dropPositionPercentage,
-                width: segmentWidth,
-                startTime: startTime,
-                duration: duration,
-                endTime: endTime,
-                voice: 0,
-                speed: 1,
-            };
 
-            if (selectedAudio.timelineIndex === timelineIndex) {
-                updatedTimelinesAudio[timelineIndex].audios = updatedTimelinesAudio[timelineIndex].audios.map(audio => {
-                    if (audio.instanceId === selectedAudio.instanceId) {
-                        return {
-                            ...audio,
-                            position: dropPositionPercentage,
-                            startTime: startTime,
-                            endTime: endTime
-                        };
+            for (let i = 0; i < updatedTimelinesAudio.length; i++) {
+                updatedTimelinesAudio[i].audios = updatedTimelinesAudio[i].audios.filter(
+                    existingAudio => existingAudio.instanceId !== instanceId
+                );
+            }
+
+            if (timelineIndex !== null && updatedTimelinesAudio[timelineIndex]) {
+                const timeline = updatedTimelinesAudio[timelineIndex];
+
+
+                const overlappingAudio = timeline.audios.find(existingAudio =>
+                    dropPositionPercentage >= existingAudio.position &&
+                    dropPositionPercentage < existingAudio.position + existingAudio.width
+                );
+
+
+                const adjustedStartPosition = overlappingAudio
+                    ? overlappingAudio.position + overlappingAudio.width
+                    : dropPositionPercentage;
+
+                const adjustedEndPosition = adjustedStartPosition + (duration / 30) * 100;
+
+                const newAudioSegment = {
+                    instanceId,
+                    id: audioId,
+                    url: audioUrl,
+                    fileName,
+                    image,
+                    position: adjustedStartPosition,
+                    startTime: (adjustedStartPosition / 100) * totalTimelineDuration,
+                    endTime: (adjustedEndPosition / 100) * totalTimelineDuration,
+                    duration,
+                    width: (duration / 30) * 100,
+                    voice: 0,
+                    speed: 1,
+                };
+
+
+                timeline.audios.push(newAudioSegment);
+
+
+                timeline.audios.sort((a, b) => a.position - b.position);
+
+
+                for (let i = 0; i < timeline.audios.length - 1; i++) {
+                    const currentAudio = timeline.audios[i];
+                    const nextAudio = timeline.audios[i + 1];
+
+                    if (currentAudio.position + currentAudio.width > nextAudio.position) {
+                        nextAudio.position = currentAudio.position + currentAudio.width;
+                        nextAudio.startTime = (nextAudio.position / 100) * totalTimelineDuration;
+                        nextAudio.endTime = nextAudio.startTime + nextAudio.duration;
                     }
-                    return audio;
-                });
-            } else if (selectedAudio.timelineIndex !== null &&
-                selectedAudio.timelineIndex !== undefined &&
-                selectedAudio.timelineIndex !== timelineIndex &&
-                updatedTimelinesAudio[selectedAudio.timelineIndex]) {
-
-                if (selectedAudio.timelineIndex !== null && selectedAudio.timelineIndex !== undefined) {
-                    updatedTimelinesAudio[selectedAudio.timelineIndex].audios = updatedTimelinesAudio[selectedAudio.timelineIndex].audios.filter(audio => audio.instanceId !== selectedAudio.instanceId);
                 }
-                if (updatedTimelinesAudio[selectedAudio.timelineIndex].audios.length === 0) {
-                    delete updatedTimelinesAudio[selectedAudio.timelineIndex];
-                }
-            }
+            } else {
 
-
-            if (timelineIndex === null) {
                 updatedTimelinesAudio.push({
-                    audios: [newAudioSegment],
+                    audios: [{
+                        instanceId,
+                        id: audioId,
+                        url: audioUrl,
+                        fileName,
+                        image,
+                        position: 0,
+                        startTime: 0,
+                        endTime: duration,
+                        duration,
+                        width: (duration / 30) * 100,
+                        voice: 0,
+                        speed: 1,
+                    }],
                 });
-            } else if (updatedTimelinesAudio[timelineIndex] && !updatedTimelinesAudio[timelineIndex].audios.some(audio => audio.instanceId === selectedAudio.instanceId)) {
-                updatedTimelinesAudio[timelineIndex].audios.push(newAudioSegment);
             }
+
+
+            updatedTimelinesAudio = updatedTimelinesAudio.filter(timeline => timeline.audios.length > 0);
 
             return updatedTimelinesAudio;
         });
@@ -980,8 +1089,8 @@ const HomePage = () => {
 
         const stickerUrl = e.dataTransfer.getData("stickerUrl");
         const stickerId = e.dataTransfer.getData("stickerId");
-        const duration = 5;
-
+        const instanceId = e.dataTransfer.getData("instanceId");
+        const duration = parseFloat(e.dataTransfer.getData("duration"));
 
         const img = new window.Image();
         img.src = stickerUrl;
@@ -990,79 +1099,100 @@ const HomePage = () => {
             const stickerWidth = img.width;
             const stickerHeight = img.height;
 
-
-            const x = (videoWidth / 2) - (stickerWidth / 2);
-            const y = (videoHeight / 2) - (stickerHeight / 2);
-
+            const x = (videoWidth / 2) - (stickerWidth / 4);
+            const y = (videoHeight / 2) - (stickerHeight / 4);
 
             const dropX = e.clientX - e.target.getBoundingClientRect().left;
             const timelineWidth = e.target.clientWidth;
             const dropPositionPercentage = (dropX / timelineWidth) * 100;
 
             const totalTimelineDuration = Math.max(totalDuration, 30);
-            const segmentWidth = (duration / totalTimelineDuration) * 100;
-
-            const startTime = (dropPositionPercentage / 100)* totalTimelineDuration;
-            const endTime = startTime + duration;
 
             setTimelinesSticker((prevTimelinesStickers) => {
-                const updatedTimelinesStickers = [...prevTimelinesStickers];
+                let updatedTimelinesStickers = [...prevTimelinesStickers];
 
-                const newStickerSegment = {
-                    id: stickerId,
-                    url: stickerUrl,
-                    position: dropPositionPercentage,
-                    width: segmentWidth,
-                    startTime: startTime,
-                    duration: duration,
-                    endTime: endTime,
-                    scale: 100,
-                    scaleWidth: 100,
-                    scaleHeight: 100,
-                    positionX: x,
-                    positionY: y,
-                    rotate: 0,
-                };
 
-                if (selectedSticker.timelineIndex === timelineIndex) {
-                    updatedTimelinesStickers[timelineIndex].stickers = updatedTimelinesStickers[timelineIndex].stickers.map(sticker => {
-                        if (sticker.id === selectedSticker.id) {
-                            return {
-                                ...sticker,
-                                position: dropPositionPercentage,
-                                startTime: startTime,
-                                endTime: endTime
-                            };
+                for (let i = 0; i < updatedTimelinesStickers.length; i++) {
+                    updatedTimelinesStickers[i].stickers = updatedTimelinesStickers[i].stickers.filter(
+                        sticker => sticker.instanceId !== instanceId
+                    );
+                }
+
+                if (timelineIndex !== null && updatedTimelinesStickers[timelineIndex]) {
+                    const timeline = updatedTimelinesStickers[timelineIndex];
+
+
+                    const overlappingSticker = timeline.stickers.find(sticker =>
+                        dropPositionPercentage >= sticker.position &&
+                        dropPositionPercentage < sticker.position + sticker.width
+                    );
+
+
+                    const adjustedStartPosition = overlappingSticker
+                        ? overlappingSticker.position + overlappingSticker.width
+                        : dropPositionPercentage;
+
+                    const adjustedEndPosition = adjustedStartPosition + (duration / 30) * 100;
+
+                    const newStickerSegment = {
+                        instanceId,
+                        id: stickerId,
+                        url: stickerUrl,
+                        position: adjustedStartPosition,
+                        startTime: (adjustedStartPosition / 100) * totalTimelineDuration,
+                        endTime: (adjustedEndPosition / 100) * totalTimelineDuration,
+                        duration,
+                        width: (duration / 30) * 100,
+                        scale: 100,
+                        scaleWidth: 100,
+                        scaleHeight: 100,
+                        positionX: x,
+                        positionY: y,
+                        rotate: 0,
+                    };
+
+
+                    timeline.stickers.push(newStickerSegment);
+
+
+                    timeline.stickers.sort((a, b) => a.position - b.position);
+
+
+                    for (let i = 0; i < timeline.stickers.length - 1; i++) {
+                        const currentSticker = timeline.stickers[i];
+                        const nextSticker = timeline.stickers[i + 1];
+
+                        if (currentSticker.position + currentSticker.width > nextSticker.position) {
+                            nextSticker.position = currentSticker.position + currentSticker.width;
+                            nextSticker.startTime = (nextSticker.position / 100) * totalTimelineDuration;
+                            nextSticker.endTime = nextSticker.startTime + nextSticker.duration;
                         }
-
-                        return sticker;
-                    });
-
-                } else if (selectedSticker.timelineIndex !== null &&
-                    selectedSticker.timelineIndex !== undefined &&
-                    selectedSticker.timelineIndex !== timelineIndex &&
-                    updatedTimelinesStickers[selectedSticker.timelineIndex]) {
-
-                    if (selectedSticker.timelineIndex !== null && selectedSticker.timelineIndex !== undefined) {
-                        updatedTimelinesStickers[selectedSticker.timelineIndex].stickers = updatedTimelinesStickers[selectedSticker.timelineIndex].stickers.filter(v => v.id !== selectedSticker.id);
                     }
-                    if (updatedTimelinesStickers[selectedSticker.timelineIndex].stickers.length === 0) {
-                        delete updatedTimelinesStickers[selectedSticker.timelineIndex];
-                    }
-                }
+                } else {
 
-
-                if (timelineIndex === null) {
                     updatedTimelinesStickers.push({
-                        stickers: [newStickerSegment],
+                        stickers: [{
+                            instanceId,
+                            id: stickerId,
+                            url: stickerUrl,
+                            position: 0,
+                            startTime: 0,
+                            endTime: duration,
+                            duration,
+                            width: (duration / 30) * 100,
+                            scale: 100,
+                            scaleWidth: 100,
+                            scaleHeight: 100,
+                            positionX: x,
+                            positionY: y,
+                            rotate: 0,
+                        }],
                     });
-                } else if (updatedTimelinesStickers[timelineIndex] && !updatedTimelinesStickers[timelineIndex].stickers.some(sticker => sticker.id === selectedSticker.id)) {
-                    updatedTimelinesStickers[timelineIndex].stickers.push(newStickerSegment);
                 }
 
+                updatedTimelinesStickers = updatedTimelinesStickers.filter(timeline => timeline.stickers.length > 0);
                 return updatedTimelinesStickers;
             });
-
         };
 
         img.onerror = () => {
@@ -1077,7 +1207,7 @@ const HomePage = () => {
         const instanceId = e.dataTransfer.getData("instanceId");
         const config = JSON.parse(e.dataTransfer.getData("config"));
         const name = e.dataTransfer.getData("fileName");
-        const duration = 5;
+        const duration = parseFloat(e.dataTransfer.getData("duration"));
         const image = e.dataTransfer.getData("image");
 
         const dropX = e.clientX - e.target.getBoundingClientRect().left;
@@ -1085,58 +1215,82 @@ const HomePage = () => {
         const dropPositionPercentage = (dropX / timelineWidth) * 100;
 
         const totalTimelineDuration = Math.max(totalDuration, 30);
-        const segmentWidth = (duration / totalTimelineDuration) * 100;
-
-        const startTime = (dropPositionPercentage / 100)* totalTimelineDuration;
-        const endTime = startTime + duration;
 
         setTimelinesEffect((prevTimelinesEffect) => {
-            const updatedTimelinesEffect = [...prevTimelinesEffect];
+            let updatedTimelinesEffect = [...prevTimelinesEffect];
 
-            const newEffectSegment = {
-                instanceId: instanceId,
-                id: effectId,
-                name: name,
-                config: config,
-                image: image,
-                position: dropPositionPercentage,
-                width: segmentWidth,
-                startTime: startTime,
-                duration: duration,
-                endTime: endTime
-            };
 
-            if (selectedEffect.timelineIndex === timelineIndex) {
-                updatedTimelinesEffect[timelineIndex].effects = updatedTimelinesEffect[timelineIndex].effects.map(effect => {
-                    if (effect.instanceId === selectedEffect.instanceId) {
-                        return {
-                            ...effect,
-                            position: dropPositionPercentage,
-                            startTime: startTime,
-                            endTime: endTime
-                        };
+            for (let i = 0; i < updatedTimelinesEffect.length; i++) {
+                updatedTimelinesEffect[i].effects = updatedTimelinesEffect[i].effects.filter(
+                    effect => effect.instanceId !== instanceId
+                );
+            }
+
+            if (timelineIndex !== null && updatedTimelinesEffect[timelineIndex]) {
+                const timeline = updatedTimelinesEffect[timelineIndex];
+
+
+                const overlappingEffect = timeline.effects.find(effect =>
+                    dropPositionPercentage >= effect.position &&
+                    dropPositionPercentage < effect.position + effect.width
+                );
+
+
+                const adjustedStartPosition = overlappingEffect
+                    ? overlappingEffect.position + overlappingEffect.width
+                    : dropPositionPercentage;
+
+                const adjustedEndPosition = adjustedStartPosition + (duration / 30) * 100;
+
+                const newEffectSegment = {
+                    instanceId,
+                    id: effectId,
+                    name,
+                    config,
+                    image,
+                    position: adjustedStartPosition,
+                    startTime: (adjustedStartPosition / 100) * totalTimelineDuration,
+                    endTime: (adjustedEndPosition / 100) * totalTimelineDuration,
+                    duration,
+                    width: (duration / 30) * 100,
+                };
+
+
+                timeline.effects.push(newEffectSegment);
+
+
+                timeline.effects.sort((a, b) => a.position - b.position);
+
+
+                for (let i = 0; i < timeline.effects.length - 1; i++) {
+                    const currentEffect = timeline.effects[i];
+                    const nextEffect = timeline.effects[i + 1];
+
+                    if (currentEffect.position + currentEffect.width > nextEffect.position) {
+                        nextEffect.position = currentEffect.position + currentEffect.width;
+                        nextEffect.startTime = (nextEffect.position / 100) * totalTimelineDuration;
+                        nextEffect.endTime = nextEffect.startTime + nextEffect.duration;
                     }
-                    return effect;
-                });
-            } else if (selectedEffect.timelineIndex !== null &&
-                selectedEffect.timelineIndex !== undefined &&
-                selectedEffect.timelineIndex !== timelineIndex &&
-                updatedTimelinesEffect[selectedEffect.timelineIndex]) {
-
-                updatedTimelinesEffect[selectedEffect.timelineIndex].effects = updatedTimelinesEffect[selectedEffect.timelineIndex].effects.filter(effect => effect.instanceId !== selectedEffect.instanceId);
-
-                if (updatedTimelinesEffect[selectedEffect.timelineIndex].effects.length === 0) {
-                    delete updatedTimelinesEffect[selectedEffect.timelineIndex];
                 }
+            } else {
+
+                updatedTimelinesEffect.push({
+                    effects: [{
+                        instanceId,
+                        id: effectId,
+                        name,
+                        config,
+                        image,
+                        position: 0,
+                        startTime: 0,
+                        endTime: duration,
+                        duration,
+                        width: (duration / 30) * 100,
+                    }],
+                });
             }
 
-            if (timelineIndex === null) {
-                updatedTimelinesEffect.push({
-                    effects: [newEffectSegment],
-                });
-            } else if (updatedTimelinesEffect[timelineIndex] && !updatedTimelinesEffect[timelineIndex].effects.some(effect => effect.instanceId === selectedEffect.instanceId)) {
-                updatedTimelinesEffect[timelineIndex].effects.push(newEffectSegment);
-            }
+            updatedTimelinesEffect = updatedTimelinesEffect.filter(timeline => timeline.effects.length > 0);
 
             return updatedTimelinesEffect;
         });
@@ -1149,7 +1303,7 @@ const HomePage = () => {
         const instanceId = e.dataTransfer.getData("instanceId");
         const config = JSON.parse(e.dataTransfer.getData("config"));
         const name = e.dataTransfer.getData("fileName");
-        const duration = 5;
+        const duration = parseFloat(e.dataTransfer.getData("duration"));
         const image = e.dataTransfer.getData("image");
 
         const dropX = e.clientX - e.target.getBoundingClientRect().left;
@@ -1157,58 +1311,83 @@ const HomePage = () => {
         const dropPositionPercentage = (dropX / timelineWidth) * 100;
 
         const totalTimelineDuration = Math.max(totalDuration, 30);
-        const segmentWidth = (duration / totalTimelineDuration) * 100;
-
-        const startTime = (dropPositionPercentage / 100)* totalTimelineDuration;
-        const endTime = startTime + duration;
 
         setTimelinesFilter((prevTimelinesFilter) => {
-            const updatedTimelinesFilter = [...prevTimelinesFilter];
+            let updatedTimelinesFilter = [...prevTimelinesFilter];
 
-            const newFilterSegment = {
-                instanceId: instanceId,
-                id: filterId,
-                name: name,
-                config: config,
-                image: image,
-                position: dropPositionPercentage,
-                width: segmentWidth,
-                startTime: startTime,
-                duration: duration,
-                endTime: endTime
-            };
 
-            if (selectedFilter.timelineIndex === timelineIndex) {
-                updatedTimelinesFilter[timelineIndex].filters = updatedTimelinesFilter[timelineIndex].filters.map(filter => {
-                    if (filter.instanceId === selectedFilter.instanceId) {
-                        return {
-                            ...filter,
-                            position: dropPositionPercentage,
-                            startTime: startTime,
-                            endTime: endTime
-                        };
+            for (let i = 0; i < updatedTimelinesFilter.length; i++) {
+                updatedTimelinesFilter[i].filters = updatedTimelinesFilter[i].filters.filter(
+                    filter => filter.instanceId !== instanceId
+                );
+            }
+
+            if (timelineIndex !== null && updatedTimelinesFilter[timelineIndex]) {
+                const timeline = updatedTimelinesFilter[timelineIndex];
+
+
+                const overlappingFilter = timeline.filters.find(filter =>
+                    dropPositionPercentage >= filter.position &&
+                    dropPositionPercentage < filter.position + filter.width
+                );
+
+
+                const adjustedStartPosition = overlappingFilter
+                    ? overlappingFilter.position + overlappingFilter.width
+                    : dropPositionPercentage;
+
+                const adjustedEndPosition = adjustedStartPosition + (duration / 30) * 100;
+
+                const newFilterSegment = {
+                    instanceId,
+                    id: filterId,
+                    name,
+                    config,
+                    image,
+                    position: adjustedStartPosition,
+                    startTime: (adjustedStartPosition / 100) * totalTimelineDuration,
+                    endTime: (adjustedEndPosition / 100) * totalTimelineDuration,
+                    duration,
+                    width: (duration / 30) * 100,
+                };
+
+
+                timeline.filters.push(newFilterSegment);
+
+
+                timeline.filters.sort((a, b) => a.position - b.position);
+
+
+                for (let i = 0; i < timeline.filters.length - 1; i++) {
+                    const currentFilter = timeline.filters[i];
+                    const nextFilter = timeline.filters[i + 1];
+
+                    if (currentFilter.position + currentFilter.width > nextFilter.position) {
+                        nextFilter.position = currentFilter.position + currentFilter.width;
+                        nextFilter.startTime = (nextFilter.position / 100) * totalTimelineDuration;
+                        nextFilter.endTime = nextFilter.startTime + nextFilter.duration;
                     }
-                    return filter;
-                });
-            } else if (selectedFilter.timelineIndex !== null &&
-                selectedFilter.timelineIndex !== undefined &&
-                selectedFilter.timelineIndex !== timelineIndex &&
-                updatedTimelinesFilter[selectedFilter.timelineIndex]) {
-
-                updatedTimelinesFilter[selectedFilter.timelineIndex].filters = updatedTimelinesFilter[selectedFilter.timelineIndex].filters.filter(filter => filter.instanceId !== selectedFilter.instanceId);
-
-                if (updatedTimelinesFilter[selectedFilter.timelineIndex].filters.length === 0) {
-                    delete updatedTimelinesFilter[selectedFilter.timelineIndex];
                 }
+            } else {
+
+                updatedTimelinesFilter.push({
+                    filters: [{
+                        instanceId,
+                        id: filterId,
+                        name,
+                        config,
+                        image,
+                        position: 0,
+                        startTime: 0,
+                        endTime: duration,
+                        duration,
+                        width: (duration / 30) * 100,
+                    }],
+                });
             }
 
-            if (timelineIndex === null) {
-                updatedTimelinesFilter.push({
-                    filters: [newFilterSegment],
-                });
-            } else if (updatedTimelinesFilter[timelineIndex] && !updatedTimelinesFilter[timelineIndex].filters.some(filter => filter.instanceId === selectedFilter.instanceId)) {
-                updatedTimelinesFilter[timelineIndex].filters.push(newFilterSegment);
-            }
+
+            updatedTimelinesFilter = updatedTimelinesFilter.filter(timeline => timeline.filters.length > 0);
 
             return updatedTimelinesFilter;
         });
@@ -1232,12 +1411,13 @@ const HomePage = () => {
     const handleProgress = (progress) => {
         if (timelineVideos.length > 0) {
             if (allVideos[currentVideoIndex].duration === currentTime) {
-                setAccumulatedTime(currentTime)
+                setAccumulatedTime(currentTime);
                 setCurrentTime(0);
             }
         }
         if (progress.playedSeconds !== undefined && progress.playedSeconds !== null) {
-            setCurrentTime(accumulatedTime + progress.playedSeconds);
+            const updatedTime = accumulatedTime + progress.playedSeconds;
+            setCurrentTime(Math.min(updatedTime, totalDuration));
         }
     };
 
@@ -1256,15 +1436,7 @@ const HomePage = () => {
         const formData = new FormData();
 
         formData.append('total_duration', durationToSend);
-
-        if (timelineVideos.length > 0) {
-            for (const timeline of timelineVideos) {
-                for (const video of timeline.videos) {
-                    formData.append('videos', JSON.stringify(video));
-                }
-            }
-        }
-
+        formData.append('linkVideo', videoUrlTranslate)
 
         if (timelinesAudio.length > 0) {
             for (const timeline of timelinesAudio) {
@@ -1282,6 +1454,173 @@ const HomePage = () => {
             }
         }
 
+        try {
+            const response = await axios.post('http://localhost:8000/myapp/export_video/', formData, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (response.status === 200) {
+                const videoUrl = `http://localhost:8000${response.data.merged_video_url}?t=${Date.now()}`;
+                handleDownloadVideo(videoUrl);
+
+                const videoElement = document.createElement("video");
+                videoElement.src = videoUrl;
+
+            } else {
+                console.error('Error exporting video');
+            }
+        } catch (error) {
+            setVideoUrlTranslate("");
+            setCurrentTime(0);
+            setTotalDuration(0);
+            console.error('Error:', error);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+    const handleMergeVideo = async (currentTotalDuration) => {
+        setIsProcessing(true);
+        const durationToSend = currentTotalDuration || totalDuration;
+        const formData = new FormData();
+
+        formData.append('total_duration', durationToSend);
+
+        if (timelineVideos.length > 0) {
+            for (const timeline of timelineVideos) {
+                for (const video of timeline.videos) {
+                    formData.append('videos', JSON.stringify(video));
+                }
+            }
+        }
+
+        try {
+            const response = await axios.post('http://localhost:8000/myapp/merge_video/', formData, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (response.status === 200) {
+                const videoUrl = `http://localhost:8000${response.data.merged_video_url}?t=${Date.now()}`;
+                setVideoUrlTranslate(videoUrl);
+                setVideoUrlVideo(videoUrl);
+                if (timelinesSticker.length > 0){
+                    handleApplySticker(durationToSend, videoUrl);
+                }
+                if (timelinesFilter.length > 0){
+                    handleApplyFilter(durationToSend, videoUrl);
+                }
+                if (timelinesEffect.length > 0){
+                    handleApplyEffect(durationToSend, videoUrl);
+                }
+
+                const videoElement = document.createElement("video");
+                videoElement.src = videoUrl;
+
+            } else {
+                console.error('Error merge video');
+            }
+        } catch (error) {
+            setVideoUrlTranslate("");
+            setCurrentTime(0);
+            setTotalDuration(0);
+            console.error('Error:', error);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+    const handleApplyAudio = async (currentTotalDuration) => {
+        setIsProcessing(true);
+        const durationToSend = currentTotalDuration || totalDuration;
+        const formData = new FormData();
+
+        formData.append('total_duration', durationToSend);
+        formData.append('linkVideo', videoUrlVideo)
+
+
+        if (timelinesAudio.length > 0) {
+            for (const timeline of timelinesAudio) {
+                for (const audio of timeline.audios) {
+                    formData.append('audios', JSON.stringify(audio));
+                }
+            }
+        }
+
+        try {
+            const response = await axios.post('http://localhost:8000/myapp/apply_audio/', formData, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (response.status === 200) {
+                const videoUrl = `http://localhost:8000${response.data.merged_video_url}?t=${Date.now()}`;
+                setVideoUrlTranslate(videoUrl);
+
+                const videoElement = document.createElement("video");
+                videoElement.src = videoUrl;
+            } else {
+                console.error('Error apply_effect video');
+            }
+        } catch (error) {
+            setVideoUrlTranslate("");
+            setCurrentTime(0);
+            setTotalDuration(0);
+            console.error('Error:', error);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+    const handleApplyText = async (currentTotalDuration) => {
+        setIsProcessing(true);
+        const durationToSend = currentTotalDuration || totalDuration;
+        const formData = new FormData();
+
+        formData.append('total_duration', durationToSend);
+        formData.append('linkVideo', videoUrlVideo)
+
+        if (timelinesText.length > 0) {
+            for (const timeline of timelinesText) {
+                for (const text of timeline.texts) {
+                    formData.append('texts', JSON.stringify(text));
+                }
+            }
+        }
+
+        try {
+            const response = await axios.post('http://localhost:8000/myapp/apply_text/', formData, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (response.status === 200) {
+                const videoUrl = `http://localhost:8000${response.data.merged_video_url}?t=${Date.now()}`;
+                setVideoUrlTranslate(videoUrl);
+
+                const videoElement = document.createElement("video");
+                videoElement.src = videoUrl;
+            } else {
+                console.error('Error apply_effect video');
+            }
+        } catch (error) {
+            setVideoUrlTranslate("");
+            setCurrentTime(0);
+            setTotalDuration(0);
+            console.error('Error:', error);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+    const handleApplySticker = async (currentTotalDuration, videoUrl) => {
+        setIsProcessing(true);
+        const durationToSend = currentTotalDuration || totalDuration;
+        const formData = new FormData();
+
+        formData.append('total_duration', durationToSend);
+        formData.append('linkVideo', videoUrl)
 
         if (timelinesSticker.length > 0) {
             for (const timeline of timelinesSticker) {
@@ -1291,14 +1630,40 @@ const HomePage = () => {
             }
         }
 
+        try {
+            const response = await axios.post('http://localhost:8000/myapp/apply_sticker/', formData, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
 
-        if (timelinesEffect.length > 0) {
-            for (const timeline of timelinesEffect) {
-                for (const effect of timeline.effects) {
-                    formData.append('effects', JSON.stringify(effect));
-                }
+            if (response.status === 200) {
+                const videoUrl = `http://localhost:8000${response.data.merged_video_url}?t=${Date.now()}`;
+                setVideoUrlTranslate(videoUrl);
+
+                const videoElement = document.createElement("video");
+                videoElement.src = videoUrl;
+
+
+            } else {
+                console.error('Error apply sticker video');
             }
+        } catch (error) {
+            setVideoUrlTranslate("");
+            setCurrentTime(0);
+            setTotalDuration(0);
+            console.error('Error:', error);
+        } finally {
+            setIsProcessing(false);
         }
+    };
+    const handleApplyFilter = async (currentTotalDuration, videoUrl) => {
+        setIsProcessing(true);
+        const durationToSend = currentTotalDuration || totalDuration;
+        const formData = new FormData();
+
+        formData.append('total_duration', durationToSend);
+        formData.append('linkVideo', videoUrl)
 
         if (timelinesFilter.length > 0) {
             for (const timeline of timelinesFilter) {
@@ -1310,7 +1675,7 @@ const HomePage = () => {
 
 
         try {
-            const response = await axios.post('http://localhost:8000/myapp/export_video/', formData, {
+            const response = await axios.post('http://localhost:8000/myapp/apply_filter/', formData, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                 },
@@ -1320,14 +1685,14 @@ const HomePage = () => {
                 const videoUrl = `http://localhost:8000${response.data.merged_video_url}?t=${Date.now()}`;
                 setVideoUrlTranslate(videoUrl);
 
-const videoElement = document.createElement("video");
-videoElement.src = videoUrl;
+                const videoElement = document.createElement("video");
+                videoElement.src = videoUrl;
 
-videoElement.addEventListener('loadedmetadata', () => {
-    setTotalDuration(videoElement.duration);  // Lấy độ dài video sau khi metadata đã tải xong
-});
+
+                //
+
             } else {
-                console.error('Error exporting video');
+                console.error('Error apply filter video');
             }
         } catch (error) {
             setVideoUrlTranslate("");
@@ -1335,23 +1700,73 @@ videoElement.addEventListener('loadedmetadata', () => {
             setTotalDuration(0);
             console.error('Error:', error);
         } finally {
-        setIsProcessing(false);  // Re-enable updates after export completes
-    }
+            setIsProcessing(false);
+        }
+    };
+    const handleApplyEffect = async (currentTotalDuration, videoUrl) => {
+        setIsProcessing(true);
+        const durationToSend = currentTotalDuration || totalDuration;
+        const formData = new FormData();
+
+        formData.append('total_duration', durationToSend);
+        formData.append('linkVideo', videoUrl)
+
+        if (timelinesEffect.length > 0) {
+            for (const timeline of timelinesEffect) {
+                for (const effect of timeline.effects) {
+                    formData.append('effects', JSON.stringify(effect));
+                }
+            }
+        }
+
+        try {
+            const response = await axios.post('http://localhost:8000/myapp/apply_effect/', formData, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (response.status === 200) {
+                const videoUrl = `http://localhost:8000${response.data.merged_video_url}?t=${Date.now()}`;
+                setVideoUrlTranslate(videoUrl);
+
+                const videoElement = document.createElement("video");
+                videoElement.src = videoUrl;
+
+
+                //
+
+            } else {
+                console.error('Error apply_effect video');
+            }
+        } catch (error) {
+            setVideoUrlTranslate("");
+            setCurrentTime(0);
+            setTotalDuration(0);
+            console.error('Error:', error);
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
-    const handleDownloadVideo = () => {
-    if (videoUrlTranslate) {
-        const link = document.createElement('a');
-        link.href = videoUrlTranslate;
-        link.download = 'exported_video.mp4';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    } else {
-        console.error('No video URL available');
-    }
-};
+    const handleDownloadVideo = async (videoUrl) => {
+        try {
+            const response = await fetch(videoUrl);
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
 
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'translated_video.mp4';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Error downloading video:', error);
+        }
+};
 
     const handleSaveEditSession = async () => {
         const actions = {
@@ -1451,28 +1866,31 @@ videoElement.addEventListener('loadedmetadata', () => {
         }
     };
 
-   const generateTimestamps = (totalDuration, interval = 5) => {
-    const timestamps = [];
-    const duration = Math.max(totalDuration, 30);
+    const generateTimestamps = (totalDuration, interval = 5) => {
+        const timestamps = [];
+        const duration = Math.max(totalDuration, 30);
 
-    for (let i = 0; i <= duration; i += interval) {
-        const minutes = Math.floor(i / 60).toString().padStart(2, '0');
-        const seconds = (i % 60).toString().padStart(2, '0');
-        timestamps.push(`${minutes}:${seconds}`);
-    }
 
-    // Nếu thời gian cuối cùng không phải là bội số của interval, thêm mốc thời gian cuối cùng
-    if (duration % interval !== 0) {
-        const finalMinutes = Math.floor(duration / 60).toString().padStart(2, '0');
-        const finalSeconds = (duration % 60).toString().padStart(2, '0');
-        timestamps.push(`${finalMinutes}:${finalSeconds}`);
-    }
+        for (let i = 0; i <= duration; i += interval) {
+            const minutes = Math.floor(i / 60).toString().padStart(2, '0');
+            const seconds = (i % 60).toString().padStart(2, '0');
+            timestamps.push(`${minutes}:${seconds}`);
+        }
 
-    return timestamps;
-};
+
+        if (duration % interval !== 0) {
+            const roundedUpDuration = Math.ceil(duration / interval) * interval;
+            const finalMinutes = Math.floor(roundedUpDuration / 60).toString().padStart(2, '0');
+            const finalSeconds = (roundedUpDuration % 60).toString().padStart(2, '0');
+            timestamps.push(`${finalMinutes}:${finalSeconds}`);
+        }
+
+        return timestamps;
+    };
 
     const calculateLeftValue = (index, totalSegments) => {
-        return `${(index / (totalSegments - 1)) * 100}%`;
+
+        return `${index * 16.3}%`;
     };
 
     const handleVideoEnd = () => {
@@ -1487,7 +1905,7 @@ videoElement.addEventListener('loadedmetadata', () => {
             setCurrentTime(0);
             setCurrentVideoIndex(0);
             if (videoRef.current) {
-                videoRef.current.pause();
+                handleEffectClick();
                 videoRef.current.currentTime = 0;
 
                 videoRef.current.oncanplay = () => {
@@ -1506,195 +1924,41 @@ videoElement.addEventListener('loadedmetadata', () => {
         setTotalCurrentTime(accumulatedTime + currentTime)
     }, [accumulatedTime, currentTime])
 
-
     const deepEqual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
-    const updateWidthTimeline = (totalTimelineDuration) => {
-        if (isProcessing) return;
-
-    // Cập nhật width và position cho timelineVideos
-    const updatedTimelineVideos = timelineVideos.map(timeline => {
-        const updatedVideos = timeline.videos.map(video => {
-            const videoWidth = (video.duration / totalTimelineDuration) * 100;
-            const videoPosition = (video.startTime / totalTimelineDuration) * 100;
-            console.log(`videoWidth: ${videoWidth}`)
-            console.log(`videoPosition: ${videoPosition}`)
-
-            return {
-                ...video,
-                width: videoWidth,
-                position: videoPosition
-            };
-        });
-
-        return {
-            ...timeline,
-            videos: updatedVideos
-        };
-    });
-
-    // Cập nhật width và position cho timelinesAudio
-    const updatedTimelinesAudio = timelinesAudio.map(timeline => {
-        const updatedAudios = timeline.audios.map(audio => {
-            const audioWidth = (audio.duration / totalTimelineDuration) * 100;
-            const audioPosition = (audio.startTime / totalTimelineDuration) * 100;
-            console.log(`audioWidth: ${audioWidth}`)
-            console.log(`audioPosition: ${audioPosition}`)
-
-            return {
-                ...audio,
-                width: audioWidth,
-                position: audioPosition
-            };
-        });
-
-        return {
-            ...timeline,
-            audios: updatedAudios
-        };
-    });
-
-    // Cập nhật width và position cho timelinesText
-    const updatedTimelinesText = timelinesText.map(timeline => {
-        const updatedTexts = timeline.texts.map(text => {
-            const textWidth = (text.duration / totalTimelineDuration) * 100;
-            const textPosition = (text.startTime / totalTimelineDuration) * 100;
-            console.log(`textWidth: ${textWidth}`)
-            console.log(`textPosition: ${textPosition}`)
-
-            return {
-                ...text,
-                width: textWidth,
-                position: textPosition
-            };
-        });
-
-        return {
-            ...timeline,
-            texts: updatedTexts
-        };
-    });
-
-    // Cập nhật width và position cho timelinesSticker
-    const updatedTimelinesSticker = timelinesSticker.map(timeline => {
-        const updatedStickers = timeline.stickers.map(sticker => {
-            const stickerWidth = (sticker.duration / totalTimelineDuration) * 100;
-            const stickerPosition = (sticker.startTime / totalTimelineDuration) * 100;
-            console.log(`stickerWidth: ${stickerWidth}`)
-            console.log(`stickerPosition: ${stickerPosition}`)
-
-            return {
-                ...sticker,
-                width: stickerWidth,
-                position: stickerPosition
-            };
-        });
-
-        return {
-            ...timeline,
-            stickers: updatedStickers
-        };
-    });
-
-    // Cập nhật width và position cho timelinesEffect
-    const updatedTimelinesEffect = timelinesEffect.map(timeline => {
-        const updatedEffects = timeline.effects.map(effect => {
-            const effectWidth = (effect.duration / totalTimelineDuration) * 100;
-            const effectPosition = (effect.startTime / totalTimelineDuration) * 100;
-            console.log(`effectWidth: ${effectWidth}`)
-            console.log(`effectPosition: ${effectPosition}`)
-
-            return {
-                ...effect,
-                width: effectWidth,
-                position: effectPosition
-            };
-        });
-
-        return {
-            ...timeline,
-            effects: updatedEffects
-        };
-    });
-
-    // Cập nhật width và position cho timelinesFilter
-    const updatedTimelinesFilter = timelinesFilter.map(timeline => {
-        const updatedFilters = timeline.filters.map(filter => {
-            const filterWidth = (filter.duration / totalTimelineDuration) * 100;
-            const filterPosition = (filter.startTime / totalTimelineDuration) * 100;
-            console.log(`filterWidth: ${filterWidth}`)
-            console.log(`filterPosition: ${filterPosition}`)
-
-            return {
-                ...filter,
-                width: filterWidth,
-                position: filterPosition
-            };
-        });
-
-        return {
-            ...timeline,
-            filters: updatedFilters
-        };
-    });
-
-    // Cập nhật state nếu có thay đổi
-    if (!deepEqual(timelineVideos, updatedTimelineVideos)) {
-        setTimelineVideos(updatedTimelineVideos);
-    }
-    if (!deepEqual(timelinesAudio, updatedTimelinesAudio)) {
-        setTimelinesAudio(updatedTimelinesAudio);
-    }
-    if (!deepEqual(timelinesText, updatedTimelinesText)) {
-        setTimelinesText(updatedTimelinesText);
-    }
-    if (!deepEqual(timelinesSticker, updatedTimelinesSticker)) {
-        setTimelinesSticker(updatedTimelinesSticker);
-    }
-    if (!deepEqual(timelinesEffect, updatedTimelinesEffect)) {
-        setTimelinesEffect(updatedTimelinesEffect);
-    }
-    if (!deepEqual(timelinesFilter, updatedTimelinesFilter)) {
-        setTimelinesFilter(updatedTimelinesFilter);
-    }
-    }
-
     const calculateTotalDuration = () => {
-    if (timelineVideos.length === 0 && timelinesAudio.length === 0 && timelinesText.length === 0 && timelinesSticker.length === 0 && timelinesEffect.length === 0 && timelinesFilter.length === 0)
-        return 0;
+        if (timelineVideos.length === 0 && timelinesAudio.length === 0 && timelinesText.length === 0 && timelinesSticker.length === 0 && timelinesEffect.length === 0 && timelinesFilter.length === 0)
+            return 0;
 
-    // Gộp tất cả các timeline lại thành một mảng
-    const allTimelines = [
-        ...timelineVideos.map(timeline => timeline.videos),
-        ...timelinesAudio.map(timeline => timeline.audios),
-        ...timelinesText.map(timeline => timeline.texts),
-        ...timelinesSticker.map(timeline => timeline.stickers),
-        ...timelinesEffect.map(timeline => timeline.effects),
-        ...timelinesFilter.map(timeline => timeline.filters)
-    ].flat();
 
-    // Lấy startTime nhỏ nhất
-    const minStartTime = Math.min(...allTimelines.map(element => (element.position / 100) * 30));
+        const allTimelines = [
+            ...timelineVideos.map(timeline => timeline.videos),
+            ...timelinesAudio.map(timeline => timeline.audios),
+            ...timelinesText.map(timeline => timeline.texts),
+            ...timelinesSticker.map(timeline => timeline.stickers),
+            ...timelinesEffect.map(timeline => timeline.effects),
+            ...timelinesFilter.map(timeline => timeline.filters)
+        ].flat();
 
-    // Lấy endTime lớn nhất
-    const maxEndTime = Math.max(...allTimelines.map(element => ((element.position / 100) * 30) + element.duration));
 
-    const totalDuration = maxEndTime - minStartTime;
-    const totalTimelineDuration = Math.max(totalDuration, 30);
-    // updateWidthTimeline(totalTimelineDuration);
-    const calculatedWidthTime = (totalDuration / totalTimelineDuration) * 100;
+        const minStartTime = Math.min(...allTimelines.map(element => (element.position / 100) * 30));
 
-    console.log(`totalDuration: ${totalDuration}`);
-    console.log(`totalTimelineDuration: ${totalTimelineDuration}`);
-    console.log(`calculatedWidthTime: ${calculatedWidthTime}`);
 
-    setWidthTime(calculatedWidthTime);
+        const maxEndTime = Math.max(...allTimelines.map(element => ((element.position / 100) * 30) + (element.durationSpeed || element.duration)));
 
-    return totalDuration;
-};
+        const totalDuration = maxEndTime - minStartTime;
+        const totalTimelineDuration = Math.max(totalDuration, 30);
 
-    console.log(`widthTime: ${widthTime}`)
+        const calculatedWidthTime = (totalDuration / totalTimelineDuration) * 100;
 
+        console.log(`totalDuration: ${totalDuration}`);
+        console.log(`totalTimelineDuration: ${totalTimelineDuration}`);
+        console.log(`calculatedWidthTime: ${calculatedWidthTime}`);
+
+        setWidthTime(calculatedWidthTime);
+
+        return totalDuration;
+    };
 
     const calculateTimeFromPosition = (position, totalWidth) => {
         const duration = Math.max(totalDuration, 30);
@@ -1890,8 +2154,8 @@ videoElement.addEventListener('loadedmetadata', () => {
     };
 
     const handleClick = (item, type) => {
-        setSelectedElement({ ...item, type });
-    console.log({ ...item, type });
+        setSelectedElement({...item, type});
+        console.log({...item, type});
         switch (type) {
             case "video":
                 setScaleValue(item.scale);
@@ -1912,13 +2176,11 @@ videoElement.addEventListener('loadedmetadata', () => {
                 setPatternText(item.pattern)
                 setCaseText(item.case)
                 setScaleText(item.scale)
-                setScaleWidthText(item.scaleWidth)
-                setScaleHeightText(item.scaleHeight)
                 setPositionXText(item.positionX)
                 setPositionYText(item.positionY)
                 setRotateText(item.rotate)
                 setOpacityText(item.opacity)
-                setBlod(item.blod)
+                setBold(item.bold)
                 setUnderline(item.underline)
                 setItalic(item.italic)
                 setStyleOfText(item.styleOfText)
@@ -1966,10 +2228,6 @@ videoElement.addEventListener('loadedmetadata', () => {
         setScaleValueWidthSticker(newScaleValueWidth);
     };
 
-    const updateSliderScaleWidthTextValue = (e) => {
-        const newScaleValueWidth = parseFloat(e.target.value);
-        setScaleWidthText(newScaleValueWidth);
-    };
 
     const updateSliderHeightValue = (e) => {
         const newScaleValueHeight = parseFloat(e.target.value);
@@ -1979,11 +2237,6 @@ videoElement.addEventListener('loadedmetadata', () => {
     const updateSliderHeightValueSticker = (e) => {
         const newScaleValueHeight = parseFloat(e.target.value);
         setScaleValueHeightSticker(newScaleValueHeight);
-    };
-
-    const updateSliderScaleHeightTextValue = (e) => {
-        const newScaleValueHeight = parseFloat(e.target.value);
-        setScaleHeightText(newScaleValueHeight);
     };
 
     const updateVoiceValue = (value) => {
@@ -2005,7 +2258,6 @@ videoElement.addEventListener('loadedmetadata', () => {
     const updateSpeedValue = (value) => {
         const newSpeed = parseFloat(value);
         setSpeedValue(newSpeed);
-
     };
 
     const updateSpeedValueAudio = (value) => {
@@ -2072,8 +2324,6 @@ videoElement.addEventListener('loadedmetadata', () => {
         if (numericValue > 300) numericValue = 300;
         if (numericValue < 5) numericValue = 5;
         setScaleText(numericValue);
-        setScaleWidthText(numericValue);
-        setScaleHeightText(numericValue);
     };
 
     const updateFontSizeText = (value) => {
@@ -2097,12 +2347,6 @@ videoElement.addEventListener('loadedmetadata', () => {
         setScaleValueWidthSticker(numericValue);
     };
 
-    const updateSliderWidthText = (value) => {
-        let numericValue = parseInt(value.replace("%", ""), 10);
-        if (numericValue > 400) numericValue = 400;
-        if (numericValue < 1) numericValue = 1;
-        setScaleWidthText(numericValue);
-    };
 
     const updateSliderHeightSticker = (value) => {
         let numericValue = parseInt(value.replace("%", ""), 10);
@@ -2118,12 +2362,6 @@ videoElement.addEventListener('loadedmetadata', () => {
         setScaleValueHeight(numericValue);
     };
 
-    const updateSliderHeightText = (value) => {
-        let numericValue = parseInt(value.replace("%", ""), 10);
-        if (numericValue > 400) numericValue = 400;
-        if (numericValue < 1) numericValue = 1;
-        setScaleHeightText(numericValue);
-    };
 
     const updateVoice = (value) => {
         let numericValue = parseInt(value.replace("dB", ""), 10);
@@ -2192,8 +2430,6 @@ videoElement.addEventListener('loadedmetadata', () => {
     const increaseSliderScaleText = () => {
         if (scaleText < 400) {
             setScaleText(prevValue => Math.min(prevValue + 1, 400));
-            setScaleWidthText(prevValue => Math.min(prevValue + 1, 400));
-            setScaleHeightText(prevValue => Math.min(prevValue + 1, 400));
         }
     };
 
@@ -2215,11 +2451,6 @@ videoElement.addEventListener('loadedmetadata', () => {
         }
     };
 
-    const increaseSliderWidthText = () => {
-        if (scaleValueWidth < 400) {
-            setScaleWidthText(prevValue => Math.min(prevValue + 1, 400));
-        }
-    };
 
     const increaseSliderHeight = () => {
         if (scaleValueHeight < 400) {
@@ -2230,12 +2461,6 @@ videoElement.addEventListener('loadedmetadata', () => {
     const increaseSliderHeightSticker = () => {
         if (scaleValueHeightSticker < 400) {
             setScaleValueHeightSticker(prevValue => Math.min(prevValue + 1, 400));
-        }
-    };
-
-    const increaseSliderHeightText = () => {
-        if (scaleValueHeight < 400) {
-            setScaleHeightText(prevValue => Math.min(prevValue + 1, 400));
         }
     };
 
@@ -2282,8 +2507,6 @@ videoElement.addEventListener('loadedmetadata', () => {
     const decreaseSliderScaleText = () => {
         if (scaleText > 1) {
             setScaleText(prevValue => Math.max(prevValue - 1, 1));
-            setScaleWidthText(prevValue => Math.max(prevValue - 1, 1));
-            setScaleHeightText(prevValue => Math.max(prevValue - 1, 1));
         }
     };
 
@@ -2305,11 +2528,6 @@ videoElement.addEventListener('loadedmetadata', () => {
         }
     };
 
-    const decreaseSliderWidthText = () => {
-        if (scaleValueWidth > 1) {
-            setScaleWidthText(prevValue => Math.max(prevValue - 1, 1));
-        }
-    };
 
     const decreaseSliderHeight = () => {
         if (scaleValueHeight > 1) {
@@ -2320,12 +2538,6 @@ videoElement.addEventListener('loadedmetadata', () => {
     const decreaseSliderHeightSticker = () => {
         if (scaleValueHeightSticker > 1) {
             setScaleValueHeightSticker(prevValue => Math.max(prevValue - 1, 1));
-        }
-    };
-
-    const decreaseSliderHeightText = () => {
-        if (scaleValueHeight > 1) {
-            setScaleHeightText(prevValue => Math.max(prevValue - 1, 1));
         }
     };
 
@@ -2563,8 +2775,6 @@ videoElement.addEventListener('loadedmetadata', () => {
     const updateScaleTextValue = (e) => {
         const newScaleValue = parseFloat(e.target.value);
         setScaleText(newScaleValue);
-        setScaleWidthText(newScaleValue);
-        setScaleHeightText(newScaleValue);
     };
 
     const updateFontSizeTextValue = (e) => {
@@ -2572,6 +2782,770 @@ videoElement.addEventListener('loadedmetadata', () => {
         setFontSizeText(newFontSizeValue);
     };
 
+    const handleTimeUpdate = () => {
+        const videoElement = videoRef.current;
+        setCurrentTime(videoElement.currentTime);
+
+
+        if (opacity !== undefined) {
+            videoElement.style.opacity = opacity / 100;
+        }
+    };
+
+    const handleSeek = (e) => {
+        const videoElement = videoRef.current;
+
+        const seekPercentage = parseFloat(e.target.value);
+        const seekTime = (seekPercentage / 100) * totalDuration;
+
+
+        if (videoElement && videoElement.seekable.length > 0) {
+            const seekableStart = videoElement.seekable.start(0);
+            const seekableEnd = videoElement.seekable.end(0);
+
+            if (seekTime >= seekableStart && seekTime <= seekableEnd) {
+                videoElement.currentTime = seekTime;
+                videoRef.current.play();
+                setPlayVideo(true);
+            } else {
+                console.log(`Seek time (${seekTime}) is out of seekable range: ${seekableStart} - ${seekableEnd}`);
+            }
+        } else {
+            console.log('Không có video hoặc video không thể tua.');
+        }
+
+
+        setCurrentTime(seekTime);
+
+    };
+
+    const updateTimelinePositions = (seekTime) => {
+
+        Object.values(audioRefs.current).forEach((audio) => {
+            if (audio.duration > 0) {
+                audio.currentTime = seekTime;
+            }
+        });
+
+
+        setTimelinesSticker((prev) =>
+            prev.map((timeline) => ({
+                ...timeline,
+                stickers: timeline.stickers.filter(
+                    (sticker) =>
+                        seekTime >= sticker.startTime &&
+                        seekTime <= sticker.endTime
+                ),
+            }))
+        );
+
+
+        setTimelinesText((prev) =>
+            prev.map((timeline) => ({
+                ...timeline,
+                texts: timeline.texts.filter(
+                    (text) =>
+                        seekTime >= text.startTime &&
+                        seekTime <= text.endTime
+                ),
+            }))
+        );
+
+
+        setTimelinesEffect((prev) =>
+            prev.map((timeline) => ({
+                ...timeline,
+                effects: timeline.effects.filter(
+                    (effect) =>
+                        seekTime >= effect.startTime &&
+                        seekTime <= effect.endTime
+                ),
+            }))
+        );
+
+
+        setTimelinesFilter((prev) =>
+            prev.map((timeline) => ({
+                ...timeline,
+                filters: timeline.filters.filter(
+                    (filter) =>
+                        seekTime >= filter.startTime &&
+                        seekTime <= filter.endTime
+                ),
+            }))
+        );
+    };
+
+    const [timelineWidth, setTimeLineWidth] = useState(100)
+
+    const handleDeleteElement = (element) => {
+        console.log('Element to delete:', element);
+        switch (element.type) {
+            case 'video':
+                setTimelineVideos(prev => {
+                    const updated = prev
+                        .map(timeline => ({
+                            ...timeline,
+                            videos: timeline.videos.filter(video => video.instanceId !== element.instanceId)
+                        }))
+                        .filter(timeline => timeline.videos.length > 0);
+                    console.log('Updated timelines (videos) after delete:', updated);
+                    return updated;
+                });
+                break;
+
+            case 'text':
+                setTimelinesText(prev => {
+                    const updated = prev
+                        .map(timeline => ({
+                            ...timeline,
+                            texts: timeline.texts.filter(text => text.instanceId !== element.instanceId)
+                        }))
+                        .filter(timeline => timeline.texts.length > 0);
+                    console.log('Updated timelines (texts) after delete:', updated);
+                    return updated;
+                });
+                break;
+
+            case 'audio':
+                setTimelinesAudio(prev => {
+                    const updated = prev
+                        .map(timeline => ({
+                            ...timeline,
+                            audios: timeline.audios.filter(audio => audio.instanceId !== element.instanceId)
+                        }))
+                        .filter(timeline => timeline.audios.length > 0);
+                    console.log('Updated timelines (audios) after delete:', updated);
+                    return updated;
+                });
+                break;
+
+            case 'sticker':
+                setTimelinesSticker(prev => {
+                    const updated = prev
+                        .map(timeline => ({
+                            ...timeline,
+                            stickers: timeline.stickers.filter(sticker => sticker.instanceId !== element.instanceId)
+                        }))
+                        .filter(timeline => timeline.stickers.length > 0);
+                    console.log('Updated timelines (stickers) after delete:', updated);
+                    return updated;
+                });
+                break;
+
+            case 'effect':
+                setTimelinesEffect(prev => {
+                    const updated = prev
+                        .map(timeline => ({
+                            ...timeline,
+                            effects: timeline.effects.filter(effect => effect.instanceId !== element.instanceId)
+                        }))
+                        .filter(timeline => timeline.effects.length > 0);
+                    console.log('Updated timelines (effects) after delete:', updated);
+                    return updated;
+                });
+                break;
+
+            case 'filter':
+                setTimelinesFilter(prev => {
+                    const updated = prev
+                        .map(timeline => ({
+                            ...timeline,
+                            filters: timeline.filters.filter(filter => filter.instanceId !== element.instanceId)
+                        }))
+                        .filter(timeline => timeline.filters.length > 0);
+                    console.log('Updated timelines (filters) after delete:', updated);
+                    return updated;
+                });
+                break;
+
+            default:
+                console.warn('Unknown type:', element.type);
+                break;
+        }
+    };
+
+    const handleChooseFile = (type, element) => {
+        console.log(`type: ${type}`)
+        console.log(`element: ${element}`)
+        switch (type) {
+            case "video":
+                setElementType("video");
+                setElement(element);
+                break;
+            case "audio":
+                setElementType("audio");
+                setElement(element);
+                break;
+            case "text":
+                setElementType("text");
+                setElement(element);
+                break;
+            case "filter":
+                setElementType("filter");
+                setElement(element);
+                break;
+            case "effect":
+                setElementType("effect");
+                setElement(element);
+                break;
+            case "sticker":
+                setElementType("sticker");
+                setElement(element);
+                break;
+            default:
+                console.error("Unsupported element type");
+        }
+    }
+
+    const handleCut = (elementType, element) => {
+
+        switch (elementType) {
+            case "video":
+                splitVideo(element, currentTime);
+                break;
+            case "text":
+                splitText(element, currentTime);
+                break;
+            case "audio":
+                splitAudio(element, currentTime);
+                break;
+            case "effect":
+                splitEffect(element, currentTime);
+                break;
+            case "filter":
+                splitFilter(element, currentTime);
+                break;
+            case "sticker":
+                splitSticker(element, currentTime);
+                break;
+            default:
+                console.error("Unsupported element type");
+        }
+    };
+
+    const splitVideo = async (video, currentTime) => {
+        if (!video || !video.id) {
+            console.error("Invalid video element", video);
+            return;
+        }
+        if (isVideo(video.url)){
+            try {
+            const formData = new FormData();
+            formData.append("videoId", video.id);
+            formData.append("videoPosition", video.position);
+            formData.append("currentTime", currentTime);
+
+            const response = await axios.post("http://localhost:8000/myapp/split_video/", formData, {
+                headers: {Authorization: `Bearer ${token}`},
+            });
+
+            if (response.status === 200 && response.data) {
+                const {oldVideoId, part1, part2} = response.data;
+                updateVideoTimelineWithNewSegments(oldVideoId, part1, part2);
+            } else {
+                console.error("Failed to split video", response.data);
+            }
+        } catch (error) {
+            console.error("Error splitting video:", error);
+        }
+        }
+        else{
+
+        const part1_duration = currentTime - video.startTime
+        const part2_duration = video.duration - part1_duration
+
+
+        const segmentWidthFirst = (part1_duration / 30) * 100;
+        const segmentWidthLast = (part2_duration / 30) * 100;
+        const positionLast = (currentTime / 30) * 100;
+
+        const newVideoFirst = {
+            instanceId: uuidv4(),
+            video_url: video.url,
+            url: video.url,
+            fileName: video.name,
+            position: video.position,
+            startTime: video.startTime,
+            endTime: video.startTime + part1_duration,
+            duration: part1_duration,
+            durationSpeed: part1_duration,
+            width: segmentWidthFirst,
+            scale: 100,
+            scaleWidth: 100,
+            scaleHeight: 100,
+            positionX: 0,
+            positionY: 0,
+            rotate: 0,
+            opacity: 100,
+            voice: 0,
+            speed: 1,
+        };
+
+        const newVideoLast = {
+            instanceId: uuidv4(),
+            video_url: video.url,
+            url: video.url,
+            fileName: video.name,
+            position: positionLast,
+            startTime: video.startTime + part1_duration,
+            endTime: (video.startTime + part1_duration) + part2_duration,
+            duration: part2_duration,
+            durationSpeed: part2_duration,
+            width: segmentWidthLast,
+            scale: 100,
+            scaleWidth: 100,
+            scaleHeight: 100,
+            positionX: 0,
+            positionY: 0,
+            rotate: 0,
+            opacity: 100,
+            voice: 0,
+            speed: 1,
+        };
+
+
+        console.log('listVideo before:', listVideo);
+
+        setTimelineVideos(prev => {
+            const updated = prev
+                .map(timeline => {
+                    const filteredVideos = timeline.videos.filter(video => video.instanceId !== element.instanceId);
+
+                    if (timeline.videos.length !== filteredVideos.length) {
+                        return {
+                            ...timeline,
+                            videos: [...filteredVideos, newVideoFirst, newVideoLast]
+                        };
+                    }
+
+                    return null;
+                })
+                .filter(timeline => timeline !== null);
+
+            console.log('Updated timelines (videos) after delete:', updated);
+            return updated;
+        });
+        }
+
+
+    };
+
+    const splitAudio = async (audio, currentTime) => {
+        if (!audio || !audio.id) {
+            console.error("Invalid audio element", audio);
+            return;
+        }
+        try {
+            const formData = new FormData();
+            formData.append("audioId", audio.id);
+            formData.append("audioPosition", audio.position);
+            formData.append("audioImage", audio.image);
+            formData.append("currentTime", currentTime);
+
+            const response = await axios.post("http://localhost:8000/myapp/split_audio/", formData, {
+                headers: {Authorization: `Bearer ${token}`},
+            });
+
+            if (response.status === 200) {
+                const {oldAudioId, part1, part2} = response.data;
+                updateAudioTimelineWithNewSegments(oldAudioId, part1, part2);
+            } else {
+                console.error("Failed to split audio", response.data);
+            }
+        } catch (error) {
+            console.error("Error splitting audio:", error);
+        }
+    };
+
+    const splitText = (text, currentTime) => {
+        const part1_duration = currentTime - text.startTime
+        const part2_duration = text.duration - part1_duration
+
+        const segmentWidthFirst = (part1_duration / 30) * 100;
+        const segmentWidthLast = (part2_duration / 30) * 100;
+        const positionLast = (currentTime / 30) * 100;
+
+        const newTextFirst = {
+            instanceId: uuidv4(),
+            image: text.image,
+            content: text.content,
+            position: text.position,
+            startTime: text.startTime,
+            endTime: text.startTime + part1_duration,
+            duration: part1_duration,
+            width: segmentWidthFirst,
+            style: text.style,
+            fontStyle: "Arial",
+            fontSize: parseInt(text.style.fontSize),
+            pattern: "normal",
+            case: "normal",
+            positionX: text.positionX,
+            positionY: text.positionY,
+            rotate: 0,
+            opacity: 100,
+            voice: 0,
+            speed: 1,
+            bold: false,
+            underline: false,
+            italic: false,
+        };
+
+        const newTextLast = {
+            instanceId: uuidv4(),
+            image: text.image,
+            content: text.content,
+            position: positionLast,
+            startTime: text.startTime + part1_duration,
+            endTime: (text.startTime + part1_duration) + part2_duration,
+            duration: part2_duration,
+            width: segmentWidthLast,
+            style: text.style,
+            fontStyle: "Arial",
+            fontSize: parseInt(text.style.fontSize),
+            pattern: "normal",
+            case: "normal",
+            positionX: text.positionX,
+            positionY: text.positionY,
+            rotate: 0,
+            opacity: 100,
+            voice: 0,
+            speed: 1,
+            bold: false,
+            underline: false,
+            italic: false,
+        };
+
+        console.log(`new text first: ${JSON.stringify(newTextFirst)}`)
+        console.log(`new text last: ${JSON.stringify(newTextLast)}`)
+
+        setTimelinesText(prev => {
+            const updated = prev
+                .map(timeline => {
+                    const filteredTexts = timeline.texts.filter(text => text.instanceId !== element.instanceId);
+
+                    if (timeline.texts.length !== filteredTexts.length) {
+                        return {
+                            ...timeline,
+                            texts: [...filteredTexts, newTextFirst, newTextLast]
+                        };
+                    }
+
+                    return null;
+                })
+                .filter(timeline => timeline !== null);
+
+            console.log('Updated timelines (texts) after delete:', updated);
+            return updated;
+        })
+    }
+
+    const splitEffect = (effect, currentTime) => {
+        const part1_duration = currentTime - effect.startTime
+        const part2_duration = effect.duration - part1_duration
+
+        const segmentWidthFirst = (part1_duration / 30) * 100;
+        const segmentWidthLast = (part2_duration / 30) * 100;
+        const positionLast = (currentTime / 30) * 100;
+
+        const newEffectFirst = {
+            instanceId: uuidv4(),
+                    name: effect.name,
+                    config: effect.config,
+                    image: effect.image,
+                    position: effect.position,
+                    startTime: effect.startTime,
+                    endTime: effect.startTime + part1_duration,
+                    duration: part1_duration,
+                    width: segmentWidthFirst,
+        };
+
+        const newEffectLast = {
+            instanceId: uuidv4(),
+                    name: effect.name,
+                    config: effect.config,
+                    image: effect.image,
+                    position: positionLast,
+                    startTime: effect.startTime + part1_duration,
+                    endTime: effect.startTime + part1_duration + part2_duration,
+                    duration: part2_duration,
+                    width: segmentWidthLast,
+        };
+
+
+        setTimelinesEffect(prev => {
+            const updated = prev
+                .map(timeline => {
+                    const filteredEffects = timeline.effects.filter(effect => effect.instanceId !== element.instanceId);
+
+                    if (timeline.effects.length !== filteredEffects.length) {
+                        return {
+                            ...timeline,
+                            effects: [...filteredEffects, newEffectFirst, newEffectLast]
+                        };
+                    }
+
+                    return null;
+                })
+                .filter(timeline => timeline !== null);
+
+            console.log('Updated timelines (effects) after delete:', updated);
+            return updated;
+        })
+    };
+
+    const splitFilter = (filter, currentTime) => {
+                const part1_duration = currentTime - filter.startTime
+        const part2_duration = filter.duration - part1_duration
+
+        const segmentWidthFirst = (part1_duration / 30) * 100;
+        const segmentWidthLast = (part2_duration / 30) * 100;
+        const positionLast = (currentTime / 30) * 100;
+
+        const newFilterFirst = {
+            instanceId: uuidv4(),
+            image: filter.image,
+            position: filter.position,
+            startTime: filter.startTime,
+            endTime: filter.startTime + part1_duration,
+            duration: part1_duration,
+            width: segmentWidthFirst,
+            name: filter.name,
+            config: filter.config,
+        };
+
+        const newFilterLast = {
+            instanceId: uuidv4(),
+            image: filter.image,
+            position: positionLast,
+            startTime: filter.startTime + part1_duration,
+            endTime: (filter.startTime + part1_duration) + part2_duration,
+            duration: part2_duration,
+            width: segmentWidthLast,
+            name: filter.name,
+            config: filter.config,
+        };
+
+
+        setTimelinesFilter(prev => {
+            const updated = prev
+                .map(timeline => {
+                    const filteredFilters = timeline.filters.filter(filter => filter.instanceId !== element.instanceId);
+
+                    if (timeline.filters.length !== filteredFilters.length) {
+                        return {
+                            ...timeline,
+                            filters: [...filteredFilters, newFilterFirst, newFilterLast]
+                        };
+                    }
+
+                    return null;
+                })
+                .filter(timeline => timeline !== null);
+
+            console.log('Updated timelines (filters) after delete:', updated);
+            return updated;
+        })
+    };
+
+    const splitSticker = (sticker, currentTime) => {
+                const part1_duration = currentTime - sticker.startTime
+        const part2_duration = sticker.duration - part1_duration
+
+        const segmentWidthFirst = (part1_duration / 30) * 100;
+        const segmentWidthLast = (part2_duration / 30) * 100;
+        const positionLast = (currentTime / 30) * 100;
+
+        const newStickerFirst = {
+            instanceId: uuidv4(),
+            position: sticker.position,
+            startTime: sticker.startTime,
+            endTime: sticker.startTime + part1_duration,
+            duration: part1_duration,
+            width: segmentWidthFirst,
+            positionX: sticker.positionX,
+            positionY: sticker.positionY,
+            rotate: 0,
+            url: sticker.url,
+                        scale: 100,
+                        scaleWidth: 100,
+                        scaleHeight: 100,
+        };
+
+        const newStickerLast = {
+            instanceId: uuidv4(),
+            position: positionLast,
+            startTime: sticker.startTime + part1_duration,
+            endTime: (sticker.startTime + part1_duration) + part2_duration,
+            duration: part2_duration,
+            width: segmentWidthLast,
+            positionX: sticker.positionX,
+            positionY: sticker.positionY,
+            rotate: 0,
+            url: sticker.url,
+                        scale: 100,
+                        scaleWidth: 100,
+                        scaleHeight: 100,
+        };
+
+        setTimelinesSticker(prev => {
+            const updated = prev
+                .map(timeline => {
+                    const filteredStickers = timeline.stickers.filter(sticker => sticker.instanceId !== element.instanceId);
+
+                    if (timeline.stickers.length !== filteredStickers.length) {
+                        return {
+                            ...timeline,
+                            stickers: [...filteredStickers, newStickerFirst, newStickerLast]
+                        };
+                    }
+
+                    return null;
+                })
+                .filter(timeline => timeline !== null);
+
+            console.log('Updated timelines (stickers) after delete:', updated);
+            return updated;
+        })
+    };
+
+    const updateVideoTimelineWithNewSegments = async (oldVideoId, part1, part2) => {
+
+        const cleanFileNameFirst = part1.name.replace(/[^a-zA-Z0-9._-]/g, '');
+        const cleanFileNameLast = part2.name.replace(/[^a-zA-Z0-9._-]/g, '');
+
+        const segmentWidthFirst = (part1.duration / 30) * 100;
+        const segmentWidthLast = (part2.duration / 30) * 100;
+        const positionLast = (part1.endTime / 30) * 100;
+
+        const newVideoFirst = {
+            instanceId: uuidv4(),
+            video_url: part1.url,
+            url: part1.url,
+            fileName: cleanFileNameFirst,
+            position: part1.position,
+            startTime: part1.startTime,
+            endTime: part1.endTime,
+            duration: part1.duration,
+            durationSpeed: part1.duration,
+            width: segmentWidthFirst,
+            scale: 100,
+            scaleWidth: 100,
+            scaleHeight: 100,
+            positionX: 0,
+            positionY: 0,
+            rotate: 0,
+            opacity: 100,
+            voice: 0,
+            speed: 1,
+        };
+
+        const newVideoLast = {
+            instanceId: uuidv4(),
+            video_url: part2.url,
+            url: part2.url,
+            fileName: cleanFileNameLast,
+            position: positionLast,
+            startTime: part1.endTime,
+            endTime: part2.endTime,
+            duration: part2.duration,
+            durationSpeed: part2.duration,
+            width: segmentWidthLast,
+            scale: 100,
+            scaleWidth: 100,
+            scaleHeight: 100,
+            positionX: 0,
+            positionY: 0,
+            rotate: 0,
+            opacity: 100,
+            voice: 0,
+            speed: 1,
+        };
+
+
+        console.log('listVideo before:', listVideo);
+
+        setTimelineVideos(prev => {
+            const updated = prev
+                .map(timeline => {
+                    const filteredVideos = timeline.videos.filter(video => video.instanceId !== element.instanceId);
+
+                    if (timeline.videos.length !== filteredVideos.length) {
+                        return {
+                            ...timeline,
+                            videos: [...filteredVideos, newVideoFirst, newVideoLast]
+                        };
+                    }
+
+                    return null;
+                })
+                .filter(timeline => timeline !== null);
+
+            console.log('Updated timelines (videos) after delete:', updated);
+            return updated;
+        });
+    };
+
+    const updateAudioTimelineWithNewSegments = async (oldAudioId, part1, part2) => {
+        console.log('part1:', part1);
+        console.log('part2:', part2);
+
+        const cleanFileNameFirst = part1.name.replace(/[^a-zA-Z0-9._-]/g, '');
+        const cleanFileNameLast = part2.name.replace(/[^a-zA-Z0-9._-]/g, '');
+
+        const segmentWidthFirst = (part1.duration / 30) * 100;
+        const segmentWidthLast = (part2.duration / 30) * 100;
+        const positionLast = (part1.endTime / 30) * 100;
+
+        const newAudioFirst = {
+            instanceId: uuidv4(),
+            url: part1.url,
+            fileName: cleanFileNameFirst,
+            image: part1.image,
+            position: part1.position,
+            startTime: part1.startTime,
+            endTime: part1.endTime,
+            duration: part1.duration,
+            width: segmentWidthFirst,
+            voice: 0,
+            speed: 1,
+        };
+
+        const newAudioLast = {
+            instanceId: uuidv4(),
+            url: part2.url,
+            fileName: cleanFileNameLast,
+            image: part2.image,
+            position: positionLast,
+            startTime: part1.endTime,
+            endTime: part2.endTime,
+            duration: part2.duration,
+            width: segmentWidthLast,
+            voice: 0,
+            speed: 1,
+        };
+
+
+        setTimelinesAudio(prev => {
+            const updated = prev
+                .map(timeline => {
+                    const filteredAudios = timeline.audios.filter(audio => audio.instanceId !== element.instanceId);
+
+                    if (timeline.audios.length !== filteredAudios.length) {
+                        return {
+                            ...timeline,
+                            audios: [...filteredAudios, newAudioFirst, newAudioLast]
+                        };
+                    }
+
+                    return null;
+                })
+                .filter(timeline => timeline !== null);
+
+            console.log('Updated timelines (audios) after delete:', updated);
+            return updated;
+        });
+    };
 
     useEffect(() => {
         if (isResizing) {
@@ -2607,7 +3581,7 @@ videoElement.addEventListener('loadedmetadata', () => {
                         setIsLogin(false);
                     }
                 } else {
-                        setIsLogin(false);
+                    setIsLogin(false);
                 }
             }
         };
@@ -2646,63 +3620,23 @@ videoElement.addEventListener('loadedmetadata', () => {
         loadEditSession();
     }, []);
 
-const handleTimeUpdate = () => {
-    const videoElement = videoRef.current;
-    setCurrentTime(videoElement.currentTime);
+    useEffect(() => {
+        const videoElement = videoRef.current;
+        if (videoElement) {
 
-    // Đảm bảo cập nhật opacity khi nó thay đổi
-    if (opacity !== undefined) {
-        videoElement.style.opacity = opacity / 100; // Sử dụng style để cập nhật opacity
-    }
-};
+            videoElement.addEventListener('loadedmetadata', () => {
+                setTotalDuration(videoElement.duration);
+            });
 
-useEffect(() => {
-    const videoElement = videoRef.current;
-    if (videoElement) {
-        // Lắng nghe sự kiện loadedmetadata để lấy tổng thời lượng video
-        videoElement.addEventListener('loadedmetadata', () => {
-            setTotalDuration(videoElement.duration);  // Thiết lập tổng thời lượng video
-        });
 
-        // Lắng nghe sự kiện timeupdate để cập nhật thời gian hiện tại
-        videoElement.addEventListener('timeupdate', handleTimeUpdate);
+            videoElement.addEventListener('timeupdate', handleTimeUpdate);
 
-        // Cleanup khi component unmount hoặc thay đổi
-        return () => {
-            videoElement.removeEventListener('timeupdate', handleTimeUpdate);
-        };
-    }
-}, [selectedVideo, opacity]);
 
-// Hàm xử lý sự kiện kéo thanh seek-bar
-const handleSeek = (e) => {
-  const videoElement = videoRef.current;
-
-  // Kiểm tra xem video có khả năng tua tới thời điểm này không
-  const seekPercentage = parseFloat(e.target.value);
-  const seekTime = (seekPercentage / 100) * totalDuration;
-
-  if (videoElement.seekable.length > 0) {
-    // Kiểm tra xem thời gian cần tua có nằm trong khoảng seekable không
-    const seekableStart = videoElement.seekable.start(0);
-    const seekableEnd = videoElement.seekable.end(0);
-
-    if (seekTime >= seekableStart && seekTime <= seekableEnd) {
-
-      // Cập nhật thời gian video trực tiếp
-      videoElement.currentTime = seekTime;
-      setCurrentTime(seekTime);
-
-      videoElement.addEventListener('seeked', () => {
-      });
-    } else {
-      console.log(`Seek time (${seekTime}) is out of seekable range: ${seekableStart} - ${seekableEnd}`);
-    }
-  } else {
-    console.log('Video không thể tua tại thời điểm này');
-  }
-};
-
+            return () => {
+                videoElement.removeEventListener('timeupdate', handleTimeUpdate);
+            };
+        }
+    }, [selectedVideo, opacity]);
 
     useEffect(() => {
         if (videoRef.current) {
@@ -2712,13 +3646,40 @@ const handleSeek = (e) => {
     }, [currentVideoIndex]);
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            if (videoRef.current && !videoRef.current.paused) {
-                setCurrentTime(videoRef.current.currentTime);
-            }
-        }, 100);
+        let interval;
+        if (playVideo || isTimerRunning) {
+            interval = setInterval(() => {
+                setCurrentTime((prevTime) => {
+                    if (playVideo) {
+                        const updatedTime = Math.min(prevTime + 0.1, totalDuration);
+                        if (updatedTime === totalDuration) {
+                            handleEffectClick();
+                            clearInterval(interval);
+                            setPlayVideo(false);
+                        }
+                        return updatedTime;
+                    }
+
+                    if (isTimerRunning) {
+                        const newTime = prevTime + 0.1;
+
+
+                        if (newTime >= totalDuration) {
+                            clearInterval(interval);
+                            setIsTimerRunning(false);
+                            return totalDuration;
+                        }
+
+                        return newTime;
+                    }
+
+                    return prevTime;
+                });
+            }, 100);
+        }
+
         return () => clearInterval(interval);
-    }, []);
+    }, [playVideo, isTimerRunning, totalDuration, handleEffectClick]);
 
     useEffect(() => {
         const videoElement = videoRef.current;
@@ -2737,22 +3698,65 @@ const handleSeek = (e) => {
 
     useEffect(() => {
         const newTimestamps = generateTimestamps(totalDuration, 5);
+        const timelineWidth = (totalDuration / 30) * 100;
+        setTimeLineWidth(((totalDuration / 5) + 1) * 16.7);
 
         if (JSON.stringify(newTimestamps) !== JSON.stringify(timestamps)) {
             setTimestamps(newTimestamps);
         }
     }, [totalDuration, timestamps]);
 
-   useEffect(() => {
-    const newTotalDuration = calculateTotalDuration();
-    if (newTotalDuration !== totalDuration) {
-        setTotalDuration(newTotalDuration);
-    }
+    useEffect(() => {
+        const newTotalDuration = calculateTotalDuration();
+        if (newTotalDuration !== totalDuration) {
+            setTotalDuration(newTotalDuration);
+        }
 
-    if (timelineVideos.length || timelinesText.length || timelinesFilter.length || timelinesEffect.length || timelinesAudio.length || timelinesSticker.length) {
-        handleExport(newTotalDuration);  // Pass the newTotalDuration directly
-    }
-}, [timelineVideos, timelinesText, timelinesFilter, timelinesEffect, timelinesAudio, timelinesSticker]);
+        if (timelineVideos.length
+        ) {
+            handleMergeVideo(newTotalDuration);
+        }
+    }, [timelineVideos]);
+
+    useEffect(() => {
+        const newTotalDuration = calculateTotalDuration();
+        if (newTotalDuration !== totalDuration) {
+            setTotalDuration(newTotalDuration);
+        }
+    }, [timelinesText, timelinesAudio]);
+
+    useEffect(() => {
+        const newTotalDuration = calculateTotalDuration();
+        if (newTotalDuration !== totalDuration) {
+            setTotalDuration(newTotalDuration);
+        }
+
+        if (timelinesFilter.length) {
+            handleApplyFilter(newTotalDuration, videoUrlVideo);
+        }
+    }, [timelinesFilter]);
+
+    useEffect(() => {
+        const newTotalDuration = calculateTotalDuration();
+        if (newTotalDuration !== totalDuration) {
+            setTotalDuration(newTotalDuration);
+        }
+
+        if (timelinesEffect.length) {
+            handleApplyEffect(newTotalDuration, videoUrlVideo);
+        }
+    }, [timelinesEffect]);
+
+    useEffect(() => {
+        const newTotalDuration = calculateTotalDuration();
+        if (newTotalDuration !== totalDuration) {
+            setTotalDuration(newTotalDuration);
+        }
+
+        if (timelinesSticker.length) {
+            handleApplySticker(newTotalDuration, videoUrlVideo);
+        }
+    }, [timelinesSticker]);
 
     useEffect(() => {
         setTimelineVideos((prevVideos) => {
@@ -2761,10 +3765,10 @@ const handleSeek = (e) => {
 
                 const updatedVideos = [...timelineVideo.videos];
                 const video = updatedVideos[videoIndex];
-                const duration = video.duration / speedValue;
+                const durationSpeed = video.duration / speedValue;
 
                 const totalTimelineDuration = Math.max(totalDuration, 30);
-                const segmentWidth = (duration / totalTimelineDuration) * 100;
+                const segmentWidth = (durationSpeed / totalTimelineDuration) * 100;
 
                 if (!video) return timelineVideo;
 
@@ -2772,6 +3776,7 @@ const handleSeek = (e) => {
                     ...video,
                     width: segmentWidth,
                     scale: scaleValue,
+                    durationSpeed: durationSpeed,
                     scaleWidth: scaleValueWidth,
                     scaleHeight: scaleValueHeight,
                     positionX: positionX,
@@ -2781,11 +3786,13 @@ const handleSeek = (e) => {
                     voice: voiceValue,
                     speed: speedValue
                 };
+                calculateTotalDuration();
 
                 return {
                     ...timelineVideo,
                     videos: updatedVideos.map((v, i) => (i === videoIndex ? updatedVideo : v))
                 };
+
             });
         });
     }, [scaleValue, scaleValueWidth, scaleValueHeight, positionX, positionY, rotateValue, opacity, voiceValue, speedValue]);
@@ -2801,6 +3808,9 @@ const handleSeek = (e) => {
                 const x = (videoWidth / 2) - (fontSizeText ? parseInt(fontSizeText) * textContent.length / 2 : 8 * textContent.length / 2);
                 const y = (videoHeight / 2) - (fontSizeText ? parseInt(fontSizeText) / 2 : 8);
 
+
+    console.log(`Font Size Text before: ${fontSizeText}`)
+
                 if (!text) return timelineText;
 
                 const updatedText = {
@@ -2811,25 +3821,30 @@ const handleSeek = (e) => {
                     pattern: patternText,
                     case: caseText,
                     scale: scaleText,
-                    scaleWidth: scaleWidthText,
-                    scaleHeight: scaleHeightText,
                     positionX: positionXText,
                     positionY: positionYText,
                     rotate: rotateText,
                     opacity: opacityText,
-                    blod: blod,
+                    bold: bold,
                     underline: underline,
                     italic: italic,
                     styleOfText: styleOfText,
-                };
+                }
 
+
+    console.log(`Font Size Text after: ${fontSizeText}`)
                 return {
                     ...timelineText,
                     texts: updatedTexts.map((v, i) => (i === textIndex ? updatedText : v))
                 };
             });
         });
-    }, [textContent, fontText, fontSizeText, patternText, caseText, scaleText, scaleWidthText, scaleHeightText, positionXText, positionYText, rotateText, opacityText, blod, underline, italic, styleOfText]);
+    }, [textContent, fontText, fontSizeText, patternText, caseText, scaleText, positionXText, positionYText, rotateText, opacityText, bold, underline, italic, styleOfText]);
+
+    useEffect(() => {
+    console.log(`Time line Text: ${JSON.stringify(timelinesText)}`)
+    }, [timelinesText])
+
 
     useEffect(() => {
         setTimelinesSticker((prevStickers) => {
@@ -2867,6 +3882,53 @@ const handleSeek = (e) => {
                 const updatedAudios = [...timelineAudio.audios];
                 const audio = updatedAudios[audioIndex];
 
+                const durationSpeed = audio.duration / speedValueAudio;
+
+                const totalTimelineDuration = Math.max(totalDuration, 30);
+                const segmentWidth = (durationSpeed / totalTimelineDuration) * 100;
+
+                if (!audio) return timelineAudio;
+
+                const updatedAudio = {
+                    ...audio,
+                    durationSpeed: durationSpeed,
+                    width: segmentWidth,
+                    voice: voiceValueAudio,
+                    speed: speedValueAudio
+                };
+                calculateTotalDuration();
+
+                return {
+                    ...timelineAudio,
+                    audios: updatedAudios.map((v, i) => (i === audioIndex ? updatedAudio : v))
+                };
+            });
+        });
+    }, [voiceValueAudio, speedValueAudio]);
+
+    useEffect(() => {
+        const handleDeleteKey = (e) => {
+            console.log(e.key);
+            if (e.key === "Delete" && selectedElement) {
+                handleDeleteElement(selectedElement);
+            }
+        };
+
+        window.addEventListener("keydown", handleDeleteKey);
+
+        return () => {
+            window.removeEventListener("keydown", handleDeleteKey);
+        };
+    }, [selectedElement]);
+
+    useEffect(() => {
+        setTimelinesAudio((prevAudios) => {
+            return prevAudios.map((timelineAudio, index) => {
+                if (index !== timelineAudioIndex) return timelineAudio;
+
+                const updatedAudios = [...timelineAudio.audios];
+                const audio = updatedAudios[audioIndex];
+
                 const duration = audio.duration / speedValueAudio;
 
                 const totalTimelineDuration = Math.max(totalDuration, 30);
@@ -2890,125 +3952,66 @@ const handleSeek = (e) => {
     }, [voiceValueAudio, speedValueAudio]);
 
     useEffect(() => {
-    const handleDeleteKey = (e) => {
-        console.log(e.key);  // Kiểm tra xem có log ra phím "Delete" hay không
-        if (e.key === "Delete" && selectedElement) {
-            handleDeleteElement(selectedElement);
+        const videoElement = videoRef.current;
+        if (videoElement) {
+            videoElement.addEventListener('seeked', () => {
+            });
+
+            return () => {
+                videoElement.removeEventListener('seeked', () => {
+                });
+            };
         }
-    };
-
-    window.addEventListener("keydown", handleDeleteKey);
-
-    return () => {
-        window.removeEventListener("keydown", handleDeleteKey);
-    };
-}, [selectedElement]);
-
-    const handleDeleteElement = (element) => {
-    console.log('Element to delete:', element);  // Kiểm tra phần tử sẽ bị xóa
-    switch (element.type) {
-        case 'video':
-            setTimelineVideos(prev => {
-                const updated = prev.map(timeline => {
-                    // Lọc các video không khớp với instanceId của phần tử cần xóa
-                    return {
-                        ...timeline,
-                        videos: timeline.videos.filter(video => video.instanceId !== element.instanceId)
-                    };
-                });
-                console.log('Updated timelines after delete:', updated);
-                return updated;
-            });
-            break;
-
-        case 'text':
-            setTimelinesText(prev => {
-                const updated = prev.map(timeline => {
-                    // Lọc các text không khớp với instanceId của phần tử cần xóa
-                    return {
-                        ...timeline,
-                        texts: timeline.texts.filter(text => text.instanceId !== element.instanceId)
-                    };
-                });
-                console.log('Updated timelines (text) after delete:', updated);
-                return updated;
-            });
-            break;
-
-        case 'audio':
-            setTimelinesAudio(prev => {
-                const updated = prev.map(timeline => {
-                    // Lọc các audio không khớp với instanceId của phần tử cần xóa
-                    return {
-                        ...timeline,
-                        audios: timeline.audios.filter(audio => audio.instanceId !== element.instanceId)
-                    };
-                });
-                console.log('Updated timelines (audio) after delete:', updated);
-                return updated;
-            });
-            break;
-
-        case 'sticker':
-            setTimelinesSticker(prev => {
-                const updated = prev.map(timeline => {
-                    // Lọc các sticker không khớp với instanceId của phần tử cần xóa
-                    return {
-                        ...timeline,
-                        stickers: timeline.stickers.filter(sticker => sticker.instanceId !== element.instanceId)
-                    };
-                });
-                console.log('Updated timelines (sticker) after delete:', updated);
-                return updated;
-            });
-            break;
-
-        case 'effect':
-            setTimelinesEffect(prev => {
-                const updated = prev.map(timeline => {
-                    // Lọc các effect không khớp với instanceId của phần tử cần xóa
-                    return {
-                        ...timeline,
-                        effects: timeline.effects.filter(effect => effect.instanceId !== element.instanceId)
-                    };
-                });
-                console.log('Updated timelines (effect) after delete:', updated);
-                return updated;
-            });
-            break;
-
-        case 'filter':
-            setTimelinesFilter(prev => {
-                const updated = prev.map(timeline => {
-                    // Lọc các filter không khớp với instanceId của phần tử cần xóa
-                    return {
-                        ...timeline,
-                        filters: timeline.filters.filter(filter => filter.instanceId !== element.instanceId)
-                    };
-                });
-                console.log('Updated timelines (filter) after delete:', updated);
-                return updated;
-            });
-            break;
-
-        default:
-            console.warn('Unknown type:', element.type);
-            break;
-    }
-};
+    }, []);
 
     useEffect(() => {
-  const videoElement = videoRef.current;
-if (videoElement) {
-    videoElement.addEventListener('seeked', () => {
-    });
+        const videoElement = videoRef.current;
+        if (videoElement) {
+            const handlePause = () => {
+                Object.values(audioRefs.current).forEach((audioElement) => {
+                    audioElement.pause();
+                });
+            };
+            videoElement.addEventListener("pause", handlePause);
+            return () => {
+                videoElement.removeEventListener("pause", handlePause);
+            };
+        }
+    }, [timelinesAudio]);
 
-    return () => {
-        videoElement.removeEventListener('seeked', () => {
+    useEffect(() => {
+        timelinesAudio.forEach((timeline) => {
+            timeline.audios.forEach((audioSegment) => {
+                if (!audioRefs.current[audioSegment.url]) {
+                    audioRefs.current[audioSegment.url] = new window.Audio(audioSegment.url);
+                }
+                const audioElement = audioRefs.current[audioSegment.url];
+                if (playVideo && currentTime >= audioSegment.startTime && currentTime <= audioSegment.endTime) {
+                    if (audioElement.paused) {
+                        audioElement.play().catch(err => console.error("Error playing audio:", err));
+                    }
+                } else {
+                    if (!audioElement.paused) {
+                        audioElement.pause();
+                        audioElement.currentTime = 0;
+                    }
+                }
+            });
         });
-    };
-}
-}, []);
+        return () => {
+            timelinesAudio.forEach((timeline) => {
+                timeline.audios.forEach((audioSegment) => {
+                    const audioElement = new window.Audio(audioSegment.url);
+                    audioElement.pause();
+                    audioElement.currentTime = 0;
+                });
+            });
+        };
+    }, [currentTime, timelinesAudio]);
+
+    useEffect(() => {
+        console.log(`timeline Video: ${JSON.stringify(timelineVideos)}`);
+    }, [timelineVideos]);
 
     return (
         <body>
@@ -3019,7 +4022,7 @@ if (videoElement) {
                     <p>EditEase</p>
                 </div>
                 <div className="export-btn">
-                    <button className="export" onClick={handleDownloadVideo}>
+                    <button className="export" onClick={() => handleExport(totalDuration)}>
                         Export
                     </button>
                 </div>
@@ -4880,7 +5883,7 @@ if (videoElement) {
                                         <h3>scenery</h3>
                                         <div className="list-file-scenery-filter-wrapper list-filter-file-wrapper">
                                             <div className="list-file-scenery-effect list-filter-file">
-                                                {filterFiles.featured.map((filter, index) => (
+                                                {filterFiles.scenery.map((filter, index) => (
                                                     <div className="file-scenery-effect filter-file">
                                                         <div className="file"
                                                              draggable
@@ -5015,11 +6018,9 @@ if (videoElement) {
                             <div
                                 style={{
                                     backgroundColor: 'black',
-                                    width: `${scaleValueWidth}%`,
-                                    height: `${scaleValueHeight}%`,
+                                    width: `100%`,
+                                    height: `100%`,
                                     position: 'absolute',
-                                    top: `${(1 - (scaleValueHeight / 100)) * 50}%`,
-                                    left: `${(1 - (scaleValueWidth / 100)) * 50}%`,
                                 }}
                             >
                                 {videoUrlTranslate ? (
@@ -5030,6 +6031,9 @@ if (videoElement) {
                                         width="100%"
                                         height="100%"
                                         src={videoUrlTranslate}
+                                        onEnded={() => {
+                                            setIsTimerRunning(true);
+                                        }}
                                     />
                                 ) : (
                                     <video id="player"></video>
@@ -5066,19 +6070,19 @@ if (videoElement) {
                                                 }
                                                 opacity={parseInt(textSegment.opacity)}
                                                 rotation={parseInt(textSegment.rotate)}
-                                                fontSize={textSegment.fontSize ? parseInt(textSegment.fontSize) : 16}
+                                                fontSize={(textSegment.fontSize ? parseInt(textSegment.fontSize) : 10)*(textSegment.scale/100)}
                                                 fill={textSegment.style && textSegment.style.color ? textSegment.style.color : "black"}
                                                 fontFamily={textSegment.fontStyle || "Arial"}
                                                 stroke={textSegment.style && textSegment.style.strokeColor ? textSegment.style.strokeColor : null}
                                                 strokeWidth={textSegment.style && textSegment.style.strokeWidth ? parseInt(textSegment.style.strokeWidth) : 0}
-                                                shadowColor={textSegment.style && textSegment.style.textShadow ? "rgba(255, 223, 0, 0.8)" : null}
-                                                shadowBlur={textSegment.style && textSegment.style.textShadow ? 20 : 0}
+                                                // shadowColor={textSegment.style && textSegment.style.textShadow ? "rgba(255, 223, 0, 0.8)" : null}
+                                                // shadowBlur={textSegment.style && textSegment.style.textShadow ? 20 : 0}
                                                 fontStyle={
-                                                    (textSegment.blod || textSegment.style.fontWeight === "bold" ? "bold" : "normal") +
+                                                    (textSegment.bold || textSegment.style.fontWeight === "bold" ? "bold" : "normal") +
                                                     (textSegment.italic || textSegment.style.fontStyle === "italic" ? " italic" : "")
                                                 }
                                                 textDecoration={textSegment.underline ? "underline" : null}
-                                                shadowOffset={{x: 0, y: 0}}
+                                                // shadowOffset={{x: 0, y: 0}}
                                                 draggable
                                                 onDragEnd={(e) => handleDragEnd(e, index, "text")}
                                             />
@@ -5205,14 +6209,6 @@ if (videoElement) {
                                     <div className="detail-wrap"
                                          onClick={() => handleMenuEditTextOptionClick('text')}>
                                         <button>Text</button>
-                                    </div>
-                                    <div className="detail-wrap"
-                                         onClick={() => handleMenuEditTextOptionClick('animation')}>
-                                        <button>Animation</button>
-                                    </div>
-                                    <div className="detail-wrap"
-                                         onClick={() => handleMenuEditTextOptionClick('text_to_speed')}>
-                                        <button>Text to speech</button>
                                     </div>
                                 </div>
                             }
@@ -6480,9 +7476,8 @@ if (videoElement) {
                                                             value={fontText}
                                                             onChange={handleFontTextChange}
                                                         >
-                                                            <option value="arial">Arial</option>
-                                                            <option value="helvetica">Helvetica</option>
-                                                            <option value="timesNewRoman">Times New Roman</option>
+                                                            <option value="Arial">Arial</option>
+                                                            <option value="Times_New_Roman">Times New Roman</option>
                                                             <option value="courierNew">Courier New</option>
                                                             <option value="verdana">Verdana</option>
                                                             <option value="georgia">Georgia</option>
@@ -6543,7 +7538,7 @@ if (videoElement) {
                                                         className="slider-container text-pattern-edit pattern-text-edit"
                                                         id="text-pattern-edit">
                                                         <label>Pattern</label>
-                                                        <button className="bold-btn" onClick={() => (setBlod(!blod))}>
+                                                        <button className="bold-btn" onClick={() => (setBold(!bold))}>
                                                             <FaBold/></button>
                                                         <button className="underline-btn"
                                                                 onClick={() => (setUnderline(!underline))}>
@@ -6613,101 +7608,6 @@ if (videoElement) {
                                                                     </svg>
                                                                 </button>
                                                             </div>
-                                                        </MenuItem>
-                                                        <MenuItem
-                                                            className="slider-container slider-width-container scale-width-text-edit">
-                                                            <label htmlFor="scale-slider scale-width-text-slider">Scale
-                                                                width</label>
-                                                            <input type="range" id="scale-width-text-slider"
-                                                                   className="slider slider-text"
-                                                                   min="1"
-                                                                   max="400"
-                                                                   value={scaleWidthText}
-                                                                   onChange={updateSliderScaleWidthTextValue}/>
-                                                            <input type="text" id="slider-width-text-value"
-                                                                   className="slider-value slider-text-value"
-                                                                   value={`${scaleWidthText}%`}
-                                                                   onInput={(e) => updateSliderWidthText(e.target.value)}/>
-                                                            <div className="slider-buttons slider-width-text-buttons">
-                                                                <button className="slider-up slider-width-text-up"
-                                                                        onClick={() => increaseSliderWidthText()}>
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                         height="24"
-                                                                         viewBox="0 0 24 24"
-                                                                         fill="none" stroke="currentColor"
-                                                                         strokeWidth="2"
-                                                                         strokeLinecap="round"
-                                                                         strokeLinejoin="round"
-                                                                         className="lucide lucide-chevron-up">
-                                                                        <path d="m18 15-6-6-6 6"/>
-                                                                    </svg>
-                                                                </button>
-                                                                <button className="slider-down slider-width-text-down"
-                                                                        onClick={() => decreaseSliderWidthText()}>
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                         height="24"
-                                                                         viewBox="0 0 24 24"
-                                                                         fill="none" stroke="currentColor"
-                                                                         strokeWidth="2"
-                                                                         strokeLinecap="round"
-                                                                         strokeLinejoin="round"
-                                                                         className="lucide lucide-chevron-down">
-                                                                        <path d="m6 9 6 6 6-6"/>
-                                                                    </svg>
-                                                                </button>
-                                                            </div>
-                                                        </MenuItem>
-                                                        <MenuItem
-                                                            className="slider-container slider-height-container scale-height-text-edit">
-                                                            <label htmlFor="scale-slider scale-height-text-slide">Scale
-                                                                height</label>
-                                                            <input type="range" id="scale-height-text-slider"
-                                                                   className="slider slider-text"
-                                                                   min="1"
-                                                                   max="400"
-                                                                   value={scaleHeightText}
-                                                                   onChange={updateSliderScaleHeightTextValue}/>
-                                                            <input type="text" id="slider-height-text-value"
-                                                                   className="slider-value slider-text-value"
-                                                                   value={`${scaleHeightText}%`}
-                                                                   onInput={(e) => updateSliderHeightText(e.target.value)}/>
-                                                            <div className="slider-buttons slider-height-text-buttons">
-                                                                <button className="slider-up slider-height-text-up"
-                                                                        onClick={() => increaseSliderHeightText()}>
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                         height="24"
-                                                                         viewBox="0 0 24 24"
-                                                                         fill="none" stroke="currentColor"
-                                                                         strokeWidth="2"
-                                                                         strokeLinecap="round"
-                                                                         strokeLinejoin="round"
-                                                                         className="lucide lucide-chevron-up">
-                                                                        <path d="m18 15-6-6-6 6"/>
-                                                                    </svg>
-                                                                </button>
-                                                                <button className="slider-down slider-height-text-down"
-                                                                        onClick={() => decreaseSliderHeightText()}>
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                         height="24"
-                                                                         viewBox="0 0 24 24"
-                                                                         fill="none" stroke="currentColor"
-                                                                         strokeWidth="2"
-                                                                         strokeLinecap="round"
-                                                                         strokeLinejoin="round"
-                                                                         className="lucide lucide-chevron-down">
-                                                                        <path d="m6 9 6 6 6-6"/>
-                                                                    </svg>
-                                                                </button>
-                                                            </div>
-                                                        </MenuItem>
-                                                        <MenuItem className="uniform-slider uniform-text-slider">
-                                                            <span>Uniform scale</span>
-                                                            <label>
-                                                                <input type="checkbox"
-                                                                       className="uniform-slider-check uniform-slider-text-check"
-                                                                       id="uniform-slider-text-check"/>
-                                                                <div className="slider-text-check"></div>
-                                                            </label>
                                                         </MenuItem>
                                                         <MenuItem
                                                             className="slider-container position-video position-text-edit">
@@ -7251,27 +8151,36 @@ if (videoElement) {
                 </div>
             </div>
             <div className="edit-wrapper">
+                <div className="edit-video-funtion"
+                     style={{width: `${timelineWidth}%`}}>
+                    <div className="cut-video-funtion">
+                        <button onClick={() => handleCut(elementType, element)}>
+                            <FaCut/>
+                        </button>
+                    </div>
+                </div>
                 <div className="timestamps">
                     {timestamps.map((time, index) => (
-                        <div className="time-segment" style={{left: calculateLeftValue(index, timestamps.length)}}
-                             key={index}>
+                        <div
+                            className="time-segment"
+                            style={{
+                                left: calculateLeftValue(index, timestamps.length),
+                            }}
+                            key={index}>
                             {time}
                         </div>
                     ))}
                 </div>
                 <input
-        ref={seekBarRef}
+                    ref={seekBarRef}
                     className="seek-bar"
                     type="range"
-                    min="0"
-                    max="100"
                     value={(currentTime / totalDuration) * 100}
                     onInput={(e) => {
-      console.log('Seek-bar input:', e.target.value);
-      handleSeek(e);
-  }}
-                    style={{width: `${widthTime}%`}}
-
+                        console.log('Seek-bar input:', e.target.value);
+                        handleSeek(e);
+                    }}
+                    style={{width: `${(totalDuration / 30) * 100}%`}}
                 />
                 <div className="video-timeline">
                     {(timelineVideos?.length > 0 || timelinesText?.length > 0 || timelinesAudio?.length > 0 || timelinesSticker?.length > 0 || timelinesEffect?.length > 0 || timelinesFilter?.length > 0) && (
@@ -7280,7 +8189,7 @@ if (videoElement) {
                             onDrop={(e) => handleDrop(e, null)}
                             onDragOver={handleDragOver}
                             onDragLeave={handleDragLeave}
-  onDragEnd={(e) => handleDragEnd(e)}
+                            onDragEnd={(e) => handleDragEnd(e)}
                         >
                         </div>
                     )}
@@ -7289,6 +8198,7 @@ if (videoElement) {
                             key={timelineIndex}
                             className="timeline"
                             onDragOver={handleDragOver}
+                            style={{width: `${timelineWidth}%`}}
                             onDrop={(e) => handleDrop(e, timelineIndex)}
                         >
                             {timeline.videos.map((file, index) => (
@@ -7300,6 +8210,7 @@ if (videoElement) {
                                          handleMenuEditType("video");
                                          handleClick(file, "video");
                                          handleVideoSelect(file, timelineIndex, index);
+                                         handleChooseFile("video", file);
                                      }}
 
                                      onDoubleClick={() => handleDoubleClick(file, "video")}>
@@ -7313,7 +8224,8 @@ if (videoElement) {
                                             style={{width: '100%'}}>
                                         </video>
                                     ) : (
-                                        <img src={file.url} alt="File Thumbnail"/>
+                                        <img src={file.url} alt="File Thumbnail"
+                                             style={{width: '100%', objectFit: 'cover'}}/>
                                     )}
                                     <div
                                         className="resize-handle resize-handle-right"
@@ -7328,6 +8240,7 @@ if (videoElement) {
                             key={timelineIndex}
                             className="timeline-text"
                             onDragOver={handleDragOver}
+                            style={{width: `${timelineWidth}%`}}
                             onDrop={(e) => handleDrop(e, timelineIndex)}>
                             {timeline.texts.map((textSegment, index) => (
                                 <div
@@ -7343,6 +8256,7 @@ if (videoElement) {
                                         handleMenuEditType("text");
                                         handleClick(textSegment, "text");
                                         handleTextSelect(textSegment, timelineIndex, index);
+                                        handleChooseFile("text", textSegment);
                                     }}
                                     onDoubleClick={() => handleDoubleClick(textSegment, "text")}>
                                     <div
@@ -7367,6 +8281,7 @@ if (videoElement) {
                             key={timelineIndex}
                             className="timeline-audio"
                             onDragOver={handleDragOver}
+                            style={{width: `${timelineWidth}%`}}
                             onDrop={(e) => handleDrop(e, timelineIndex)}>
                             {timeline.audios.map((audioSegment, index) => (
                                 <div
@@ -7382,6 +8297,7 @@ if (videoElement) {
                                         handleMenuEditType("audio");
                                         handleClick(audioSegment, "audio");
                                         handleTextSelect(audioSegment, timelineIndex, index);
+                                        handleChooseFile("audio", audioSegment);
                                     }}
                                     onDoubleClick={() => handleDoubleClick(audioSegment, "audio")}>
                                     <div
@@ -7406,6 +8322,7 @@ if (videoElement) {
                             key={timelineIndex}
                             className="timeline-sticker"
                             onDragOver={handleDragOver}
+                            style={{width: `${timelineWidth}%`}}
                             onDrop={(e) => handleDrop(e, timelineIndex)}>
                             {timeline.stickers.map((stickerSegment, index) => (
                                 <div
@@ -7421,6 +8338,7 @@ if (videoElement) {
                                         handleMenuEditType("sticker");
                                         handleClick(stickerSegment, "sticker");
                                         handleTextSelect(stickerSegment, timelineIndex, index);
+                                        handleChooseFile("sticker", stickerSegment);
                                     }}
                                     onDoubleClick={() => handleDoubleClick(stickerSegment, "sticker")}>
                                     <div
@@ -7445,6 +8363,7 @@ if (videoElement) {
                             key={timelineIndex}
                             className="timeline-effect"
                             onDragOver={handleDragOver}
+                            style={{width: `${timelineWidth}%`}}
                             onDrop={(e) => handleDrop(e, timelineIndex)}>
                             {timeline.effects.map((effectSegment, index) => (
                                 <div
@@ -7460,6 +8379,7 @@ if (videoElement) {
                                         handleMenuEditType("effect");
                                         handleClick(effectSegment, "effect");
                                         handleTextSelect(effectSegment, timelineIndex, index);
+                                        handleChooseFile("effect", effectSegment);
                                     }}
                                     onDoubleClick={() => handleDoubleClick(effectSegment, "effect")}>
                                     <div
@@ -7484,6 +8404,7 @@ if (videoElement) {
                             key={timelineIndex}
                             className="timeline-filter"
                             onDragOver={handleDragOver}
+                            style={{width: `${timelineWidth}%`}}
                             onDrop={(e) => handleDrop(e, timelineIndex)}>
                             {timeline.filters.map((filterSegment, index) => (
                                 <div
@@ -7499,6 +8420,7 @@ if (videoElement) {
                                         handleMenuEditType("filter");
                                         handleClick(filterSegment, "filter");
                                         handleTextSelect(filterSegment, timelineIndex, index);
+                                        handleChooseFile("filter", filterSegment);
                                     }}
                                     onDoubleClick={() => handleDoubleClick(filterSegment, "filter")}>
                                     <div
@@ -7524,7 +8446,7 @@ if (videoElement) {
                             onDrop={(e) => handleDrop(e, null)}
                             onDragOver={handleDragOver}
                             onDragLeave={handleDragLeave}
-  onDragEnd={(e) => handleDragEnd(e)}
+                            onDragEnd={(e) => handleDragEnd(e)}
                         >
                         </div>
                     ) : (
@@ -7533,7 +8455,7 @@ if (videoElement) {
                             onDrop={(e) => handleDrop(e, null)}
                             onDragOver={handleDragOver}
                             onDragLeave={handleDragLeave}
-  onDragEnd={(e) => handleDragEnd(e)}
+                            onDragEnd={(e) => handleDragEnd(e)}
                         >
                         </div>
                     )}
