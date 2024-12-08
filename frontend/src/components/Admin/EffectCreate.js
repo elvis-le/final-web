@@ -2,19 +2,21 @@ import React, {useEffect, useState} from 'react';
 import {
     TextField,
     Button,
-    MenuItem
+    MenuItem, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle
 } from '@mui/material'
 import axios from 'axios';
 import {supabase} from '../../supabaseClient';
 import {v4 as uuidv4} from "uuid";
 import {Link, useNavigate} from "react-router-dom";
 
-const EffectCreate = ({ onOptionSelect }) => {
+const EffectCreate = ({onOptionSelect}) => {
     const [imageFile, setImageFile] = useState(null);
     const [name, setName] = useState('');
     const [category, setCategory] = useState('');
     const [config, setConfig] = useState({});
     const navigate = useNavigate();
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [dialogMessage, setDialogMessage] = useState('');
 
     const token = localStorage.getItem('access_token');
 
@@ -32,18 +34,18 @@ const EffectCreate = ({ onOptionSelect }) => {
     ];
 
     function handleJsonChange(event) {
-  const file = event.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-        const fileContent = event.target.result;
-        setConfig(fileContent);
-    };
-    reader.readAsText(file);
-  } else {
-    console.error("Invalid file input");
-  }
-}
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const fileContent = event.target.result;
+                setConfig(fileContent);
+            };
+            reader.readAsText(file);
+        } else {
+            console.error("Invalid file input");
+        }
+    }
 
     const handleImageChange = (e) => {
         const file = e.target.files[0];
@@ -84,19 +86,40 @@ const EffectCreate = ({ onOptionSelect }) => {
             });
 
             if (response.status === 201) {
-                alert('Files uploaded and saved successfully!');
-                 navigate('/admin/effect', { state: { onOptionSelectValue: 'effect' } });
+                setDialogMessage('Files uploaded and saved successfully!');
+                setDialogOpen(true);
+                navigate('/admin/effect', {state: {onOptionSelectValue: 'effect'}});
             } else {
-                alert('Failed to save effect and image details to database');
+                setDialogMessage('Failed to save effect and image details to database');
+                setDialogOpen(true);
             }
 
         } catch (error) {
             console.error('Error uploading file:', error.message);
-            alert('Error uploading file');
+            setDialogMessage('Error uploading file');
+            setDialogOpen(true);
         }
     };
 
     return (
+        <>
+            <Dialog
+                open={dialogOpen}
+                onClose={() => setDialogOpen(false)}
+                className="custom-dialog"
+            >
+                <DialogTitle>
+                    Notification
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        {dialogMessage}
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDialogOpen(false)}>OK</Button>
+                </DialogActions>
+            </Dialog>
             <form onSubmit={handleSubmit} style={{maxWidth: '400px', height: "fit-content", margin: '0 auto'}}>
                 <TextField
                     label="Effect Name"
@@ -142,6 +165,7 @@ const EffectCreate = ({ onOptionSelect }) => {
                     </button>
                 </div>
             </form>
+        </>
     );
 };
 

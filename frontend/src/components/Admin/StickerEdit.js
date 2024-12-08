@@ -2,10 +2,19 @@ import React, {useEffect, useState} from "react";
 import {v4 as uuidv4} from "uuid";
 import {supabase} from "../../supabaseClient";
 import axios from "axios";
-import {Button, MenuItem, TextField} from "@mui/material";
+import {
+    Button,
+    MenuItem,
+    TextField,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogContentText,
+    DialogTitle
+} from "@mui/material";
 import {Link, useNavigate} from "react-router-dom";
 
-const StickerEdit = ({ onOptionSelect, stickerId }) => {
+const StickerEdit = ({onOptionSelect, stickerId}) => {
     const [stickerData, setStickerData] = useState([]);
     const [stickerFile, setStickerFile] = useState(null);
     const [imageFile, setImageFile] = useState(null);
@@ -21,6 +30,8 @@ const StickerEdit = ({ onOptionSelect, stickerId }) => {
         {value: 'emoji', label: 'Emoji'}
     ];
     const navigate = useNavigate();
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [dialogMessage, setDialogMessage] = useState('');
 
 
     useEffect(() => {
@@ -33,13 +44,13 @@ const StickerEdit = ({ onOptionSelect, stickerId }) => {
                 });
 
                 if (Array.isArray(response.data) && response.data.length > 0) {
-                const stickerItem = response.data[0];
-                setStickerData(stickerItem);
-                setName(stickerItem.name || '');
-                setCategory(stickerItem.category || '');
-            } else {
-                console.error('No sticker data found for the given ID.');
-            }
+                    const stickerItem = response.data[0];
+                    setStickerData(stickerItem);
+                    setName(stickerItem.name || '');
+                    setCategory(stickerItem.category || '');
+                } else {
+                    console.error('No sticker data found for the given ID.');
+                }
             } catch (error) {
                 console.error('Error fetching sticker data:', error);
             }
@@ -53,114 +64,140 @@ const StickerEdit = ({ onOptionSelect, stickerId }) => {
     };
 
     const handleSubmit = async (e) => {
-    e.preventDefault();
+        e.preventDefault();
 
-    const random = uuidv4();
-    let stickerPublicURL = stickerData.sticker_file;
-    let imagePublicURL = stickerData.image;
+        const random = uuidv4();
+        let stickerPublicURL = stickerData.sticker_file;
+        let imagePublicURL = stickerData.image;
 
-    try {
-        if (stickerFile) {
-            const { data: stickerUploadData, error: stickerUploadError } = await supabase
-                .storage
-                .from('sticker_files')
-                .upload(`${stickerData.category}/${random}_${stickerFile.name}`, stickerFile);
+        try {
+            if (stickerFile) {
+                const {data: stickerUploadData, error: stickerUploadError} = await supabase
+                    .storage
+                    .from('sticker_files')
+                    .upload(`${stickerData.category}/${random}_${stickerFile.name}`, stickerFile);
 
-            if (stickerUploadError) throw stickerUploadError;
+                if (stickerUploadError) throw stickerUploadError;
 
-            const { data: stickerPublicData } = supabase
-                .storage
-                .from('sticker_files')
-                .getPublicUrl(`${stickerData.category}/${random}_${stickerFile.name}`);
+                const {data: stickerPublicData} = supabase
+                    .storage
+                    .from('sticker_files')
+                    .getPublicUrl(`${stickerData.category}/${random}_${stickerFile.name}`);
 
-            stickerPublicURL = stickerPublicData.publicUrl;
+                stickerPublicURL = stickerPublicData.publicUrl;
+            }
+            console.log({stickerPublicURL})
+
+            if (imageFile) {
+                const {data: imageUploadData, error: imageUploadError} = await supabase
+                    .storage
+                    .from('sticker_files')
+                    .upload(`${stickerData.category}/${random}_${imageFile.name}`, imageFile);
+
+                if (imageUploadError) throw imageUploadError;
+
+                const {data: imagePublicData} = supabase
+                    .storage
+                    .from('sticker_files')
+                    .getPublicUrl(`${stickerData.category}/${random}_${imageFile.name}`);
+
+                imagePublicURL = imagePublicData.publicUrl;
+            }
+
+            const formData = new FormData();
+            formData.append('sticker_file', stickerPublicURL);
+            formData.append('image', imagePublicURL);
+            formData.append('name', name);
+            formData.append('category', category);
+
+            const response = await axios.post(`http://localhost:8000/myapp/update_sticker/${stickerData.id}/`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (response.status === 201) {
+
+                setDialogMessage('File update successful!');
+                setDialogOpen(true);
+                navigate('/admin/sticker', {state: {onOptionSelectValue: 'sticker'}});
+            } else {
+
+                setDialogMessage('Can not update file');
+                setDialogOpen(true);
+            }
+        } catch (error) {
+            console.error('Error to update file:', error.message);
+
+            setDialogMessage('Error to update file');
+            setDialogOpen(true);
         }
-        console.log({stickerPublicURL})
-
-        if (imageFile) {
-            const { data: imageUploadData, error: imageUploadError } = await supabase
-                .storage
-                .from('sticker_files')
-                .upload(`${stickerData.category}/${random}_${imageFile.name}`, imageFile);
-
-            if (imageUploadError) throw imageUploadError;
-
-            const { data: imagePublicData } = supabase
-                .storage
-                .from('sticker_files')
-                .getPublicUrl(`${stickerData.category}/${random}_${imageFile.name}`);
-
-            imagePublicURL = imagePublicData.publicUrl;
-        }
-
-        const formData = new FormData();
-        formData.append('sticker_file', stickerPublicURL);
-        formData.append('image', imagePublicURL);
-        formData.append('name', name);
-        formData.append('category', category);
-
-        const response = await axios.post(`http://localhost:8000/myapp/update_sticker/${stickerData.id}/`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-                Authorization: `Bearer ${token}`,
-            },
-        });
-
-        if (response.status === 201) {
-            alert('File update successful!');
-            navigate('/admin/sticker', { state: { onOptionSelectValue: 'sticker' } });
-        } else {
-            alert('Can not update file');
-        }
-    } catch (error) {
-        console.error('Error to update file:', error.message);
-        alert('Error to update file');
-    }
-};
+    };
 
 
     return (
-        <form onSubmit={handleSubmit} style={{maxWidth: '400px', margin: '0 auto'}}>
-            <TextField
-                label="Sticker Name"
-                variant="outlined"
-                fullWidth
-                margin="normal"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-            />
-            <TextField
-                select
-                label="Category"
-                variant="outlined"
-                fullWidth
-                margin="normal"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                required
+        <>
+            <Dialog
+                open={dialogOpen}
+                onClose={() => setDialogOpen(false)}
+                className="custom-dialog"
             >
-                {categories.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                        {option.label}
-                    </MenuItem>
-                ))}
-            </TextField>
-            <Button variant="contained" component="label" fullWidth style={{marginTop: '15px'}}>
-                Upload Sticker File
-                <input type="file" hidden onChange={handleFileChange} accept="sticker/*"/>
-            </Button>
-            {imageFile && <img src={URL.createObjectURL(imageFile)} alt="Selected Image" width="100"/>}
-            {stickerFile && <p>File: {stickerFile.name}</p>}
-            <div className="action-create">
-                <button type="button" className="cancle-btn active-btn"><Link className="link" to="/admin/sticker"
-                                                                              onClick={() => onOptionSelect('sticker')}>
-                    <span>Cancle</span></Link></button>
-                <button type="submit" className="add-new-btn active-btn">
-                    Save Sticker
-                </button>
-            </div>
-        </form>
+                <DialogTitle>
+                    Notification
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        {dialogMessage}
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDialogOpen(false)}>OK</Button>
+                </DialogActions>
+            </Dialog>
+
+            <form onSubmit={handleSubmit} style={{maxWidth: '400px', margin: '0 auto'}}>
+                <TextField
+                    label="Sticker Name"
+                    variant="outlined"
+                    fullWidth
+                    margin="normal"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                />
+                <TextField
+                    select
+                    label="Category"
+                    variant="outlined"
+                    fullWidth
+                    margin="normal"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    required
+                >
+                    {categories.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                            {option.label}
+                        </MenuItem>
+                    ))}
+                </TextField>
+                <Button variant="contained" component="label" fullWidth style={{marginTop: '15px'}}>
+                    Upload Sticker File
+                    <input type="file" hidden onChange={handleFileChange} accept="sticker/*"/>
+                </Button>
+                {imageFile && <img src={URL.createObjectURL(imageFile)} alt="Selected Image" width="100"/>}
+                {stickerFile && <p>File: {stickerFile.name}</p>}
+                <div className="action-create">
+                    <button type="button" className="cancle-btn active-btn"><Link className="link" to="/admin/sticker"
+                                                                                  onClick={() => onOptionSelect('sticker')}>
+                        <span>Cancle</span></Link></button>
+                    <button type="submit" className="add-new-btn active-btn">
+                        Save Sticker
+                    </button>
+                </div>
+            </form>
+        </>
     )
 }
 

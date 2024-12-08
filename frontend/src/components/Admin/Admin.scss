@@ -151,6 +151,40 @@
     margin-left: 20px;
     cursor: pointer;
   }
+  .notification-number{
+    position: absolute;
+    color: red;
+    font-size: 10px;
+    left: 94.5%;
+    top: 1%;
+  }
+
+  .list-new-user-notification{
+    position: absolute;
+    display: inline-flex;
+    width: 20%;
+    height: 50%;
+    border: 1px solid black;
+    right: 5%;
+    top: 5%;
+    z-index: 10;
+    flex-wrap: wrap;
+    background-color: var(--white-color);
+    max-height: 40rem;
+    overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--nav-color) var(--gray-color);
+    .new-user-notification{
+      width: 96%;
+      height: 20%;
+      color: black;
+      padding: 2%;
+      margin: 2% 2% 0% 2%;
+      border: 1px solid black;
+      border-radius: 10px;
+    }
+
+  }
 }
 
 .main-content {

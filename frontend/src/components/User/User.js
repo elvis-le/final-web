@@ -16,17 +16,20 @@ import {
     DialogTitle,
     DialogContent,
     InputAdornment,
-    IconButton, DialogActions
+    IconButton,
+    DialogActions, DialogContentText
 } from '@mui/material';
-import {FaEye, FaEyeSlash} from "react-icons/fa";
+import {FaEye, FaEyeSlash, FaUser} from "react-icons/fa";
+import {MdOutlineDashboard} from "react-icons/md";
+import {CiLogout} from "react-icons/ci";
 
 const User = () => {
     const [projects, setProjects] = useState([]);
     const navigate = useNavigate();
-    const [loading, setLoading] = useState(true);
     const [isProfile, setIsProfile] = useState(false);
-    const [error, setError] = useState(null);
-    const [isDialogOpen, setDialogOpen] = useState(false);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [dialogMessage, setDialogMessage] = useState('');
     const token = localStorage.getItem('access_token');
     const refreshToken = localStorage.getItem('refresh_token');
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -34,17 +37,15 @@ const User = () => {
     const [imageUrl, setImageUrl] = useState(user.image || '');
     const [name, setName] = useState(user.username || '');
     const [fullName, setFullName] = useState(user.fullname || '');
-  const [email, setEmail] = useState(user.email || '');
-  const [sex, setSex] = useState(user.sex || '');
-  const [birthday, setBirthday] = useState(user.birth_date || '');
-  const [address, setAddress] = useState(user.address || '');
-
-
+    const [email, setEmail] = useState(user.email || '');
+    const [sex, setSex] = useState(user.sex || '');
+    const [birthday, setBirthday] = useState(user.birth_date || '');
+    const [address, setAddress] = useState(user.address || '');
+    const [searchKeyword, setSearchKeyword] = useState('');
     const [openPasswordDialog, setOpenPasswordDialog] = useState(false);
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -86,6 +87,14 @@ const User = () => {
             console.error("Logout error:", error);
         }
     };
+
+    const handleSearchChange = (e) => {
+        setSearchKeyword(e.target.value.toLowerCase());
+    };
+    const filteredProjects = projects.filter(project =>
+        project.name.toLowerCase().includes(searchKeyword)
+    );
+
 
     useEffect(() => {
         const fetchProjects = async () => {
@@ -173,15 +182,15 @@ const User = () => {
     };
 
     const handleTrashClick = () => {
-        console.log("Trash button clicked"); 
-        setDialogOpen(true);    
+        console.log("Trash button clicked");
+        setIsDialogOpen(true);
     };
 
     const handleCloseDialog = () => {
-        setDialogOpen(false);   
+        setIsDialogOpen(false);
     };
 
-    const [contextMenu, setContextMenu] = useState(null); 
+    const [contextMenu, setContextMenu] = useState(null);
 
     const handleRightClick = (event, projectId) => {
         event.preventDefault();
@@ -220,9 +229,12 @@ const User = () => {
                             });
                             if (response.status === 201) {
                                 setProjects(projects.filter(project => project.id !== projectId));
-                                alert('File đã được xoá thành công!');
+
+                                setDialogMessage('File deleted successfully!');
+                                setDialogOpen(true);
                             } else {
-                                alert('Không thể xoá file');
+                                setDialogMessage('Can not delete file');
+                                setDialogOpen(true);
                             }
                         } catch (error) {
                             console.error('Error deleting project:', error);
@@ -245,66 +257,69 @@ const User = () => {
         setAddress(user.address || '');
     };
 
+    const handleSubmit = async (e) => {
+        e.preventDefault();
 
-       const handleSubmit = async (e) => {
-    e.preventDefault();
+        const random = uuidv4();
+        let imagePublicURL = user.image;
 
-    const random = uuidv4();
-    let imagePublicURL = user.image;
+        try {
+            if (image) {
+                const {data: imageUploadData, error: imageUploadError} = await supabase
+                    .storage
+                    .from('user_image')
+                    .upload(`${user.id}/${random}_${image.name}`, image);
 
-    try {
-        if (image) {
-            const { data: imageUploadData, error: imageUploadError } = await supabase
-                .storage
-                .from('user_image')
-                .upload(`${user.id}/${random}_${image.name}`, image);
+                if (imageUploadError) throw imageUploadError;
 
-            if (imageUploadError) throw imageUploadError;
+                const {data: imagePublicData} = supabase
+                    .storage
+                    .from('user_image')
+                    .getPublicUrl(`${user.id}/${random}_${image.name}`);
 
-            const { data: imagePublicData } = supabase
-                .storage
-                .from('user_image')
-                .getPublicUrl(`${user.id}/${random}_${image.name}`);
+                imagePublicURL = imagePublicData.publicUrl;
+            }
 
-            imagePublicURL = imagePublicData.publicUrl;
+            const formData = new FormData();
+            formData.append('image', imagePublicURL);
+            formData.append('fullname', fullName);
+            formData.append('sex', sex);
+            formData.append('birth_date', birthday);
+            formData.append('address', address);
+
+            console.log(imagePublicURL)
+            console.log(name)
+            console.log(sex)
+            console.log(birthday)
+            console.log(address)
+
+            const response = await axios.post(`http://localhost:8000/myapp/update_user/${user.id}/`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            const data = response.data;
+            console.log(data);
+
+            if (response.status === 200 && data) {
+                localStorage.setItem('user', JSON.stringify(data));
+
+                setDialogMessage('File updated successfully');
+                setDialogOpen(true);
+            } else {
+
+                setDialogMessage('Can not update file');
+                setDialogOpen(true);
+            }
+        } catch (error) {
+            console.error('Lỗi khi cập nhật file:', error.message);
+
+            setDialogMessage('Error to update file');
+            setDialogOpen(true);
         }
-
-        const formData = new FormData();
-        formData.append('image', imagePublicURL);
-        formData.append('fullname', fullName);
-        formData.append('sex', sex);
-        formData.append('birth_date', birthday);
-        formData.append('address', address);
-
-        console.log(imagePublicURL)
-        console.log(name)
-        console.log(sex)
-        console.log(birthday)
-        console.log(address)
-
-        const response = await axios.post(`http://localhost:8000/myapp/update_user/${user.id}/`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-                Authorization: `Bearer ${token}`,
-            },
-        });
-
-        const data = response.data;
-        console.log(data);
-
-        if (response.status === 200 && data) {
-            localStorage.setItem('user', JSON.stringify(data));
-            alert('File đã được cập nhật thành công!');
-        } else {
-            alert('Không thể cập nhật file');
-        }
-    } catch (error) {
-        console.error('Lỗi khi cập nhật file:', error.message);
-        alert('Lỗi khi cập nhật file');
-    }
-};
-
-
+    };
 
     const handlePasswordChange = () => {
         setOpenPasswordDialog(true);
@@ -313,7 +328,9 @@ const User = () => {
     const handlePasswordSubmit = async (e) => {
         e.preventDefault();
         if (newPassword !== confirmPassword) {
-            alert("Mật khẩu mới và xác nhận mật khẩu không khớp");
+
+            setDialogMessage('Password does not match');
+            setDialogOpen(true);
             setCurrentPassword("");
             setNewPassword("");
             setConfirmPassword("");
@@ -342,43 +359,79 @@ const User = () => {
 
             if (response.status === 200 && data) {
                 localStorage.setItem('user', JSON.stringify(data));
-                alert('Mật khẩu đã được thay đổi thành công!');
 
-        setOpenPasswordDialog(false);
-        } else {
-            alert('Không thể cập nhật mật khẩu');
-        }
-        } catch (error) {
-        if (error.response) {
-            setCurrentPassword("");
-            setNewPassword("");
-            setConfirmPassword("");
-            if (error.response.status === 400) {
-                
-                alert(error.response.data.message || 'Mật khẩu hiện tại không chính xác');
-            } else if (error.response.status === 500) {
-                
-                alert('Lỗi server, không thể đổi mật khẩu');
+                setDialogMessage('Change password successfully');
+                setDialogOpen(true);
+
+                setOpenPasswordDialog(false);
             } else {
-                
-                alert('Đã xảy ra lỗi khi thay đổi mật khẩu');
+
+                setDialogMessage('Can not update password');
+                setDialogOpen(true);
             }
-        } else {
-            
-            alert('Không thể kết nối tới server');
+        } catch (error) {
+            if (error.response) {
+                setCurrentPassword("");
+                setNewPassword("");
+                setConfirmPassword("");
+                if (error.response.status === 400) {
+
+
+                    setDialogMessage('Current password is incorrect');
+                    setDialogOpen(true);
+                } else if (error.response.status === 500) {
+
+
+                    setDialogMessage('Sever error, can not change password');
+                    setDialogOpen(true);
+                } else {
+
+
+                    setDialogMessage('Have an error when change password');
+                    setDialogOpen(true);
+                }
+            } else {
+
+
+                setDialogMessage('Can not connect to sever');
+                setDialogOpen(true);
+            }
         }
-    }
     };
 
     return (
         <div className="dashboard-container">
-            <aside className="sidebar">
-                <button className="sign-in-btn" onClick={() => {setIsProfile(false)}}>Dashboard</button>
-                <button className="join-pro-btn" onClick={() => {setIsProfile(true)}}>Profile</button>
+            <Dialog
+                open={dialogOpen}
+                onClose={() => setDialogOpen(false)}
+                className="custom-dialog"
+            >
+                <DialogTitle>
+                    Notification
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        {dialogMessage}
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDialogOpen(false)}>OK</Button>
+                </DialogActions>
+            </Dialog>
+            <div className="sidebar">
+                <button className="sign-in-btn" onClick={() => {
+                    setIsProfile(false)
+                }}><MdOutlineDashboard className="ícon-sider"/> Dashboard
+                </button>
+                <button className="join-pro-btn" onClick={() => {
+                    setIsProfile(true)
+                }}><FaUser className="ícon-sider"/> Profile
+                </button>
                 <button onClick={handleLogout} className="logout-btn">
+                    <CiLogout className="ícon-sider"/>
                     Log out
                 </button>
-            </aside>
+            </div>
 
             <main className="main-content">
                 {isProfile ?
@@ -444,10 +497,10 @@ const User = () => {
                                     <div className="user-information user-password">
                                         <label className="user-password-label">Password</label>
                                         <Button variant="contained" fullWidth style={{marginTop: '15px'}}
-                                    className="user-password-change"
-                                    onClick={handlePasswordChange}>
-                                Change Password
-                            </Button>
+                                                className="user-password-change"
+                                                onClick={handlePasswordChange}>
+                                            Change Password
+                                        </Button>
                                     </div>
 
                                     <div className="user-information user-sex">
@@ -512,79 +565,79 @@ const User = () => {
                             </form>
                         </div>
 
-            <Dialog open={openPasswordDialog} onClose={() => setOpenPasswordDialog(false)}>
-            <DialogTitle>Change Password</DialogTitle>
-            <DialogContent>
-                <TextField
-                    label="Current Password"
-                    type={showCurrentPassword ? "text" : "password"}
-                    fullWidth
-                    margin="normal"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    required
-                    InputProps={{
-                        endAdornment: (
-                            <InputAdornment position="end">
-                                <IconButton
-                                    onClick={() => handleTogglePasswordVisibility(setShowCurrentPassword, showCurrentPassword)}
-                                >
-                                    {showCurrentPassword ? <FaEyeSlash /> : <FaEye />}
-                                </IconButton>
-                            </InputAdornment>
-                        )
-                    }}
-                />
-                <TextField
-                    label="New Password"
-                    type={showNewPassword ? "text" : "password"}
-                    fullWidth
-                    margin="normal"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    required
-                    InputProps={{
-                        endAdornment: (
-                            <InputAdornment position="end">
-                                <IconButton
-                                    onClick={() => handleTogglePasswordVisibility(setShowNewPassword, showNewPassword)}
-                                >
-                                    {showNewPassword ? <FaEyeSlash /> : <FaEye />}
-                                </IconButton>
-                            </InputAdornment>
-                        )
-                    }}
-                />
-                <TextField
-                    label="Confirm New Password"
-                    type={showConfirmPassword ? "text" : "password"}
-                    fullWidth
-                    margin="normal"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    InputProps={{
-                        endAdornment: (
-                            <InputAdornment position="end">
-                                <IconButton
-                                    onClick={() => handleTogglePasswordVisibility(setShowConfirmPassword, showConfirmPassword)}
-                                >
-                                    {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
-                                </IconButton>
-                            </InputAdornment>
-                        )
-                    }}
-                />
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={() => setOpenPasswordDialog(false)} color="primary">
-                    Cancel
-                </Button>
-                <Button onClick={handlePasswordSubmit} color="primary">
-                    Save
-                </Button>
-            </DialogActions>
-        </Dialog>
+                        <Dialog open={openPasswordDialog} onClose={() => setOpenPasswordDialog(false)}>
+                            <DialogTitle>Change Password</DialogTitle>
+                            <DialogContent>
+                                <TextField
+                                    label="Current Password"
+                                    type={showCurrentPassword ? "text" : "password"}
+                                    fullWidth
+                                    margin="normal"
+                                    value={currentPassword}
+                                    onChange={(e) => setCurrentPassword(e.target.value)}
+                                    required
+                                    InputProps={{
+                                        endAdornment: (
+                                            <InputAdornment position="end">
+                                                <IconButton
+                                                    onClick={() => handleTogglePasswordVisibility(setShowCurrentPassword, showCurrentPassword)}
+                                                >
+                                                    {showCurrentPassword ? <FaEyeSlash/> : <FaEye/>}
+                                                </IconButton>
+                                            </InputAdornment>
+                                        )
+                                    }}
+                                />
+                                <TextField
+                                    label="New Password"
+                                    type={showNewPassword ? "text" : "password"}
+                                    fullWidth
+                                    margin="normal"
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    required
+                                    InputProps={{
+                                        endAdornment: (
+                                            <InputAdornment position="end">
+                                                <IconButton
+                                                    onClick={() => handleTogglePasswordVisibility(setShowNewPassword, showNewPassword)}
+                                                >
+                                                    {showNewPassword ? <FaEyeSlash/> : <FaEye/>}
+                                                </IconButton>
+                                            </InputAdornment>
+                                        )
+                                    }}
+                                />
+                                <TextField
+                                    label="Confirm New Password"
+                                    type={showConfirmPassword ? "text" : "password"}
+                                    fullWidth
+                                    margin="normal"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    required
+                                    InputProps={{
+                                        endAdornment: (
+                                            <InputAdornment position="end">
+                                                <IconButton
+                                                    onClick={() => handleTogglePasswordVisibility(setShowConfirmPassword, showConfirmPassword)}
+                                                >
+                                                    {showConfirmPassword ? <FaEyeSlash/> : <FaEye/>}
+                                                </IconButton>
+                                            </InputAdornment>
+                                        )
+                                    }}
+                                />
+                            </DialogContent>
+                            <DialogActions>
+                                <Button onClick={() => setOpenPasswordDialog(false)} color="primary">
+                                    Cancel
+                                </Button>
+                                <Button onClick={handlePasswordSubmit} color="primary">
+                                    Save
+                                </Button>
+                            </DialogActions>
+                        </Dialog>
                     </>
                     :
                     <>
@@ -592,7 +645,9 @@ const User = () => {
                             <button className="create-project-btn" onClick={createProject}>Create Project</button>
                         </div>
                         <div className="search-trash-bar">
-                            <input type="search" placeholder="Search" className="search-input"/>
+                            <input type="search" placeholder="Search" className="search-input"
+                                   value={searchKeyword}
+                                   onChange={handleSearchChange}/>
                             <button className="trash-btn" onClick={handleTrashClick}><GoTrash
                                 className="trash-btn-icon"/>Trash
                             </button>
@@ -603,49 +658,99 @@ const User = () => {
                         />
                         <section className="projects-section">
                             <h3>Projects ({projects && projects.length ? projects.length : 0})</h3>
-                            {projects.length === 0 ? (
-                                <p>Không có dự án nào.</p>
+                            {searchKeyword.length === 0 ? (
+                                projects.length === 0 ? (
+                                    <p>Don't have any project</p>
+                                ) : (
+                                    <div className="projects-grid">
+                                        {projects.map((project) => (
+                                            <div key={project.id} className="project-card"
+                                                 onClick={() => handleSelectProject(project.id)}
+                                                 onContextMenu={(e) => handleRightClick(e, project.id)}>
+                                                <img src={imgTest} alt={`Project ${project.name}`}/>
+                                                <span>{project.name}</span>
+                                                <span>{new Date(project.created_at).toLocaleDateString()}</span>
+                                                {contextMenu && contextMenu.projectId === project.id && (
+                                                    <ul
+                                                        className="context-menu"
+                                                        style={{
+                                                            top: `${contextMenu.y}px`,
+                                                            left: `${contextMenu.x}px`,
+                                                            position: 'absolute'
+                                                        }}
+                                                        onClick={(e) => e.stopPropagation()}>
+                                                        <button className="btn-option-project btn-open"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleOpenProject(project.id);
+                                                                }}>Open
+                                                        </button>
+                                                        <button className="btn-option-project btn-delete"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleDeleteProject(e, project.id);
+                                                                }}>Delete
+                                                        </button>
+                                                    </ul>
+                                                )}
+                                                {contextMenu && (
+                                                    <div className="overlay" onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleClickOutside();
+                                                    }}></div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )
                             ) : (
-                                <div className="projects-grid">
-                                    {projects.map((project) => (
-                                        <div key={project.id} className="project-card"
-                                             onClick={() => handleSelectProject(project.id)}
-                                             onContextMenu={(e) => handleRightClick(e, project.id)}>
-                                            <img src={imgTest} alt={`Project ${project.name}`}/>
-                                            <span>{project.name}</span>
-                                            <span>{new Date(project.created_at).toLocaleDateString()}</span>
-                                            {contextMenu && contextMenu.projectId === project.id && (
-                                                <ul
-                                                    className="context-menu"
-                                                    style={{
-                                                        top: `${contextMenu.y}px`,
-                                                        left: `${contextMenu.x}px`,
-                                                        position: 'absolute'
-                                                    }}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                >
-                                                    <button className="btn-option-project btn-open" onClick={(e) => {
+                                filteredProjects.length === 0 ? (
+                                    <p>No matching projects found</p>
+                                ) : (
+                                    <div className="projects-grid">
+                                        {filteredProjects.map((project) => (
+                                            <div key={project.id} className="project-card"
+                                                 onClick={() => handleSelectProject(project.id)}
+                                                 onContextMenu={(e) => handleRightClick(e, project.id)}>
+                                                <img src={imgTest} alt={`Project ${project.name}`}/>
+                                                <span>{project.name}</span>
+                                                <span>{new Date(project.created_at).toLocaleDateString()}</span>
+                                                {contextMenu && contextMenu.projectId === project.id && (
+                                                    <ul
+                                                        className="context-menu"
+                                                        style={{
+                                                            top: `${contextMenu.y}px`,
+                                                            left: `${contextMenu.x}px`,
+                                                            position: 'absolute'
+                                                        }}
+                                                        onClick={(e) => e.stopPropagation()}>
+                                                        <button className="btn-option-project btn-open"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleOpenProject(project.id);
+                                                                }}>Open
+                                                        </button>
+                                                        <button className="btn-option-project btn-delete"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleDeleteProject(e, project.id);
+                                                                }}>Delete
+                                                        </button>
+                                                    </ul>
+                                                )}
+                                                {contextMenu && (
+                                                    <div className="overlay" onClick={(e) => {
                                                         e.stopPropagation();
-                                                        handleOpenProject(project.id);
-                                                    }}>Open
-                                                    </button>
-                                                    <button className="btn-option-project btn-delete" onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleDeleteProject(e, project.id);
-                                                    }}>Delete
-                                                    </button>
-                                                </ul>
-                                            )}
-
-                                            {/* Click outside to close the menu */}
-                                            {contextMenu && <div className="overlay" onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleClickOutside();
-                                            }}></div>}
-                                        </div>
-                                    ))}
-                                </div>
+                                                        handleClickOutside();
+                                                    }}></div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )
                             )}
+
+
                         </section>
                     </>
                 }

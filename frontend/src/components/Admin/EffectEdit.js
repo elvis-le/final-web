@@ -2,20 +2,23 @@ import React, {useEffect, useState} from 'react';
 import {
     TextField,
     Button,
-    MenuItem
+    MenuItem, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle
 } from '@mui/material'
 import axios from 'axios';
 import {supabase} from '../../supabaseClient';
 import {v4 as uuidv4} from "uuid";
 import {Link, useNavigate} from "react-router-dom";
 
-const EffectEdit = ({ onOptionSelect, effectId }) => {
+const EffectEdit = ({onOptionSelect, effectId}) => {
     const [effectData, setEffectData] = useState([]);
     const [imageFile, setImageFile] = useState(null);
     const [name, setName] = useState('');
     const [category, setCategory] = useState('');
     const [config, setConfig] = useState({});
     const navigate = useNavigate();
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [dialogMessage, setDialogMessage] = useState('');
+
 
     const token = localStorage.getItem('access_token');
 
@@ -42,14 +45,14 @@ const EffectEdit = ({ onOptionSelect, effectId }) => {
                 });
 
                 if (Array.isArray(response.data) && response.data.length > 0) {
-                const effectItem = response.data[0];
-                setEffectData(effectItem);
-                setName(effectItem.name || '');
-                setCategory(effectItem.category || '');
-                setConfig(JSON.stringify(effectItem.config) || '');
-            } else {
-                console.error('No effect data found for the given ID.');
-            }
+                    const effectItem = response.data[0];
+                    setEffectData(effectItem);
+                    setName(effectItem.name || '');
+                    setCategory(effectItem.category || '');
+                    setConfig(JSON.stringify(effectItem.config) || '');
+                } else {
+                    console.error('No effect data found for the given ID.');
+                }
             } catch (error) {
                 console.error('Error fetching effect data:', error);
             }
@@ -59,18 +62,18 @@ const EffectEdit = ({ onOptionSelect, effectId }) => {
     }, [effectId, token]);
 
     function handleJsonChange(event) {
-  const file = event.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-        const fileContent = event.target.result;
-        setConfig(fileContent);
-    };
-    reader.readAsText(file);
-  } else {
-    console.error("Invalid file input");
-  }
-}
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const fileContent = event.target.result;
+                setConfig(fileContent);
+            };
+            reader.readAsText(file);
+        } else {
+            console.error("Invalid file input");
+        }
+    }
 
     const handleImageChange = (e) => {
         const file = e.target.files[0];
@@ -78,54 +81,78 @@ const EffectEdit = ({ onOptionSelect, effectId }) => {
     };
 
     const handleSubmit = async (e) => {
-    e.preventDefault();
+        e.preventDefault();
 
-    const random = uuidv4();
-    let imagePublicURL = effectData.image;
+        const random = uuidv4();
+        let imagePublicURL = effectData.image;
 
-    try {
-        if (imageFile) {
-            const { data: imageUploadData, error: imageUploadError } = await supabase
-                .storage
-                .from('effect_files')
-                .upload(`${effectData.category}/${random}_${imageFile.name}`, imageFile);
+        try {
+            if (imageFile) {
+                const {data: imageUploadData, error: imageUploadError} = await supabase
+                    .storage
+                    .from('effect_files')
+                    .upload(`${effectData.category}/${random}_${imageFile.name}`, imageFile);
 
-            if (imageUploadError) throw imageUploadError;
+                if (imageUploadError) throw imageUploadError;
 
-            const { data: imagePublicData } = supabase
-                .storage
-                .from('effect_files')
-                .getPublicUrl(`${effectData.category}/${random}_${imageFile.name}`);
+                const {data: imagePublicData} = supabase
+                    .storage
+                    .from('effect_files')
+                    .getPublicUrl(`${effectData.category}/${random}_${imageFile.name}`);
 
-            imagePublicURL = imagePublicData.publicUrl;
+                imagePublicURL = imagePublicData.publicUrl;
+            }
+
+            const formData = new FormData();
+            formData.append('image', imagePublicURL);
+            formData.append('name', name);
+            formData.append('category', category);
+            formData.append('config', config);
+
+            const response = await axios.post(`http://localhost:8000/myapp/update_effect/${effectData.id}/`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (response.status === 201) {
+
+                setDialogMessage('File update successful!');
+                setDialogOpen(true);
+                navigate('/admin/effect', {state: {onOptionSelectValue: 'effect'}});
+            } else {
+
+                setDialogMessage('Can not update file');
+                setDialogOpen(true);
+            }
+        } catch (error) {
+            console.error('Error to update file:', error.message);
+
+            setDialogMessage('Error to update file');
+            setDialogOpen(true);
         }
-
-        const formData = new FormData();
-        formData.append('image', imagePublicURL);
-        formData.append('name', name);
-        formData.append('category', category);
-        formData.append('config', config);
-
-        const response = await axios.post(`http://localhost:8000/myapp/update_effect/${effectData.id}/`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-                Authorization: `Bearer ${token}`,
-            },
-        });
-
-        if (response.status === 201) {
-            alert('File update successful!');
-            navigate('/admin/effect', { state: { onOptionSelectValue: 'effect' } });
-        } else {
-            alert('Can not update file');
-        }
-    } catch (error) {
-        console.error('Error to update file:', error.message);
-        alert('Error to update file');
-    }
-};
+    };
 
     return (
+        <>
+            <Dialog
+                open={dialogOpen}
+                onClose={() => setDialogOpen(false)}
+                className="custom-dialog"
+            >
+                <DialogTitle>
+                    Notification
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        {dialogMessage}
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDialogOpen(false)}>OK</Button>
+                </DialogActions>
+            </Dialog>
             <form onSubmit={handleSubmit} style={{maxWidth: '400px', height: "fit-content", margin: '0 auto'}}>
                 <TextField
                     label="Effect Name"
@@ -171,6 +198,7 @@ const EffectEdit = ({ onOptionSelect, effectId }) => {
                     </button>
                 </div>
             </form>
+        </>
     );
 };
 

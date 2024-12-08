@@ -1,4 +1,4 @@
-import {Button, MenuItem, TextField} from "@mui/material";
+import {Button, MenuItem, TextField, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle} from "@mui/material";
 import React, {useEffect, useState} from "react";
 import {Link, useNavigate} from "react-router-dom";
 import {v4 as uuidv4} from "uuid";
@@ -6,7 +6,7 @@ import {supabase} from "../../supabaseClient";
 import axios from "axios";
 
 
-const FilterEdit = ({ onOptionSelect, filterId }) => {
+const FilterEdit = ({onOptionSelect, filterId}) => {
     const [filterData, setFilterData] = useState([]);
     const [imageFile, setImageFile] = useState(null);
     const [name, setName] = useState('');
@@ -14,14 +14,17 @@ const FilterEdit = ({ onOptionSelect, filterId }) => {
     const [config, setConfig] = useState({});
     const token = localStorage.getItem('access_token');
     const navigate = useNavigate();
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [dialogMessage, setDialogMessage] = useState('');
+
 
     const categories = [
-        { value: 'featured', label: 'Featured' },
-{ value: 'life', label: 'Life' },
-{ value: 'scenery', label: 'Scenery' },
-{ value: 'movies', label: 'Movies' },
-{ value: 'retro', label: 'Retro' },
-{ value: 'style', label: 'Style' }
+        {value: 'featured', label: 'Featured'},
+        {value: 'life', label: 'Life'},
+        {value: 'scenery', label: 'Scenery'},
+        {value: 'movies', label: 'Movies'},
+        {value: 'retro', label: 'Retro'},
+        {value: 'style', label: 'Style'}
     ];
 
     useEffect(() => {
@@ -34,14 +37,14 @@ const FilterEdit = ({ onOptionSelect, filterId }) => {
                 });
 
                 if (Array.isArray(response.data) && response.data.length > 0) {
-                const filterItem = response.data[0];
-                setFilterData(filterItem);
-                setName(filterItem.name || '');
-                setCategory(filterItem.category || '');
-                setConfig(JSON.stringify(filterItem.config) || '');
-            } else {
-                console.error('No filter data found for the given ID.');
-            }
+                    const filterItem = response.data[0];
+                    setFilterData(filterItem);
+                    setName(filterItem.name || '');
+                    setCategory(filterItem.category || '');
+                    setConfig(JSON.stringify(filterItem.config) || '');
+                } else {
+                    console.error('No filter data found for the given ID.');
+                }
             } catch (error) {
                 console.error('Error fetching filter data:', error);
             }
@@ -49,74 +52,101 @@ const FilterEdit = ({ onOptionSelect, filterId }) => {
 
         fetchFilterData();
     }, [filterId, token]);
+
     function handleJsonChange(event) {
-  const file = event.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-        const fileContent = event.target.result;
-        setConfig(fileContent);
-    };
-    reader.readAsText(file);
-  } else {
-    console.error("Invalid file input");
-  }
-}
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const fileContent = event.target.result;
+                setConfig(fileContent);
+            };
+            reader.readAsText(file);
+        } else {
+            console.error("Invalid file input");
+        }
+    }
+
     const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    setImageFile(file);
-};
+        const file = e.target.files[0];
+        setImageFile(file);
+    };
 
     const handleSubmit = async (e) => {
-    e.preventDefault();
+        e.preventDefault();
 
-    const random = uuidv4();
-    let imagePublicURL = filterData.image;
+        const random = uuidv4();
+        let imagePublicURL = filterData.image;
 
-    try {
+        try {
 
-        if (imageFile) {
-            const { data: imageUploadData, error: imageUploadError } = await supabase
-                .storage
-                .from('filter_files')
-                .upload(`${filterData.category}/${random}_${imageFile.name}`, imageFile);
+            if (imageFile) {
+                const {data: imageUploadData, error: imageUploadError} = await supabase
+                    .storage
+                    .from('filter_files')
+                    .upload(`${filterData.category}/${random}_${imageFile.name}`, imageFile);
 
-            if (imageUploadError) throw imageUploadError;
+                if (imageUploadError) throw imageUploadError;
 
-            const { data: imagePublicData } = supabase
-                .storage
-                .from('filter_files')
-                .getPublicUrl(`${filterData.category}/${random}_${imageFile.name}`);
+                const {data: imagePublicData} = supabase
+                    .storage
+                    .from('filter_files')
+                    .getPublicUrl(`${filterData.category}/${random}_${imageFile.name}`);
 
-            imagePublicURL = imagePublicData.publicUrl;
+                imagePublicURL = imagePublicData.publicUrl;
+            }
+
+            const formData = new FormData();
+            formData.append('image', imagePublicURL);
+            formData.append('name', name);
+            formData.append('category', category);
+            formData.append('config', config);
+
+            const response = await axios.post(`http://localhost:8000/myapp/update_filter/${filterData.id}/`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (response.status === 201) {
+
+                setDialogMessage('File update successful!');
+                setDialogOpen(true);
+                navigate('/admin/filter', {state: {onOptionSelectValue: 'filter'}});
+            } else {
+
+                setDialogMessage('Can not update file!');
+                setDialogOpen(true);
+            }
+        } catch (error) {
+            console.error('Error to update file:', error.message);
+
+            setDialogMessage('Error to update file!');
+            setDialogOpen(true);
         }
-
-        const formData = new FormData();
-        formData.append('image', imagePublicURL);
-        formData.append('name', name);
-        formData.append('category', category);
-        formData.append('config', config);
-
-        const response = await axios.post(`http://localhost:8000/myapp/update_filter/${filterData.id}/`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-                Authorization: `Bearer ${token}`,
-            },
-        });
-
-        if (response.status === 201) {
-            alert('File update successful!');
-            navigate('/admin/filter', { state: { onOptionSelectValue: 'filter' } });
-        } else {
-            alert('Can not update file');
-        }
-    } catch (error) {
-        console.error('Error to update file:', error.message);
-        alert('Error to update file');
-    }
-};
+    };
 
     return (
+        <>
+            <Dialog
+                open={dialogOpen}
+                onClose={() => setDialogOpen(false)}
+                className="custom-dialog"
+            >
+                <DialogTitle>
+                    Notification
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        {dialogMessage}
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDialogOpen(false)}>OK</Button>
+                </DialogActions>
+            </Dialog>
+
             <form onSubmit={handleSubmit} style={{maxWidth: '400px', margin: '0 auto'}}>
                 <TextField
                     label="Filter Name"
@@ -161,6 +191,7 @@ const FilterEdit = ({ onOptionSelect, filterId }) => {
                     </button>
                 </div>
             </form>
+        </>
     )
 }
 

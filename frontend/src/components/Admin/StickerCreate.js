@@ -1,11 +1,11 @@
-import {Button, MenuItem, TextField} from "@mui/material";
+import {Button, MenuItem, TextField, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle} from "@mui/material";
 import React, {useState} from "react";
 import {v4 as uuidv4} from "uuid";
 import {supabase} from "../../supabaseClient";
 import axios from "axios";
 import {Link, useNavigate} from "react-router-dom";
 
-const StickerCreate = ({ onOptionSelect }) => {
+const StickerCreate = ({onOptionSelect}) => {
     const [stickerFile, setStickerFile] = useState(null);
     const [imageFile, setImageFile] = useState(null);
     const [name, setName] = useState('');
@@ -20,6 +20,9 @@ const StickerCreate = ({ onOptionSelect }) => {
         {value: 'emoji', label: 'Emoji'}
     ];
     const navigate = useNavigate();
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [dialogMessage, setDialogMessage] = useState('');
+
 
     const handleFileChange = (e) => {
         setStickerFile(e.target.files[0]);
@@ -28,7 +31,9 @@ const StickerCreate = ({ onOptionSelect }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!stickerFile) {
-            alert("Please upload an sticker file");
+
+            setDialogMessage('Please upload an sticker file');
+            setDialogOpen(true);
             return;
         }
 
@@ -61,61 +66,87 @@ const StickerCreate = ({ onOptionSelect }) => {
             });
 
             if (response.status === 201) {
-                alert('Files uploaded and saved successfully!');
-            navigate('/admin/sticker', { state: { onOptionSelectValue: 'sticker' } });
+
+                setDialogMessage('Files uploaded and saved successfully!');
+                setDialogOpen(true);
+                navigate('/admin/sticker', {state: {onOptionSelectValue: 'sticker'}});
             } else {
-                alert('Failed to save sticker and image details to database');
+
+                setDialogMessage('Failed to save sticker and image details to database!');
+                setDialogOpen(true);
             }
 
         } catch (error) {
             console.error('Error uploading files:', error.message);
-            alert('Error uploading files');
+
+            setDialogMessage('Error uploading files!');
+            setDialogOpen(true);
         }
 
     };
 
     return (
-        <form onSubmit={handleSubmit} style={{maxWidth: '400px', margin: '0 auto'}}>
-            <TextField
-                label="Sticker Name"
-                variant="outlined"
-                fullWidth
-                margin="normal"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-            />
-            <TextField
-                select
-                label="Category"
-                variant="outlined"
-                fullWidth
-                margin="normal"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                required
+        <>
+            <Dialog
+                open={dialogOpen}
+                onClose={() => setDialogOpen(false)}
+                className="custom-dialog"
             >
-                {categories.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                        {option.label}
-                    </MenuItem>
-                ))}
-            </TextField>
-            <Button variant="contained" component="label" fullWidth style={{marginTop: '15px'}}>
-                Upload Sticker File
-                <input type="file" hidden onChange={handleFileChange} accept="sticker/*"/>
-            </Button>
-            {imageFile && <img src={URL.createObjectURL(imageFile)} alt="Selected Image" width="100"/>}
-            {stickerFile && <p>File: {stickerFile.name}</p>}
-            <div className="action-create">
-                <button type="button" className="cancle-btn active-btn"><Link className="link" to="/admin/sticker"
-                                                                              onClick={() => onOptionSelect('sticker')}>
-                    <span>Cancle</span></Link></button>
-                <button type="submit" className="add-new-btn active-btn">
-                    Add Sticker
-                </button>
-            </div>
-        </form>
+                <DialogTitle>
+                    Notification
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        {dialogMessage}
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDialogOpen(false)}>OK</Button>
+                </DialogActions>
+            </Dialog>
+
+            <form onSubmit={handleSubmit} style={{maxWidth: '400px', margin: '0 auto'}}>
+                <TextField
+                    label="Sticker Name"
+                    variant="outlined"
+                    fullWidth
+                    margin="normal"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                />
+                <TextField
+                    select
+                    label="Category"
+                    variant="outlined"
+                    fullWidth
+                    margin="normal"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    required
+                >
+                    {categories.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                            {option.label}
+                        </MenuItem>
+                    ))}
+                </TextField>
+                <Button variant="contained" component="label" fullWidth style={{marginTop: '15px'}}>
+                    Upload Sticker File
+                    <input type="file" hidden onChange={handleFileChange} accept="sticker/*"/>
+                </Button>
+                {imageFile && <img src={URL.createObjectURL(imageFile)} alt="Selected Image" width="100"/>}
+                {stickerFile && <p>File: {stickerFile.name}</p>}
+                <div className="action-create">
+                    <button type="button" className="cancle-btn active-btn"><Link className="link" to="/admin/sticker"
+                                                                                  onClick={() => onOptionSelect('sticker')}>
+                        <span>Cancle</span></Link></button>
+                    <button type="submit" className="add-new-btn active-btn">
+                        Add Sticker
+                    </button>
+                </div>
+            </form>
+        </>
     )
 }
 export default StickerCreate

@@ -6,12 +6,14 @@
 
   .sidebar {
     width: 200px;
+    height: 100%;
     background-color: #222;
     padding: 20px;
-    display: flex;
     flex-direction: column;
 
-    .sign-in-btn, .join-pro-btn {
+    .sign-in-btn, .join-pro-btn, .logout-btn {
+      width: 100%;
+      display: flex;
       padding: 10px 15px;
       margin-bottom: 20px;
       background-color: #333;
@@ -24,6 +26,16 @@
         background-color: #444;
       }
     }
+
+    .logout-btn {
+      background: #fff;
+      color: black;
+      margin-top: 350%;
+    }
+
+    .ícon-sider{
+      margin-right: 5%;
+    }
   }
 
   .main-content {
@@ -32,68 +44,76 @@
     background-color: #121212;
 
 
-  .profile{
-    display: inline-flex;
-    flex-direction: row;
-    width: 100%;
-    height: 100%;
-    gap: 1%;
-    .user-avatar{
-      width: 20%;
-      height: 40%;
-      .user-img{
-        margin-top: 5%;
-    width: 100%;
-    height: 100%;
-        border-radius: 10px;
-      }
-    }
-    .user-information-form{
-      width: 78%;
+    .profile {
+      display: inline-flex;
+      flex-direction: row;
+      width: 100%;
       height: 100%;
-      .user-information-wrap{
-        .user-information{
-          color: white;
-          .MuiInputBase-input.Mui-disabled {
-    color: white !important;
-    -webkit-text-fill-color: white !important;
-  }
+      gap: 1%;
 
-  .MuiOutlinedInput-notchedOutline {
-  border-color: rgba(255, 255, 255, 0.6) !important;
+      .user-avatar {
+        width: 20%;
+        height: 40%;
 
-  &:hover,
-  &:focus{
-    border-color: rgba(255, 255, 255, 1) !important;
-  }
-}
-
-
-  .MuiInputLabel-root.Mui-disabled {
-    color: white !important;
-  }
+        .user-img {
+          margin-top: 5%;
+          width: 100%;
+          height: 100%;
+          border-radius: 10px;
         }
+      }
 
-        .user-email{
-          color: white;
-        }
+      .user-information-form {
+        width: 78%;
+        height: 100%;
 
-        .css-1jy569b-MuiFormLabel-root-MuiInputLabel-root {
-          color: white;
-        }
-        .css-md26zr-MuiInputBase-root-MuiOutlinedInput-root {
-          color: white;
-        }
-        .css-14s5rfu-MuiFormLabel-root-MuiInputLabel-root {
-          color: white;
-        }
-        .css-hfutr2-MuiSvgIcon-root-MuiSelect-icon {
-          color: white;
+        .user-information-wrap {
+          .user-information {
+            color: white;
 
-}
+            .MuiInputBase-input.Mui-disabled {
+              color: white !important;
+              -webkit-text-fill-color: white !important;
+            }
+
+            .MuiOutlinedInput-notchedOutline {
+              border-color: rgba(255, 255, 255, 0.6) !important;
+
+              &:hover,
+              &:focus {
+                border-color: rgba(255, 255, 255, 1) !important;
+              }
+            }
+
+
+            .MuiInputLabel-root.Mui-disabled {
+              color: white !important;
+            }
+          }
+
+          .user-email {
+            color: white;
+          }
+
+          .css-1jy569b-MuiFormLabel-root-MuiInputLabel-root {
+            color: white;
+          }
+
+          .css-md26zr-MuiInputBase-root-MuiOutlinedInput-root {
+            color: white;
+          }
+
+          .css-14s5rfu-MuiFormLabel-root-MuiInputLabel-root {
+            color: white;
+          }
+
+          .css-hfutr2-MuiSvgIcon-root-MuiSelect-icon {
+            color: white;
+
+          }
+        }
       }
     }
-  }
 
     .top-bar {
       display: flex;
@@ -194,7 +214,8 @@
           background-color: #555;
         }
       }
-      .trash-btn-icon{
+
+      .trash-btn-icon {
         margin-right: .3rem;
       }
     }
@@ -202,9 +223,9 @@
 }
 
 
-          .btn-option-project {
+.btn-option-project {
   appearance: none;
-            width: 100%;
+  width: 100%;
   background-color: transparent;
   border: solid transparent;
   border-width: 0 0 4px;
@@ -229,13 +250,13 @@
   -webkit-user-select: none;
   vertical-align: middle;
   white-space: nowrap;
-  position: relative; // Cần thiết để định vị phần tử ::after
+  position: relative;
 
   &::after {
     background-clip: padding-box;
-  background-color: var(--nav-frame);
+    background-color: var(--nav-frame);
     border: solid transparent;
-    border-radius: 16px;
+    border-radius: 10px;
     border-width: 0 0 4px;
     bottom: -4px;
     content: "";
@@ -246,7 +267,7 @@
     z-index: -1;
   }
 
-  &:focus{
+  &:focus {
     user-select: auto;
   }
 
@@ -267,14 +288,15 @@
   }
 }
 
-          .overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 5; // Đặt dưới context-menu
-          }
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5; // Đặt dưới context-menu
+}
+
 .dialog-overlay {
   position: fixed;
   top: 15%;
@@ -320,9 +342,9 @@
 
     .dialog-body {
       flex-grow: 1;
-    width: 100%;
-    max-width: 100%;
-    height: 100%;
+      width: 100%;
+      max-width: 100%;
+      height: 100%;
 
       h3 {
         margin-top: 0;
@@ -364,25 +386,25 @@
         }
 
         .project-delete-card {
-  width: 100%;
-  height: 20%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1%;
-  border-radius: 8px;
+          width: 100%;
+          height: 20%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 1%;
+          border-radius: 8px;
 
-img {
-  border-radius: 8px;
-}
+          img {
+            border-radius: 8px;
+          }
 
-span {
-  margin-left: 5%;
-}
+          span {
+            margin-left: 5%;
+          }
 
-button {
-  width: 25%;
-}
+          button {
+            width: 25%;
+          }
 
 
         }

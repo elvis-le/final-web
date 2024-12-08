@@ -12,6 +12,7 @@ import {supabase} from '../../supabaseClient';
 import {Stage, Layer, Text, Image} from "react-konva";
 import {FaBold, FaCut, FaItalic, FaUnderline} from "react-icons/fa";
 import {RxLetterCaseLowercase, RxLetterCaseToggle, RxLetterCaseUppercase} from "react-icons/rx";
+import {Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle} from "@mui/material";
 
 const HomePage = () => {
     const [isLogin, setIsLogin] = useState(false);
@@ -26,7 +27,6 @@ const HomePage = () => {
     const [accumulatedTime, setAccumulatedTime] = useState(0);
     const [totalDuration, setTotalDuration] = useState(0);
     const [currentTime, setCurrentTime] = useState(0);
-    const [timelineDuration, setTimelineDuration] = useState(0);
     const [timestamps, setTimestamps] = useState([])
     const [videoDuration, setVideoDuration] = useState(0);
 
@@ -103,9 +103,6 @@ const HomePage = () => {
     });
 
     const [widthTime, setWidthTime] = useState(0);
-    const [startTime, setStartTime] = useState(0);
-    const [endTime, setEndTime] = useState(0);
-    const [durationTimeLine, setDurationTimeLine] = useState(0);
     const [textToAdd, setTextToAdd] = useState('');
     const videoWidth = 424;
     const videoHeight = 240;
@@ -183,6 +180,8 @@ const HomePage = () => {
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const [elementType, setElementType] = useState("");
     const [element, setElement] = useState("")
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [dialogMessage, setDialogMessage] = useState('');
 
 
     const audioRefs = useRef({});
@@ -252,7 +251,8 @@ const HomePage = () => {
             timelinesFilter.some(timeline => timeline.filters.length > 0);
 
         if (!hasContent) {
-            alert('Không có nội dung nào để phát. Hãy thêm video, âm thanh, hoặc các thành phần khác.');
+            setDialogMessage('There is no content to play. Please add video, audio or other elements');
+            setDialogOpen(true);
             return;
         }
         if (videoRef.current) {
@@ -553,7 +553,9 @@ const HomePage = () => {
                 .getPublicUrl(`${projectId}/${random}_${cleanFileName}`);
 
             if (!publicURL) {
-                alert('Failed to get public URL');
+
+                setDialogMessage('Failed to get public URL');
+                setDialogOpen(true);
                 return;
             }
 
@@ -578,9 +580,13 @@ const HomePage = () => {
 
                     fetchVideo(projectId, setListVideo);
                     if (response.status === 201) {
-                        alert('File uploaded and saved successfully!');
+
+                        setDialogMessage('File uploaded and saved successfully!');
+                        setDialogOpen(true);
                     } else {
-                        alert('Failed to save video details to database');
+
+                        setDialogMessage('Failed to save video details to database');
+                        setDialogOpen(true);
                     }
                 });
 
@@ -600,16 +606,22 @@ const HomePage = () => {
 
                 fetchVideo(projectId, setListVideo);
                 if (response.status === 201) {
-                    alert('File uploaded and saved successfully!');
+
+                    setDialogMessage('File uploaded and saved successfully!');
+                    setDialogOpen(true);
                 } else {
-                    alert('Failed to save video details to database');
+
+                    setDialogMessage('Failed to save video details to database');
+                    setDialogOpen(true);
                 }
             }
 
 
         } catch (error) {
             console.error('Error uploading file:', error.message);
-            alert('Error uploading file');
+
+            setDialogMessage('Error uploading file');
+            setDialogOpen(true);
         }
     };
 
@@ -1506,13 +1518,13 @@ const HomePage = () => {
                 const videoUrl = `http://localhost:8000${response.data.merged_video_url}?t=${Date.now()}`;
                 setVideoUrlTranslate(videoUrl);
                 setVideoUrlVideo(videoUrl);
-                if (timelinesSticker.length > 0){
+                if (timelinesSticker.length > 0) {
                     handleApplySticker(durationToSend, videoUrl);
                 }
-                if (timelinesFilter.length > 0){
+                if (timelinesFilter.length > 0) {
                     handleApplyFilter(durationToSend, videoUrl);
                 }
-                if (timelinesEffect.length > 0){
+                if (timelinesEffect.length > 0) {
                     handleApplyEffect(durationToSend, videoUrl);
                 }
 
@@ -1766,7 +1778,7 @@ const HomePage = () => {
         } catch (error) {
             console.error('Error downloading video:', error);
         }
-};
+    };
 
     const handleSaveEditSession = async () => {
         const actions = {
@@ -3029,103 +3041,102 @@ const HomePage = () => {
             console.error("Invalid video element", video);
             return;
         }
-        if (isVideo(video.url)){
+        if (isVideo(video.url)) {
             try {
-            const formData = new FormData();
-            formData.append("videoId", video.id);
-            formData.append("videoPosition", video.position);
-            formData.append("currentTime", currentTime);
+                const formData = new FormData();
+                formData.append("videoId", video.id);
+                formData.append("videoPosition", video.position);
+                formData.append("currentTime", currentTime);
 
-            const response = await axios.post("http://localhost:8000/myapp/split_video/", formData, {
-                headers: {Authorization: `Bearer ${token}`},
-            });
+                const response = await axios.post("http://localhost:8000/myapp/split_video/", formData, {
+                    headers: {Authorization: `Bearer ${token}`},
+                });
 
-            if (response.status === 200 && response.data) {
-                const {oldVideoId, part1, part2} = response.data;
-                updateVideoTimelineWithNewSegments(oldVideoId, part1, part2);
-            } else {
-                console.error("Failed to split video", response.data);
+                if (response.status === 200 && response.data) {
+                    const {oldVideoId, part1, part2} = response.data;
+                    updateVideoTimelineWithNewSegments(oldVideoId, part1, part2);
+                } else {
+                    console.error("Failed to split video", response.data);
+                }
+            } catch (error) {
+                console.error("Error splitting video:", error);
             }
-        } catch (error) {
-            console.error("Error splitting video:", error);
-        }
-        }
-        else{
+        } else {
 
-        const part1_duration = currentTime - video.startTime
-        const part2_duration = video.duration - part1_duration
+            const part1_duration = currentTime - video.startTime
+            const part2_duration = video.duration - part1_duration
 
 
-        const segmentWidthFirst = (part1_duration / 30) * 100;
-        const segmentWidthLast = (part2_duration / 30) * 100;
-        const positionLast = (currentTime / 30) * 100;
+            const segmentWidthFirst = (part1_duration / 30) * 100;
+            const segmentWidthLast = (part2_duration / 30) * 100;
+            const positionLast = (currentTime / 30) * 100;
 
-        const newVideoFirst = {
-            instanceId: uuidv4(),
-            video_url: video.url,
-            url: video.url,
-            fileName: video.name,
-            position: video.position,
-            startTime: video.startTime,
-            endTime: video.startTime + part1_duration,
-            duration: part1_duration,
-            durationSpeed: part1_duration,
-            width: segmentWidthFirst,
-            scale: 100,
-            scaleWidth: 100,
-            scaleHeight: 100,
-            positionX: 0,
-            positionY: 0,
-            rotate: 0,
-            opacity: 100,
-            voice: 0,
-            speed: 1,
-        };
+            const newVideoFirst = {
+                instanceId: uuidv4(),
+                video_url: video.url,
+                url: video.url,
+                fileName: video.name,
+                position: video.position,
+                startTime: video.startTime,
+                endTime: video.startTime + part1_duration,
+                duration: part1_duration,
+                durationSpeed: part1_duration,
+                width: segmentWidthFirst,
+                scale: 100,
+                scaleWidth: 100,
+                scaleHeight: 100,
+                positionX: 0,
+                positionY: 0,
+                rotate: 0,
+                opacity: 100,
+                voice: 0,
+                speed: 1,
+            };
 
-        const newVideoLast = {
-            instanceId: uuidv4(),
-            video_url: video.url,
-            url: video.url,
-            fileName: video.name,
-            position: positionLast,
-            startTime: video.startTime + part1_duration,
-            endTime: (video.startTime + part1_duration) + part2_duration,
-            duration: part2_duration,
-            durationSpeed: part2_duration,
-            width: segmentWidthLast,
-            scale: 100,
-            scaleWidth: 100,
-            scaleHeight: 100,
-            positionX: 0,
-            positionY: 0,
-            rotate: 0,
-            opacity: 100,
-            voice: 0,
-            speed: 1,
-        };
+            const newVideoLast = {
+                instanceId: uuidv4(),
+                video_url: video.url,
+                url: video.url,
+                fileName: video.name,
+                position: positionLast,
+                startTime: video.startTime + part1_duration,
+                endTime: (video.startTime + part1_duration) + part2_duration,
+                duration: part2_duration,
+                durationSpeed: part2_duration,
+                width: segmentWidthLast,
+                scale: 100,
+                scaleWidth: 100,
+                scaleHeight: 100,
+                positionX: 0,
+                positionY: 0,
+                rotate: 0,
+                opacity: 100,
+                voice: 0,
+                speed: 1,
+            };
 
 
-        console.log('listVideo before:', listVideo);
+            console.log('listVideo before:', listVideo);
 
-        setTimelineVideos(prev => {
-            const updated = prev
-                .map(timeline => {
-                    const filteredVideos = timeline.videos.filter(video => video.instanceId !== element.instanceId);
+            setTimelineVideos(prev => {
+                const updated = prev
+                    .map(timeline => {
+                        const filteredVideos = timeline.videos.filter(video => video.instanceId !== element.instanceId);
 
-                    if (timeline.videos.length !== filteredVideos.length) {
-                        return {
-                            ...timeline,
-                            videos: [...filteredVideos, newVideoFirst, newVideoLast]
-                        };
-                    }
+                        if (timeline.videos.length !== filteredVideos.length) {
+                            return {
+                                ...timeline,
+                                videos: [...filteredVideos, newVideoFirst, newVideoLast]
+                            };
+                        }
 
-                    return null;
-                })
-                .filter(timeline => timeline !== null);
+                        return null;
+                    })
+                    .filter(timeline => timeline !== null);
 
-            console.log('Updated timelines (videos) after delete:', updated);
-            return updated;
-        });
+                console.log('Updated timelines (videos) after delete:', updated);
+                return updated;
+            });
         }
 
 
@@ -3250,26 +3261,26 @@ const HomePage = () => {
 
         const newEffectFirst = {
             instanceId: uuidv4(),
-                    name: effect.name,
-                    config: effect.config,
-                    image: effect.image,
-                    position: effect.position,
-                    startTime: effect.startTime,
-                    endTime: effect.startTime + part1_duration,
-                    duration: part1_duration,
-                    width: segmentWidthFirst,
+            name: effect.name,
+            config: effect.config,
+            image: effect.image,
+            position: effect.position,
+            startTime: effect.startTime,
+            endTime: effect.startTime + part1_duration,
+            duration: part1_duration,
+            width: segmentWidthFirst,
         };
 
         const newEffectLast = {
             instanceId: uuidv4(),
-                    name: effect.name,
-                    config: effect.config,
-                    image: effect.image,
-                    position: positionLast,
-                    startTime: effect.startTime + part1_duration,
-                    endTime: effect.startTime + part1_duration + part2_duration,
-                    duration: part2_duration,
-                    width: segmentWidthLast,
+            name: effect.name,
+            config: effect.config,
+            image: effect.image,
+            position: positionLast,
+            startTime: effect.startTime + part1_duration,
+            endTime: effect.startTime + part1_duration + part2_duration,
+            duration: part2_duration,
+            width: segmentWidthLast,
         };
 
 
@@ -3295,7 +3306,7 @@ const HomePage = () => {
     };
 
     const splitFilter = (filter, currentTime) => {
-                const part1_duration = currentTime - filter.startTime
+        const part1_duration = currentTime - filter.startTime
         const part2_duration = filter.duration - part1_duration
 
         const segmentWidthFirst = (part1_duration / 30) * 100;
@@ -3349,7 +3360,7 @@ const HomePage = () => {
     };
 
     const splitSticker = (sticker, currentTime) => {
-                const part1_duration = currentTime - sticker.startTime
+        const part1_duration = currentTime - sticker.startTime
         const part2_duration = sticker.duration - part1_duration
 
         const segmentWidthFirst = (part1_duration / 30) * 100;
@@ -3367,9 +3378,9 @@ const HomePage = () => {
             positionY: sticker.positionY,
             rotate: 0,
             url: sticker.url,
-                        scale: 100,
-                        scaleWidth: 100,
-                        scaleHeight: 100,
+            scale: 100,
+            scaleWidth: 100,
+            scaleHeight: 100,
         };
 
         const newStickerLast = {
@@ -3383,9 +3394,9 @@ const HomePage = () => {
             positionY: sticker.positionY,
             rotate: 0,
             url: sticker.url,
-                        scale: 100,
-                        scaleWidth: 100,
-                        scaleHeight: 100,
+            scale: 100,
+            scaleWidth: 100,
+            scaleHeight: 100,
         };
 
         setTimelinesSticker(prev => {
@@ -3809,7 +3820,7 @@ const HomePage = () => {
                 const y = (videoHeight / 2) - (fontSizeText ? parseInt(fontSizeText) / 2 : 8);
 
 
-    console.log(`Font Size Text before: ${fontSizeText}`)
+                console.log(`Font Size Text before: ${fontSizeText}`)
 
                 if (!text) return timelineText;
 
@@ -3832,7 +3843,7 @@ const HomePage = () => {
                 }
 
 
-    console.log(`Font Size Text after: ${fontSizeText}`)
+                console.log(`Font Size Text after: ${fontSizeText}`)
                 return {
                     ...timelineText,
                     texts: updatedTexts.map((v, i) => (i === textIndex ? updatedText : v))
@@ -3842,7 +3853,7 @@ const HomePage = () => {
     }, [textContent, fontText, fontSizeText, patternText, caseText, scaleText, positionXText, positionYText, rotateText, opacityText, bold, underline, italic, styleOfText]);
 
     useEffect(() => {
-    console.log(`Time line Text: ${JSON.stringify(timelinesText)}`)
+        console.log(`Time line Text: ${JSON.stringify(timelinesText)}`)
     }, [timelinesText])
 
 
@@ -4015,6 +4026,23 @@ const HomePage = () => {
 
     return (
         <body>
+        <Dialog
+            open={dialogOpen}
+            onClose={() => setDialogOpen(false)}
+            className="custom-dialog"
+        >
+            <DialogTitle>
+                Notification
+            </DialogTitle>
+            <DialogContent>
+                <DialogContentText>
+                    {dialogMessage}
+                </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={() => setDialogOpen(false)}>OK</Button>
+            </DialogActions>
+        </Dialog>
         <div className="body-wrapper">
             <div className="header">
                 <div className="logo-wrap">
@@ -6070,7 +6098,7 @@ const HomePage = () => {
                                                 }
                                                 opacity={parseInt(textSegment.opacity)}
                                                 rotation={parseInt(textSegment.rotate)}
-                                                fontSize={(textSegment.fontSize ? parseInt(textSegment.fontSize) : 10)*(textSegment.scale/100)}
+                                                fontSize={(textSegment.fontSize ? parseInt(textSegment.fontSize) : 10) * (textSegment.scale / 100)}
                                                 fill={textSegment.style && textSegment.style.color ? textSegment.style.color : "black"}
                                                 fontFamily={textSegment.fontStyle || "Arial"}
                                                 stroke={textSegment.style && textSegment.style.strokeColor ? textSegment.style.strokeColor : null}

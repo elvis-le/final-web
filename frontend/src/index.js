@@ -33,7 +33,8 @@ import FilterCreate from "./components/Admin/FilterCreate";
 import FilterEdit from "./components/Admin/FilterEdit";
 import Profile from "./components/Admin/Profile";
 import PrivateRoute from './components/PrivateRoute';
-import SetPassword from "./components/SetPassword"; // Import component kiểm tra đăng nhập
+import SetPassword from "./components/SetPassword";
+import Verified from "./components/Verified"; // Import component kiểm tra đăng nhập
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -42,7 +43,8 @@ root.render(
             <Route path="/" element={<App/>}/>
             <Route path="login" element={<Login/>}/>
             <Route path="register" element={<Register/>}/>
-            <Route path="set-password" element={<SetPassword />} />
+            <Route path="set-password/:uidb64/:token" element={<SetPassword />} />
+            <Route path="verified" element={<Verified />} />
 
             
             <Route path="home" element={

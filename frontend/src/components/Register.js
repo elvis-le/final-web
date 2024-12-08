@@ -3,6 +3,7 @@ import "./Register.scss"
 import {useNavigate} from "react-router-dom";
 import axios from 'axios';
 import {FaGoogle} from "react-icons/fa";
+import {Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle} from "@mui/material";
 
 const Register = ({onRegister, onSwitch}) => {
     const [confirmPassword, setConfirmPassword] = useState("")
@@ -12,6 +13,9 @@ const Register = ({onRegister, onSwitch}) => {
         password: ""
     });
     const navigate = useNavigate();
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [dialogMessage, setDialogMessage] = useState('');
+
 
     const handleInputChange = (e) => {
         const {name, value} = e.target;
@@ -25,15 +29,16 @@ const Register = ({onRegister, onSwitch}) => {
         e.preventDefault();
 
         if (formData.password !== confirmPassword) {
-            alert('Password does not match!');
+            setDialogMessage('Password does not match!');
+            setDialogOpen(true);
         } else {
 
             try {
                 const response = await axios.post('http://localhost:8000/myapp/register_user/', formData, {
-    headers: {
-        'Content-Type': 'application/json',
-    },
-});
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
 
 
                 if (response.status === 201) {
@@ -54,43 +59,61 @@ const Register = ({onRegister, onSwitch}) => {
     };
 
     const handleGoogleSignIn = async () => {
-    const response = await axios.get("http://localhost:8000/myapp/auth/google/init/");
-    window.location.href = response.data.url;
-};
+        let page = "register"
+        const response = await axios.get("http://localhost:8000/myapp/auth/google/init/", {
+            params: { page },
+        });
+        window.location.href = response.data.url;
+    };
 
-useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get("code");
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get("code");
 
-    if (code) {
-        axios
-            .get(`http://localhost:8000/myapp/auth/google/callback/?code=${code}`)
-            .then(response => {
-                if (response.data.access) {
-                    // Đăng nhập thành công
-                    localStorage.setItem("access_token", response.data.access);
-                    localStorage.setItem("refresh_token", response.data.refresh);
-                    localStorage.setItem("user", JSON.stringify(response.data.user));
-                    navigate("/user"); // Chuyển hướng đến trang người dùng sau khi đăng nhập thành công
-                } else {
-                    console.log(response.data.message);
-                }
-            })
-            .catch(error => {
-                console.error("Error during Google authentication:", error);
-            });
+        if (code) {
+            axios
+                .get(`http://localhost:8000/myapp/auth/google/callback/?code=${code}`)
+                .then(response => {
+                    if (response.data.access) {
+                        localStorage.setItem("access_token", response.data.access);
+                        localStorage.setItem("refresh_token", response.data.refresh);
+                        localStorage.setItem("user", JSON.stringify(response.data.user));
+                        navigate("/user");
+                    } else {
+                        console.log(response.data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error("Error during Google authentication:", error);
+                });
+        }
+    }, [navigate]);
+
+
+    const HandleChangeSite = () => {
+        navigate("/login")
     }
-}, [navigate]);
-
-
-  const HandleChangeSite = () => {
-    navigate("/login")
-  }
-
 
 
     return (
         <div className="register-container">
+            <Dialog
+                open={dialogOpen}
+                onClose={() => setDialogOpen(false)}
+                className="custom-dialog"
+            >
+                <DialogTitle>
+                    Notification
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        {dialogMessage}
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDialogOpen(false)}>OK</Button>
+                </DialogActions>
+            </Dialog>
             <div className="form-box">
                 <div className="logo">Edit Video</div>
                 <h2>Register</h2>

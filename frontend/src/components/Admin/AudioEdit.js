@@ -2,7 +2,7 @@ import React, {useEffect, useState} from 'react';
 import {
     TextField,
     Button,
-    MenuItem
+    MenuItem, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle
 } from '@mui/material'
 import axios from 'axios';
 import {supabase} from '../../supabaseClient';
@@ -10,7 +10,7 @@ import {v4 as uuidv4} from "uuid";
 import {Link, useNavigate} from "react-router-dom";
 import {FiEdit} from "react-icons/fi";
 
-const AudioEdit = ({ onOptionSelect, audioId }) => {
+const AudioEdit = ({onOptionSelect, audioId}) => {
     console.log('Audio Edit ID:', audioId);
     const [audioData, setAudioData] = useState([]);
     const [audioFile, setAudioFile] = useState(null);
@@ -21,6 +21,8 @@ const AudioEdit = ({ onOptionSelect, audioId }) => {
     const [category, setCategory] = useState('');
     const [audioDuration, setAudioDuration] = useState('');
     const navigate = useNavigate();
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [dialogMessage, setDialogMessage] = useState('');
 
     const categories = [
         {value: 'vlog', label: 'Vlog'},
@@ -46,15 +48,15 @@ const AudioEdit = ({ onOptionSelect, audioId }) => {
                 });
 
                 if (Array.isArray(response.data) && response.data.length > 0) {
-                const audioItem = response.data[0];
-                setAudioData(audioItem);
-                setName(audioItem.name || '');
-                setArtist(audioItem.artist || '');
-                setCategory(audioItem.category || '');
-                setAudioDuration(audioItem.duration || '');
-            } else {
-                console.error('No audio data found for the given ID.');
-            }
+                    const audioItem = response.data[0];
+                    setAudioData(audioItem);
+                    setName(audioItem.name || '');
+                    setArtist(audioItem.artist || '');
+                    setCategory(audioItem.category || '');
+                    setAudioDuration(audioItem.duration || '');
+                } else {
+                    console.error('No audio data found for the given ID.');
+                }
             } catch (error) {
                 console.error('Error fetching audio data:', error);
             }
@@ -76,79 +78,100 @@ const AudioEdit = ({ onOptionSelect, audioId }) => {
     };
 
     const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    setImageFile(file);
-};
+        const file = e.target.files[0];
+        setImageFile(file);
+    };
 
     const handleSubmit = async (e) => {
-    e.preventDefault();
+        e.preventDefault();
 
-    const random = uuidv4();
-    let audioPublicURL = audioData.audio_file;
-    let imagePublicURL = audioData.image;
+        const random = uuidv4();
+        let audioPublicURL = audioData.audio_file;
+        let imagePublicURL = audioData.image;
 
-    try {
-        if (audioFile) {
-            const { data: audioUploadData, error: audioUploadError } = await supabase
-                .storage
-                .from('audio_files')
-                .upload(`${audioData.category}/${random}_${audioFile.name}`, audioFile);
+        try {
+            if (audioFile) {
+                const {data: audioUploadData, error: audioUploadError} = await supabase
+                    .storage
+                    .from('audio_files')
+                    .upload(`${audioData.category}/${random}_${audioFile.name}`, audioFile);
 
-            if (audioUploadError) throw audioUploadError;
+                if (audioUploadError) throw audioUploadError;
 
-            const { data: audioPublicData } = supabase
-                .storage
-                .from('audio_files')
-                .getPublicUrl(`${audioData.category}/${random}_${audioFile.name}`);
+                const {data: audioPublicData} = supabase
+                    .storage
+                    .from('audio_files')
+                    .getPublicUrl(`${audioData.category}/${random}_${audioFile.name}`);
 
-            audioPublicURL = audioPublicData.publicUrl;
+                audioPublicURL = audioPublicData.publicUrl;
+            }
+            console.log({audioPublicURL})
+
+            if (imageFile) {
+                const {data: imageUploadData, error: imageUploadError} = await supabase
+                    .storage
+                    .from('audio_files')
+                    .upload(`${audioData.category}/${random}_${imageFile.name}`, imageFile);
+
+                if (imageUploadError) throw imageUploadError;
+
+                const {data: imagePublicData} = supabase
+                    .storage
+                    .from('audio_files')
+                    .getPublicUrl(`${audioData.category}/${random}_${imageFile.name}`);
+
+                imagePublicURL = imagePublicData.publicUrl;
+            }
+
+            const formData = new FormData();
+            formData.append('audio_file', audioPublicURL);
+            formData.append('image', imagePublicURL);
+            formData.append('name', name);
+            formData.append('artist', artist);
+            formData.append('duration', audioDuration);
+            formData.append('category', category);
+
+            const response = await axios.post(`http://localhost:8000/myapp/update_audio/${audioData.id}/`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (response.status === 201) {
+                setDialogMessage('File update successful!');
+                setDialogOpen(true);
+                navigate('/admin/audio', {state: {onOptionSelectValue: 'audio'}});
+            } else {
+                setDialogMessage('Can not update file');
+                setDialogOpen(true);
+            }
+        } catch (error) {
+            console.error('Error to update file:', error.message);
+            setDialogMessage('Error to update file');
+            setDialogOpen(true);
         }
-        console.log({audioPublicURL})
-
-        if (imageFile) {
-            const { data: imageUploadData, error: imageUploadError } = await supabase
-                .storage
-                .from('audio_files')
-                .upload(`${audioData.category}/${random}_${imageFile.name}`, imageFile);
-
-            if (imageUploadError) throw imageUploadError;
-
-            const { data: imagePublicData } = supabase
-                .storage
-                .from('audio_files')
-                .getPublicUrl(`${audioData.category}/${random}_${imageFile.name}`);
-
-            imagePublicURL = imagePublicData.publicUrl;
-        }
-
-        const formData = new FormData();
-        formData.append('audio_file', audioPublicURL);
-        formData.append('image', imagePublicURL);
-        formData.append('name', name);
-        formData.append('artist', artist);
-        formData.append('duration', audioDuration);
-        formData.append('category', category);
-
-        const response = await axios.post(`http://localhost:8000/myapp/update_audio/${audioData.id}/`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-                Authorization: `Bearer ${token}`,
-            },
-        });
-
-        if (response.status === 201) {
-            alert('File update successful!');
-            navigate('/admin/audio', { state: { onOptionSelectValue: 'audio' } });
-        } else {
-            alert('Can not update file');
-        }
-    } catch (error) {
-        console.error('Error to update file:', error.message);
-        alert('Error to update file');
-    }
-};
+    };
 
     return (
+        <>
+            <Dialog
+                open={dialogOpen}
+                onClose={() => setDialogOpen(false)}
+                className="custom-dialog"
+            >
+                <DialogTitle>
+                    Notification
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        {dialogMessage}
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDialogOpen(false)}>OK</Button>
+                </DialogActions>
+            </Dialog>
             <form onSubmit={handleSubmit} style={{maxWidth: '400px', margin: '0 auto'}}>
                 <TextField
                     label="Audio Name"
@@ -211,6 +234,7 @@ const AudioEdit = ({ onOptionSelect, audioId }) => {
                     </button>
                 </div>
             </form>
+        </>
     )
 }
 

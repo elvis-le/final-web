@@ -1,23 +1,16 @@
-import random
 import urllib
-import uuid
+from datetime import timedelta
 
-import jwt
-from django.utils.http import urlencode
-from django.contrib.auth.tokens import default_token_generator
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, JsonResponse, FileResponse
 from django.contrib.auth import authenticate
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from moviepy.editor import CompositeAudioClip, VideoFileClip, TextClip, CompositeVideoClip, concatenate_videoclips, AudioFileClip, ImageClip, ImageSequenceClip, ColorClip
 from moviepy.config import change_settings
-from tempfile import NamedTemporaryFile
 from django.views.decorators.csrf import csrf_exempt
 from tempfile import NamedTemporaryFile
-from django.conf import settings
 from django.utils.timezone import now
 from moviepy.video.fx.colorx import colorx
-import importlib
 from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import default_token_generator
 from django.conf import settings
@@ -26,28 +19,20 @@ from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from django.contrib.auth import get_user_model
 from rest_framework.permissions import AllowAny
-from django.contrib.auth.hashers import make_password
 from PIL import Image, ImageFilter, ImageDraw, ImageFont
 from io import BytesIO
-from final_web.settings import supabase
 from .serializers import *
 from rest_framework import status
-import moviepy.editor as mp
-from moviepy.video.fx.crop import crop
 from moviepy.video.fx.resize import resize
 from moviepy.video.fx.rotate import rotate
-from moviepy.audio.fx.volumex import volumex
 from django.shortcuts import get_object_or_404
 from moviepy.video.fx import all as vfx
 from django.core.mail import send_mail
-from django.urls import reverse
 import numpy as np
 import os
 import json
 import logging
-import requests
 import tempfile
 import cv2
 from pydub import AudioSegment
@@ -1853,7 +1838,7 @@ def export_video(request):
             elif styleOfText == "lettercase":
                 content = content.capitalize()
 
-            
+
             print(f"fontSize: {fontSize}")
             text_clip = TextClip(
                 content,
@@ -1884,9 +1869,9 @@ def export_video(request):
             if underline:
                 text_width, text_height = text_clip.size
                 underline_clip = ColorClip(
-                    size=(text_width, 5),  
+                    size=(text_width, 5),
                     color=rgb_color
-                ).set_position((positionX, positionY + text_height + 5))  
+                ).set_position((positionX, positionY + text_height + 5))
                 underline_clip = underline_clip.set_start(startTime).set_duration(duration)
                 clips.append(underline_clip)
 
@@ -1909,7 +1894,6 @@ def export_video(request):
         traceback.print_exc()
 
         return JsonResponse({'error': f'Internal server error: {str(e)}'}, status=500)
-
 def serve_video(request, filename):
     try:
         print(f"Serving video file: {filename}")
@@ -1926,7 +1910,6 @@ def serve_video(request, filename):
     except FileNotFoundError:
         print(f"File not found: {filename}")
         return JsonResponse({'error': 'File not found'}, status=404)
-
 
 @csrf_exempt
 def add_audio_to_video(request):
@@ -1960,7 +1943,6 @@ def add_audio_to_video(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid request method'}, status=400)
-
 
 @csrf_exempt
 def add_sticker_to_video(request):
@@ -2004,7 +1986,6 @@ def add_sticker_to_video(request):
 
     return JsonResponse({'error': 'Invalid request method'}, status=400)
 
-
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
     return {
@@ -2012,29 +1993,18 @@ def get_tokens_for_user(user):
         'access': str(refresh.access_token),
     }
 
-
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def google_auth_init(request):
+    page = request.GET.get('page', 'login')  
+    print("Page parameter:", page)
     url = (
         f"https://accounts.google.com/o/oauth2/auth?"
         f"client_id={settings.GOOGLE_CLIENT_ID}&"
         f"redirect_uri={settings.GOOGLE_REDIRECT_URI}&"
         f"scope=openid email profile&"
-        f"response_type=code"
-    )
-    return JsonResponse({"url": url})
-
-
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def google_login_init(request):
-    url = (
-        f"https://accounts.google.com/o/oauth2/auth?"
-        f"client_id={settings.GOOGLE_CLIENT_ID}&"
-        f"redirect_uri={settings.GOOGLE_REDIRECT_URI}&"
-        f"scope=openid email profile&"
-        f"response_type=code"
+        f"response_type=code&"
+        f"state={page}"
     )
     return JsonResponse({"url": url})
 
@@ -2043,8 +2013,10 @@ def google_login_init(request):
 @permission_classes([AllowAny])
 def google_auth_callback(request):
     code = request.GET.get("code")
+    page = request.GET.get('state', 'login')
+    print("state", page)
+
     if not code:
-        print("No code provided in callback")
         return JsonResponse({"error": "No code provided"}, status=400)
 
     token_url = "https://oauth2.googleapis.com/token"
@@ -2059,118 +2031,97 @@ def google_auth_callback(request):
     token_response_data = token_response.json()
 
     if "access_token" not in token_response_data:
-        print("Failed to retrieve access token:", token_response_data)
         return JsonResponse({"error": "Authentication failed"}, status=400)
 
-    print("Received access token:", token_response_data["access_token"])
-
+    
     user_info_url = "https://www.googleapis.com/oauth2/v1/userinfo"
     headers = {"Authorization": f"Bearer {token_response_data['access_token']}"}
     user_info_response = requests.get(user_info_url, headers=headers)
     user_info = user_info_response.json()
-    print("User info retrieved:", user_info)
 
     email = user_info.get("email")
     if not email:
-        print("No email found in user info")
         return JsonResponse({"error": "No email found"}, status=400)
 
     name = user_info.get("name", "")
     username = email.split('@')[0]
-    user, created = User.objects.get_or_create(
-        email=email,
-        defaults={"fullname": name, "username": username}
-    )
 
-    if created:
-        print("New user created:", user.username)
+    
+    user = User.objects.filter(email=email).first()
 
-        user.set_unusable_password()
-        user.save()
-
-        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
-        reset_token = RefreshToken.for_user(user).access_token
-        reset_url = (
-            f"http://localhost:3000/set-password?uidb64={uidb64}"
-            f"&token={reset_token}"
-        )
-        try:
-            send_mail(
-                'Set up your password',
-                f'Thank you for signing up. Please set up your password by clicking the link: {reset_url}',
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
-                fail_silently=False,
+    if page == "register":
+        
+        if not user:
+            
+            user = User.objects.create(
+                email=email,
+                fullname=name,
+                username=username,
+                is_verified=False,
             )
-        except Exception as e:
-            print("Failed to send email:", e)
-            return JsonResponse({"error": "Failed to send verification email"}, status=500)
+            user.set_unusable_password()
+            user.save()
 
-        login_url = (
-            f"http://localhost:3000/login"
-        )
+            
+            uidb64 = urlsafe_base64_encode(force_bytes(user.id))
+            reset_token = generate_reset_password_token(user)
+            reset_url = f"http://localhost:3000/set-password/{uidb64}/{reset_token}"
+            try:
+                send_mail(
+                    'Set up your password',
+                    f'Thank you for signing up. Please set up your password by clicking the link: {reset_url}',
+                    settings.DEFAULT_FROM_EMAIL,
+                    [user.email],
+                    fail_silently=False,
+                )
+            except Exception as e:
+                print("Failed to send email:", e)
+                user.delete()
+                return JsonResponse({"error": "Failed to send verification email"}, status=500)
 
-        return redirect(login_url)
+            
+            return redirect("http://localhost:3000/login")
+        else:
+            
+            return redirect("http://localhost:3000/login")
 
-    elif user.is_delete:
-        return JsonResponse({"error": "Please verify your email to log in."}, status=403)
+    elif page == "login":
+        
+        if not user:
+            return JsonResponse({"error": "User not found, please register first"}, status=400)
 
-    refresh = RefreshToken.for_user(user)
-    response_data = {
-        "refresh": str(refresh),
-        "access": str(refresh.access_token),
-    }
+        if not user.is_verified:
+            verified_url = f"http://localhost:3000/verified"
+            return redirect(verified_url)
 
-    serializer = UserSerializer(instance=user)
+        refresh = RefreshToken.for_user(user)
+        response_data = {
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+        }
 
-    role = serializer.data['role']
-    if role == 'admin':
-        redirect_url = '/admin'
-    else:
-        redirect_url = '/user'
+        serializer = UserSerializer(instance=user)
 
-    response_data.update({
-        "user": serializer.data,
-        "redirect_url": redirect_url
-    })
+        role = serializer.data['role']
+        is_valid = serializer.data['is_valid']
 
-    print("Generated JWT tokens and user info:", response_data)
+        if is_valid:
+            if role == 'admin':
+                redirect_url = '/admin'
+            else:
+                redirect_url = '/user'
 
-    encoded_user = urllib.parse.quote(json.dumps(serializer.data))
-    frontend_redirect_url = (
-        f"http://localhost:3000/login?access={response_data['access']}"
-        f"&refresh={response_data['refresh']}&user={encoded_user}"
-    )
-    print("Redirecting to frontend with tokens and encoded user:", frontend_redirect_url)
+            response_data.update({
+                "user": serializer.data,
+                "redirect_url": redirect_url
+            })
 
-    return redirect(frontend_redirect_url)
+            encoded_user = urllib.parse.quote(json.dumps(serializer.data))
+            frontend_redirect_url = f"http://localhost:3000/login?access={response_data['access']}&refresh={response_data['refresh']}&user={encoded_user}"
 
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def set_password(request, uidb64, token):
-    password = request.data.get('password')
-
-    if not password:
-        return Response({"error": "Password is required."}, status=400)
-
-    try:
-
-        user_id = force_str(urlsafe_base64_decode(uidb64))
-        user = User.objects.get(pk=user_id)
-
-        try:
-            AccessToken(token)
-        except Exception:
-            return Response({"error": "Invalid token."}, status=400)
-
-        user.set_password(password)
-        user.save()
-        return Response({"message": "Password has been reset successfully."}, status=200)
-
-    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-        return Response({"error": "Invalid user or uid."}, status=400)
-
+            return redirect(frontend_redirect_url)
+        else:
+            return redirect("http://localhost:3000/login")
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -2185,44 +2136,67 @@ def login_user(request):
         serializer = UserSerializer(instance=user)
 
         role = serializer.data['role']
-        if role == 'admin':
-            redirect_url = '/admin'
-        else:
-            redirect_url = '/user'
+        is_valid = serializer.data['is_valid']
+        if is_valid:
+            if role == 'admin':
+                redirect_url = '/admin'
+            else:
+                redirect_url = '/user'
 
-        return Response({
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-            'user': serializer.data,
-            'redirect_url': redirect_url
-        }, status=status.HTTP_200_OK)
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'user': serializer.data,
+                'redirect_url': redirect_url
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'Account not available'}, status=status.HTTP_400_BAD_REQUEST)
+
     else:
         return Response({'error': 'Invalid email or password'}, status=status.HTTP_400_BAD_REQUEST)
 
+def generate_reset_password_token(user):
+    token = AccessToken.for_user(user)
+    token['reset_password'] = True
+    token.set_exp(lifetime=timedelta(hours=1))
+    return str(token)
+
+def validate_reset_password_token(token):
+    try:
+        decoded_token = AccessToken(token)
+        if decoded_token.get('reset_password') != True:
+            raise ValueError("Invalid token for password reset")
+        return decoded_token['user_id']
+    except Exception as e:
+        raise ValueError(f"Invalid Token: {e}")
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def set_password(request, uidb64, token):
+    print("this is reset password function")
     password = request.data.get('password')
-
     if not password:
         return Response({"error": "Password is required."}, status=400)
 
     try:
         user_id = force_str(urlsafe_base64_decode(uidb64))
+        print("user_id", user_id)
         user = User.objects.get(pk=user_id)
 
         try:
-            AccessToken(token)
-        except Exception:
-            return Response({"error": "Invalid token."}, status=400)
+            user_id_from_token = validate_reset_password_token(token)
+            if user_id_from_token != user.id:
+                raise ValueError("Token does not match user")
+        except ValueError as e:
+            return Response({"error": str(e)}, status=400)
 
         user.set_password(password)
+        user.is_verified = True
         user.save()
         return Response({"message": "Password has been reset successfully."}, status=200)
 
-    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-        return Response({"error": "Invalid user or uid."}, status=400)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist) as e:
+        return Response({"error": str(e)}, status=400)
 
 def send_verification_email(user):
     token = default_token_generator.make_token(user)
@@ -2233,14 +2207,6 @@ def send_verification_email(user):
     message = f"Thank you for signing up. Please set your password by clicking the link: {set_password_url}"
     send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
 
-def send_verification_email_with_set_password_link(user):
-    token = default_token_generator.make_token(user)
-    uid = urlsafe_base64_encode(force_bytes(user.pk))
-    set_password_url = f"{settings.FRONTEND_URL}/set-password/{uid}/{token}/"
-
-    subject = "Set Your Password for Your New Account"
-    message = f"Thank you for signing up. Please set your password by clicking the link: {set_password_url}"
-    send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -2274,7 +2240,7 @@ def register_user(request):
 @permission_classes([AllowAny])
 def verify_email(request, user_id):
     user = get_object_or_404(User, id=user_id)
-    user.is_delete = False
+    user.is_verified = True
     user.save()
     return JsonResponse({"message": "Email verified successfully. You can now log in."})
 
@@ -2319,20 +2285,49 @@ def get_all_users(request):
     serializer = UserSerializer(users, many=True)
     return Response(serializer.data)
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def set_new_user(request):
+    user = User.objects.filter(is_delete=False, is_new=True, role="user")
+    user.update(is_new=False)
+
+    users = User.objects.filter(is_delete=False, role="user")
+    serializer = UserSerializer(users, many=True)
+    return Response(serializer.data, status=200)
+
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def delete_user(request):
+def lock_user(request):
     userId = request.data.get('userId')
     try:
-        user = User.objects.get(id=userId, is_delete=False)
+        user = User.objects.get(id=userId, is_valid=True)
     except User.DoesNotExist:
         return JsonResponse({'error': 'User not found'}, status=404)
 
-    user.is_delete = True
+    user.is_valid = False
     user.save()
 
-    return JsonResponse({'message': 'User deleted successfully'}, status=201)
+    users = User.objects.filter(is_delete=False, role="user")
+    serializer = UserSerializer(users, many=True)
+    return Response(serializer.data)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def unlock_user(request):
+    userId = request.data.get('userId')
+    try:
+        user = User.objects.get(id=userId, is_valid=False)
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'User not found'}, status=404)
+
+    user.is_valid = True
+    user.save()
+
+    users = User.objects.filter(is_delete=False, role="user")
+    serializer = UserSerializer(users, many=True)
+    return Response(serializer.data)
 
 
 @api_view(['POST'])
@@ -2420,7 +2415,31 @@ def restore_project(request):
     project.is_delete = False
     project.save()
 
-    return JsonResponse({'message': 'Project restore successfully'}, status=201)
+    return JsonResponse({'message': 'Project restore successfully'}, status=200)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def restore_all_project(request):
+    projects = Project.objects.filter(is_delete=True)
+
+    if not projects.exists():
+        return JsonResponse({'error': 'No deleted projects found'}, status=404)
+
+    projects.update(is_delete=False)
+
+    return JsonResponse({'message': 'All deleted projects have been restored successfully'}, status=200)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def delete_all_project(request):
+    projects = Project.objects.filter(is_delete=True)
+    if not projects.exists:
+        return JsonResponse({'error': 'Project not found'}, status=404)
+
+    projects.delete()
+
+    return JsonResponse({'message': 'Project restore successfully'}, status=200)
 
 
 @api_view(['POST'])

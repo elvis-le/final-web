@@ -1,5 +1,14 @@
 import React, {useState} from 'react';
-import {TextField, Button, MenuItem} from '@mui/material';
+import {
+    TextField,
+    Button,
+    MenuItem,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogContentText,
+    DialogTitle
+} from '@mui/material';
 import {supabase} from '../../supabaseClient';
 import {v4 as uuidv4} from 'uuid';
 import axios from 'axios';
@@ -14,6 +23,8 @@ const AudioCreate = ({onOptionSelect}) => {
     const [audioDuration, setAudioDuration] = useState('');
     const token = localStorage.getItem('access_token');
     const navigate = useNavigate();
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [dialogMessage, setDialogMessage] = useState('');
 
     const categories = [
         {value: 'vlog', label: 'Vlog'},
@@ -49,7 +60,8 @@ const AudioCreate = ({onOptionSelect}) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!audioFile) {
-            alert("Please upload an audio file");
+            setDialogMessage('Please upload an audio file');
+            setDialogOpen(true);
             return;
         }
 
@@ -108,19 +120,41 @@ const AudioCreate = ({onOptionSelect}) => {
             });
 
             if (response.status === 201) {
-                alert('File uploaded and saved successfully!');
-                navigate('/admin/audio', { state: { onOptionSelectValue: 'audio' } });
+                setDialogMessage('File uploaded and saved successfully!');
+                setDialogOpen(true);
+                navigate('/admin/audio', {state: {onOptionSelectValue: 'audio'}});
             } else {
-                alert('Failed to save audio details to database');
+                setDialogMessage('Failed to save audio details to database');
+                setDialogOpen(true);
             }
 
         } catch (error) {
             console.error('Error uploading file:', error.message);
-            alert('Error uploading file');
+            setDialogMessage('Error uploading file');
+            setDialogOpen(true);
         }
     };
 
     return (
+        <>
+            <Dialog
+                open={dialogOpen}
+                onClose={() => setDialogOpen(false)}
+                className="custom-dialog"
+            >
+                <DialogTitle>
+                    Notification
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        {dialogMessage}
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDialogOpen(false)}>OK</Button>
+                </DialogActions>
+            </Dialog>
+
             <form onSubmit={handleSubmit} style={{maxWidth: '400px', margin: '0 auto'}}>
                 <TextField
                     label="Audio Name"
@@ -175,6 +209,7 @@ const AudioCreate = ({onOptionSelect}) => {
                     </button>
                 </div>
             </form>
+        </>
     );
 };
 

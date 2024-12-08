@@ -9,6 +9,7 @@ const Sidebar = ({onOptionSelect}) => {
     const [imageUrl, setImageUrl] = useState(user.image || '');
     const [name, setName] = useState(user.username || '');
 
+
     const navigate = useNavigate();
     const handleLogout = async () => {
         try {
@@ -44,11 +45,12 @@ const Sidebar = ({onOptionSelect}) => {
     };
     return (
         <div className="sidebar">
-            <div className="sidebar-user">
+                <Link className="sidebar-user" to="/admin/profile" onClick={() => onOptionSelect('profile')}>
                 <img src={imageUrl} alt="Admin Avatar"/>
                 <h3>{name}</h3>
                 <span className="status-online">Online</span>
-            </div>
+
+                </Link>
             <ul className="sidebar-menu">
                 <li><Link className="link-sider" to="/admin/profile" onClick={() => onOptionSelect('profile')}><FaUser className="link-icon" />
                     <span className="link-text" >Profile</span></Link></li>

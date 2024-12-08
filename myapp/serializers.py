@@ -5,7 +5,7 @@ from .models import User, Project, Video, Audio, Text, Sticker, Effect, Filter, 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'email', 'password', 'fullname', 'username', 'role', 'image', 'birth_date', 'sex', 'address', 'is_delete', 'created_at', 'updated_at']
+        fields = ['id', 'email', 'password', 'fullname', 'username', 'role', 'image', 'birth_date', 'sex', 'address', 'is_delete', 'is_valid', 'is_verified', 'is_new', 'created_at', 'updated_at']
         extra_kwargs = {
             'password': {'write_only': True}
         }
@@ -15,12 +15,11 @@ class UserSerializer(serializers.ModelSerializer):
         username = validated_data.pop('username')
         password = validated_data.pop('password')
 
-        # Gọi create_user với các trường bắt buộc và truyền các extra fields còn lại
         user = User.objects.create_user(
             email=email,
             username=username,
             password=password,
-            **validated_data  # Truyền các trường bổ sung còn lại
+            **validated_data
         )
         return user
 

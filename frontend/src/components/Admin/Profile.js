@@ -3,7 +3,18 @@ import 'react-confirm-alert/src/react-confirm-alert.css';
 import axios from 'axios';
 import {v4 as uuidv4} from "uuid";
 import {supabase} from "../../supabaseClient";
-import {TextField, Button, MenuItem, Dialog, DialogActions, DialogContent, DialogTitle, InputAdornment, IconButton } from '@mui/material';
+import {
+    TextField,
+    Button,
+    MenuItem,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    InputAdornment,
+    IconButton,
+    DialogContentText
+} from '@mui/material';
 import {FaEye, FaEyeSlash} from "react-icons/fa";
 
 const Profile = ({onOptionSelect}) => {
@@ -26,6 +37,8 @@ const Profile = ({onOptionSelect}) => {
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [dialogMessage, setDialogMessage] = useState('');
 
     const handleTogglePasswordVisibility = (setShowPassword, showPassword) => {
         setShowPassword(!showPassword);
@@ -38,7 +51,6 @@ const Profile = ({onOptionSelect}) => {
         setBirthday(user.birth_date || '');
         setAddress(user.address || '');
     };
-
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -82,13 +94,19 @@ const Profile = ({onOptionSelect}) => {
 
             if (response.status === 200 && data) {
                 localStorage.setItem('user', JSON.stringify(data));
-                alert('File đã được cập nhật thành công!');
+
+                setDialogMessage('File updated successfully!');
+                setDialogOpen(true);
             } else {
-                alert('Không thể cập nhật file');
+
+                setDialogMessage('Can not update file!');
+                setDialogOpen(true);
             }
         } catch (error) {
             console.error('Lỗi khi cập nhật file:', error.message);
-            alert('Lỗi khi cập nhật file');
+
+            setDialogMessage('Error to update file!');
+            setDialogOpen(true);
         }
     };
 
@@ -99,65 +117,80 @@ const Profile = ({onOptionSelect}) => {
     const handlePasswordSubmit = async (e) => {
         e.preventDefault();
         if (newPassword !== confirmPassword) {
-            alert("Mật khẩu mới và xác nhận mật khẩu không khớp");
+
+            setDialogMessage('Password does not match!');
+            setDialogOpen(true);
             setCurrentPassword("");
             setNewPassword("");
             setConfirmPassword("");
             return;
         }
-
-
         try {
-
             const formData = new FormData();
             formData.append('currentPassword', currentPassword);
             formData.append('newPassword', newPassword);
-
             const response = await axios.post(`http://localhost:8000/myapp/change_password/${user.id}/`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                     Authorization: `Bearer ${token}`,
                 },
             });
-
             setCurrentPassword("");
             setNewPassword("");
             setConfirmPassword("");
             const data = response.data;
             console.log(data);
-
             if (response.status === 200 && data) {
                 localStorage.setItem('user', JSON.stringify(data));
-                alert('Mật khẩu đã được thay đổi thành công!');
-
-        setOpenPasswordDialog(false);
-        } else {
-            alert('Không thể cập nhật mật khẩu');
-        }
-        } catch (error) {
-        if (error.response) {
-            setCurrentPassword("");
-            setNewPassword("");
-            setConfirmPassword("");
-            if (error.response.status === 400) {
-                
-                alert(error.response.data.message || 'Mật khẩu hiện tại không chính xác');
-            } else if (error.response.status === 500) {
-                
-                alert('Lỗi server, không thể đổi mật khẩu');
+                setDialogMessage('Change password successfully!');
+                setDialogOpen(true);
+                setOpenPasswordDialog(false);
             } else {
-                
-                alert('Đã xảy ra lỗi khi thay đổi mật khẩu');
+                setDialogMessage('Can not change password!');
+                setDialogOpen(true);
             }
-        } else {
-            
-            alert('Không thể kết nối tới server');
+        } catch (error) {
+            if (error.response) {
+                setCurrentPassword("");
+                setNewPassword("");
+                setConfirmPassword("");
+                if (error.response.status === 400) {
+                    setDialogMessage(error.response.data.message || 'Current password is incorrect');
+                    setDialogOpen(true);
+                } else if (error.response.status === 500) {
+                    setDialogMessage('Sever error, can not change password!');
+                    setDialogOpen(true);
+                } else {
+                    setDialogMessage('An error occurred while changing password.!');
+                    setDialogOpen(true);
+                }
+            } else {
+                setDialogMessage('Can not connect to sever!');
+                setDialogOpen(true);
+            }
         }
-    }
     };
 
     return (
         <>
+            <Dialog
+                open={dialogOpen}
+                onClose={() => setDialogOpen(false)}
+                className="custom-dialog"
+            >
+                <DialogTitle>
+                    Notification
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        {dialogMessage}
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDialogOpen(false)}>OK</Button>
+                </DialogActions>
+            </Dialog>
+
             <div className="profile">
                 <div className="user-avatar">
                     <label for="user-img">
@@ -287,78 +320,78 @@ const Profile = ({onOptionSelect}) => {
                 </form>
             </div>
             <Dialog open={openPasswordDialog} onClose={() => setOpenPasswordDialog(false)}>
-            <DialogTitle>Change Password</DialogTitle>
-            <DialogContent>
-                <TextField
-                    label="Current Password"
-                    type={showCurrentPassword ? "text" : "password"}
-                    fullWidth
-                    margin="normal"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    required
-                    InputProps={{
-                        endAdornment: (
-                            <InputAdornment position="end">
-                                <IconButton
-                                    onClick={() => handleTogglePasswordVisibility(setShowCurrentPassword, showCurrentPassword)}
-                                >
-                                    {showCurrentPassword ? <FaEyeSlash /> : <FaEye />}
-                                </IconButton>
-                            </InputAdornment>
-                        )
-                    }}
-                />
-                <TextField
-                    label="New Password"
-                    type={showNewPassword ? "text" : "password"}
-                    fullWidth
-                    margin="normal"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    required
-                    InputProps={{
-                        endAdornment: (
-                            <InputAdornment position="end">
-                                <IconButton
-                                    onClick={() => handleTogglePasswordVisibility(setShowNewPassword, showNewPassword)}
-                                >
-                                    {showNewPassword ? <FaEyeSlash /> : <FaEye />}
-                                </IconButton>
-                            </InputAdornment>
-                        )
-                    }}
-                />
-                <TextField
-                    label="Confirm New Password"
-                    type={showConfirmPassword ? "text" : "password"}
-                    fullWidth
-                    margin="normal"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    InputProps={{
-                        endAdornment: (
-                            <InputAdornment position="end">
-                                <IconButton
-                                    onClick={() => handleTogglePasswordVisibility(setShowConfirmPassword, showConfirmPassword)}
-                                >
-                                    {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
-                                </IconButton>
-                            </InputAdornment>
-                        )
-                    }}
-                />
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={() => setOpenPasswordDialog(false)} color="primary">
-                    Cancel
-                </Button>
-                <Button onClick={handlePasswordSubmit} color="primary">
-                    Save
-                </Button>
-            </DialogActions>
-        </Dialog>
+                <DialogTitle>Change Password</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        label="Current Password"
+                        type={showCurrentPassword ? "text" : "password"}
+                        fullWidth
+                        margin="normal"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        required
+                        InputProps={{
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        onClick={() => handleTogglePasswordVisibility(setShowCurrentPassword, showCurrentPassword)}
+                                    >
+                                        {showCurrentPassword ? <FaEyeSlash/> : <FaEye/>}
+                                    </IconButton>
+                                </InputAdornment>
+                            )
+                        }}
+                    />
+                    <TextField
+                        label="New Password"
+                        type={showNewPassword ? "text" : "password"}
+                        fullWidth
+                        margin="normal"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        required
+                        InputProps={{
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        onClick={() => handleTogglePasswordVisibility(setShowNewPassword, showNewPassword)}
+                                    >
+                                        {showNewPassword ? <FaEyeSlash/> : <FaEye/>}
+                                    </IconButton>
+                                </InputAdornment>
+                            )
+                        }}
+                    />
+                    <TextField
+                        label="Confirm New Password"
+                        type={showConfirmPassword ? "text" : "password"}
+                        fullWidth
+                        margin="normal"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                        InputProps={{
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        onClick={() => handleTogglePasswordVisibility(setShowConfirmPassword, showConfirmPassword)}
+                                    >
+                                        {showConfirmPassword ? <FaEyeSlash/> : <FaEye/>}
+                                    </IconButton>
+                                </InputAdornment>
+                            )
+                        }}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenPasswordDialog(false)} color="primary">
+                        Cancel
+                    </Button>
+                    <Button onClick={handlePasswordSubmit} color="primary">
+                        Save
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </>
     );
 };

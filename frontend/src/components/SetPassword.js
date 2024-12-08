@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {useNavigate, useLocation} from 'react-router-dom';
+import {useNavigate, useLocation, useParams} from 'react-router-dom';
 import "./SetPassword.scss"
 import axios from 'axios';
 
@@ -10,16 +10,19 @@ function SetPassword() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Lấy uidb64 và token từ URL
-    const params = new URLSearchParams(window.location.search);
-    const uidb64 = params.get("uidb64");
-    const token = params.get("token");
-    // Lấy thêm uidb64
+    const { uidb64, token } = useParams();
+    
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if(password === confirmPassword){
         try {
+            console.log(`URL: http://localhost:8000/myapp/set-password/${uidb64}/${token}/`);
+            console.log("Password:", password);
+            console.log("uidb64:", uidb64);
+            console.log("token:", token);
+            console.log("Confirm Password:", confirmPassword);
+
             if (uidb64 && token) {
                 const response = await axios.post(`http://localhost:8000/myapp/set-password/${uidb64}/${token}/`, {
                     password: password
