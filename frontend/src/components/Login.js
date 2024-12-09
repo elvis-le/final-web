@@ -41,18 +41,16 @@ const Login = ({onLogin, onSwitch}) => {
                     'Content-Type': 'application/json',
                 }
             });
+            if (response.data.verification_url) {
+            window.location.href = response.data.verification_url;
+        } else if (response.data.redirect_url) {
+            window.location.href = response.data.redirect_url;
+        }
+            console.log('Login successful:', response.data);
 
-            const data = response.data;
-            console.log('Login successful:', data);
-
-            localStorage.setItem('access_token', data.access);
-            localStorage.setItem('refresh_token', data.refresh);
-            localStorage.setItem('user', JSON.stringify(data.user));
-            if (data.redirect_url === '/admin') {
-                navigate('/admin');
-            } else {
-                navigate('/user');
-            }
+        localStorage.setItem('access_token', response.data.access);
+        localStorage.setItem('refresh_token', response.data.refresh);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
         } catch (error) {
             console.error('Error during login:', error);
             setErrorMessage(error.response?.data?.error || 'Login error');

@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'django.contrib.sites',
+    "channels",
 ]
 
 SITE_ID = 1
@@ -112,15 +113,28 @@ SIMPLE_JWT = {
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
     'handlers': {
         'console': {
+            'level': 'DEBUG',  # Ensure DEBUG level logging is enabled
             'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
         },
     },
     'loggers': {
         'django': {
             'handlers': ['console'],
             'level': 'DEBUG',
+            'propagate': True,
         },
         'myapp': {
             'handlers': ['console'],
@@ -130,6 +144,21 @@ LOGGING = {
     },
 }
 
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://frontend:3000",
+]
+
+ASGI_APPLICATION = "final_web.asgi.application"
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("redis", 6379)],  # Host Redis trong docker-compose
+        },
+    },
+}
 
 ROOT_URLCONF = 'final_web.urls'
 

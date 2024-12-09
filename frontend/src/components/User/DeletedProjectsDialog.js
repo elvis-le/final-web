@@ -139,7 +139,6 @@ const DeletedProjectsDialog = ({isOpen, onClose}) => {
                                 setDialogMessage('Delete successfully!');
                                 setDialogOpen(true);
                             } else {
-
                                 setDialogMessage('Can not delete');
                                 setDialogOpen(true);
                             }
@@ -155,6 +154,8 @@ const DeletedProjectsDialog = ({isOpen, onClose}) => {
             ]
         });
     }
+
+
 
 
     if (!isOpen) return null;

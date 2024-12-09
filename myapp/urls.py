@@ -1,7 +1,10 @@
 from django.contrib import admin
 from django.urls import path
 from . import views
+from . import consumers
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
+from .consumers import AdminNotificationConsumer
 
 urlpatterns = [
     path('cut_video/', views.cut_video, name='cut_video'),
@@ -38,6 +41,10 @@ urlpatterns = [
     path('unlock_user/', views.unlock_user, name='unlock_user'),
     path('change_password/<int:userId>/', views.change_password, name='change_password'),
 
+    path('get_message_user/<int:userId>/', views.get_message_user, name='get_message_user'),
+
+    path('update_message/<int:userId>/', views.update_message, name='update_message'),
+
     path('get_user_projects/', views.get_user_projects, name='get_user_projects'),
     path('get_user_deleted_projects/', views.get_user_deleted_projects, name='get_user_deleted_projects'),
     path('delete_project/', views.delete_project, name='delete_project'),
@@ -45,6 +52,7 @@ urlpatterns = [
     path('restore_all_project/', views.restore_all_project, name='restore_all_project'),
     path('delete_all_project/', views.delete_all_project, name='delete_all_project'),
     path('create_project/', views.create_project, name='create_project'),
+    path('ws/admin/', AdminNotificationConsumer.as_asgi(), name='admin_ws'),
 
     path('upload_audio/', views.upload_audio, name='upload_audio'),
     path('get_all_audios/', views.get_all_audios, name='get_all_audios'),

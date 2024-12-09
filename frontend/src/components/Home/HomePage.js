@@ -4046,7 +4046,7 @@ const HomePage = () => {
         <div className="body-wrapper">
             <div className="header">
                 <div className="logo-wrap">
-                    <img src={logo} alt="Video Thum"/>
+                    <img src={logo} alt="Logo app"/>
                     <p>EditEase</p>
                 </div>
                 <div className="export-btn">

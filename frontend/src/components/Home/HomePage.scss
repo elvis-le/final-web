@@ -13,7 +13,7 @@
     display: flex;
     align-items: center;
     width: 10%;
-    height: 80%;
+    height: 2rem;
 
     img {
       width: 20%;
@@ -36,7 +36,7 @@
       width: 100%;
       border: none;
       background-color: #4ac1f7;
-      padding: 0.5rem;
+      padding: 0.6rem;
       color: var(--white-color);
       font-size: var(--small-font-size);
       text-align: center;
@@ -62,16 +62,19 @@
   .login-btn {
     width: 10%;
     margin-left: 1rem;
+    color: black;
+    border: 1px solid black;
+    border-radius: 5px;
 
     .btn-login-link {
       border-radius: 8px;
       width: 100%;
       border: 1px solid var(--white-color);
       background-color: transparent;
-      padding: 0.5rem;
+      padding: 0.4rem;
       text-decoration: none;
-      color: var(--white-color);
-      font-size: var(--small-font-size);
+      color: var(--black-color);
+      font-size: var(--text-font);
       text-align: center;
       justify-content: center;
     }
@@ -121,6 +124,7 @@
     display: inline-flex;
     width: 20%;
     height: 88%;
+    border-bottom-left-radius: 10px;
     border-right: .5px solid var(--black-color);
     background-color: var(--edit-frame);
 
@@ -135,6 +139,7 @@
 
       .css-dip3t8 {
         background-color: var(--edit-frame);
+        height: 88%;
       }
 
       .dropdown {
@@ -872,7 +877,7 @@
       }
 
       .action-player {
-        margin-left: 10%;
+        margin-left: 28%;
 
         button {
           background-color: transparent;

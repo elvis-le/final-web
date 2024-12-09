@@ -23,7 +23,11 @@ google-auth
 google-auth-oauthlib
 google
 pydub
-
+channels
+channels==4.0
+channels-redis==4.0
+redis==4.5
+daphne>=4.0.0
 
 
 

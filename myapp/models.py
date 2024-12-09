@@ -175,4 +175,12 @@ class Role(models.Model):
     def __str__(self):
         return self.role_name
 
+class Message(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    content = models.JSONField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Message from {self.user.username} at {self.created_at}"
 

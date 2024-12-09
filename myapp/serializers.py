@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Project, Video, Audio, Text, Sticker, Effect, Filter, EditSession, Role
+from .models import User, Project, Video, Audio, Text, Sticker, Effect, Filter, EditSession, Role, Message
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -69,5 +69,11 @@ class RoleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Role
         fields = ['id', 'role_name']
+
+class MessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Message
+        fields = ['id', 'user', 'content', 'created_at', 'updated_at']
+
 
 

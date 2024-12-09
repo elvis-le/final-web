@@ -29,6 +29,8 @@ from moviepy.video.fx.rotate import rotate
 from django.shortcuts import get_object_or_404
 from moviepy.video.fx import all as vfx
 from django.core.mail import send_mail
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 import numpy as np
 import os
 import json
@@ -2062,7 +2064,6 @@ def google_auth_callback(request):
             user.set_unusable_password()
             user.save()
 
-            
             uidb64 = urlsafe_base64_encode(force_bytes(user.id))
             reset_token = generate_reset_password_token(user)
             reset_url = f"http://localhost:3000/set-password/{uidb64}/{reset_token}"
@@ -2137,20 +2138,29 @@ def login_user(request):
 
         role = serializer.data['role']
         is_valid = serializer.data['is_valid']
-        if is_valid:
-            if role == 'admin':
-                redirect_url = '/admin'
-            else:
-                redirect_url = '/user'
-
+        is_verified = serializer.data['is_verified']
+        if not is_verified:
             return Response({
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
                 'user': serializer.data,
-                'redirect_url': redirect_url
+                'verification_url': 'http://localhost:3000/verified'
             }, status=status.HTTP_200_OK)
         else:
-            return Response({'error': 'Account not available'}, status=status.HTTP_400_BAD_REQUEST)
+            if is_valid:
+                if role == 'admin':
+                    redirect_url = '/admin'
+                else:
+                    redirect_url = '/user'
+
+                return Response({
+                    'refresh': str(refresh),
+                    'access': str(refresh.access_token),
+                    'user': serializer.data,
+                    'redirect_url': redirect_url
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response({'error': 'Account not available'}, status=status.HTTP_400_BAD_REQUEST)
 
     else:
         return Response({'error': 'Invalid email or password'}, status=status.HTTP_400_BAD_REQUEST)
@@ -2173,14 +2183,14 @@ def validate_reset_password_token(token):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def set_password(request, uidb64, token):
-    print("this is reset password function")
+    logger.debug("This is reset password function")
     password = request.data.get('password')
     if not password:
         return Response({"error": "Password is required."}, status=400)
 
     try:
         user_id = force_str(urlsafe_base64_decode(uidb64))
-        print("user_id", user_id)
+        logger.debug(f"user_id: {user_id}")
         user = User.objects.get(pk=user_id)
 
         try:
@@ -2188,15 +2198,63 @@ def set_password(request, uidb64, token):
             if user_id_from_token != user.id:
                 raise ValueError("Token does not match user")
         except ValueError as e:
+            logger.error(f"Token validation failed: {str(e)}")
             return Response({"error": str(e)}, status=400)
 
         user.set_password(password)
         user.is_verified = True
-        user.save()
+        try:
+            logger.debug("Before saving user")
+            user.save()
+            logger.debug("After saving user")
+        except Exception as e:
+            logger.error(f"Error while saving user: {e}")
+
+        try:
+            logger.debug("Before calling new_user_notification")
+            new_user_notification(user)
+            logger.debug("After calling new_user_notification")
+        except Exception as e:
+            logger.error(f"Error while calling new_user_notification: {e}")
+
         return Response({"message": "Password has been reset successfully."}, status=200)
 
     except (TypeError, ValueError, OverflowError, User.DoesNotExist) as e:
+        logger.error(f"Error in set_password: {str(e)}")
         return Response({"error": str(e)}, status=400)
+
+def new_user_notification(user):
+    print(f"Attempting to send notification for user {user.username}")
+    channel_layer = get_channel_layer()
+    try:
+        async_to_sync(channel_layer.group_send)(
+            "admin_notifications",
+            {
+                "type": "new_user_notification",
+                "message": f"User {user.username} has registered."
+            }
+        )
+        print("Notification sent successfully")
+    except Exception as e:
+        print(f"Error sending notification: {e}")
+        logger.error(f"Error sending notification: {e}")
+
+def new_message_notification():
+    channel_layer = get_channel_layer()
+    try:
+        async_to_sync(channel_layer.group_send)(
+            "admin_notifications",
+            {
+                "type": "new_message_notification",
+                "message": f"Has new message."
+            }
+        )
+        print("Notification sent successfully")
+    except Exception as e:
+        print(f"Error sending notification: {e}")
+        logger.error(f"Error sending notification: {e}")
+
+
 
 def send_verification_email(user):
     token = default_token_generator.make_token(user)
@@ -2207,7 +2265,6 @@ def send_verification_email(user):
     message = f"Thank you for signing up. Please set your password by clicking the link: {set_password_url}"
     send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
 
-
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
@@ -2216,16 +2273,30 @@ def register_user(request):
         if serializer.is_valid():
 
             user = serializer.save()
-            user.is_delete = True
+            user.is_delete = False
+            user.is_verified = False
             user.save()
-            send_verification_email(user)
-            logger.info(f"Created user: {user}")
 
+
+            uidb64 = urlsafe_base64_encode(force_bytes(user.id))
+            reset_token = generate_reset_password_token(user)
+            reset_url = f"http://localhost:3000/set-password/{uidb64}/{reset_token}"
             try:
                 tokens = get_tokens_for_user(user)
-            except Exception as token_error:
-                logger.error(f"Token generation failed: {token_error}")
-                return JsonResponse({'error': 'Token generation failed'}, status=500)
+                send_mail(
+                    'Set up your password',
+                    f'Thank you for signing up. Please set up your password by clicking the link: {reset_url}',
+                    settings.DEFAULT_FROM_EMAIL,
+                    [user.email],
+                    fail_silently=False,
+                )
+            except Exception as e:
+                print("Failed to send email:", e)
+                user.delete()
+                return JsonResponse({"error": "Failed to send verification email"}, status=500)
+
+
+            logger.info(f"Created user: {user}")
 
             return JsonResponse({'tokens': tokens, 'user': serializer.data}, status=201)
         else:
@@ -2235,7 +2306,6 @@ def register_user(request):
         logger.error(f"Unexpected error during registration: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
-
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def verify_email(request, user_id):
@@ -2243,7 +2313,6 @@ def verify_email(request, user_id):
     user.is_verified = True
     user.save()
     return JsonResponse({"message": "Email verified successfully. You can now log in."})
-
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -2257,7 +2326,6 @@ def logout_user(request):
         return Response({"message": "Đăng xuất thành công."}, status=200)
     except Exception as e:
         return Response({"error": str(e)}, status=400)
-
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -2278,6 +2346,28 @@ def update_user(request, userId):
         return JsonResponse({'error': serializer.errors}, status=400)
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_message(request, userId):
+    # Nhận dữ liệu JSON từ request
+    message_contents = request.data.get('messageContents')
+
+    if not message_contents:
+        return Response({'error': 'messageContents is required'}, status=400)
+
+    # Cập nhật hoặc tạo mới message
+    message, created = Message.objects.get_or_create(user_id=userId, defaults={'content': message_contents})
+
+    if not created:
+        message.content = message_contents
+        message.save()
+        new_message_notification()
+
+    # Sử dụng serializer để trả về dữ liệu
+    serializer = MessageSerializer(message)
+    return Response(serializer.data, status=200)
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_all_users(request):
@@ -2294,8 +2384,6 @@ def set_new_user(request):
     users = User.objects.filter(is_delete=False, role="user")
     serializer = UserSerializer(users, many=True)
     return Response(serializer.data, status=200)
-
-
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -2362,7 +2450,6 @@ def get_user_projects(request):
     projects = Project.objects.filter(user=user, is_delete=False)
     serializer = ProjectSerializer(projects, many=True)
     return Response({'projects': serializer.data}, status=200)
-
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -2462,6 +2549,22 @@ def get_all_audios(request):
     audios = Audio.objects.filter(is_delete=False)
     serializer = AudioSerializer(audios, many=True)
     return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_message_user(request, userId):
+    print(f"Received userId: {userId}")
+    try:
+        messages = Message.objects.filter(user_id=userId)
+        if not messages.exists():
+            return Response({"message": "No messages found for this user"}, status=200)
+
+        serializer = MessageSerializer(messages, many=True)
+        return Response(serializer.data, status=200)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
 
 
 @api_view(['GET'])
