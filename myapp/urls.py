@@ -7,8 +7,6 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .consumers import AdminNotificationConsumer
 
 urlpatterns = [
-    path('cut_video/', views.cut_video, name='cut_video'),
-    path('add_text_to_video/', views.add_text_to_video, name='add_text_to_video'),
     path('export_video/', views.export_video, name='export_video'),
     path('merge_video/', views.merge_video, name='merge_video'),
     path('apply_audio/', views.apply_audio, name='apply_audio'),
@@ -16,8 +14,6 @@ urlpatterns = [
     path('apply_text/', views.apply_text, name='apply_text'),
     path('apply_filter/', views.apply_filter, name='apply_filter'),
     path('apply_effect/', views.apply_effect, name='apply_effect'),
-    path('add_audio_to_video/', views.add_audio_to_video, name='add_audio_to_video'),
-    path('add_sticker_to_video/', views.add_sticker_to_video, name='add_sticker_to_video'),
     path('upload_video/', views.upload_video, name='upload_video'),
     path('video/<str:project>/', views.get_videos, name='get_videos'),
     path('save_edit_session/', views.save_edit_session, name='save_edit_session'),
@@ -40,11 +36,8 @@ urlpatterns = [
     path('lock_user/', views.lock_user, name='lock_user'),
     path('unlock_user/', views.unlock_user, name='unlock_user'),
     path('change_password/<int:userId>/', views.change_password, name='change_password'),
-
     path('get_message_user/<int:userId>/', views.get_message_user, name='get_message_user'),
-
     path('update_message/<int:userId>/', views.update_message, name='update_message'),
-
     path('get_user_projects/', views.get_user_projects, name='get_user_projects'),
     path('get_user_deleted_projects/', views.get_user_deleted_projects, name='get_user_deleted_projects'),
     path('delete_project/', views.delete_project, name='delete_project'),

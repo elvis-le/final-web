@@ -29,12 +29,9 @@ const HomePage = () => {
     const [currentTime, setCurrentTime] = useState(0);
     const [timestamps, setTimestamps] = useState([])
     const [videoDuration, setVideoDuration] = useState(0);
-
     const [listVideo, setListVideo] = useState([]);
-
     const [selectedVideo, setSelectedVideo] = useState({});
     const [timelineVideos, setTimelineVideos] = useState([]);
-
     const [selectedText, setSelectedText] = useState({});
     const [timelinesText, setTimelinesText] = useState([]);
     const [textFiles, setTextFiles] = useState({
@@ -43,7 +40,6 @@ const HomePage = () => {
         basic: [],
         multicolor: [],
     });
-
     const [selectedAudio, setSelectedAudio] = useState({});
     const [timelinesAudio, setTimelinesAudio] = useState([]);
     const [audioFiles, setAudioFiles] = useState({
@@ -59,7 +55,6 @@ const HomePage = () => {
         horrified: [],
         laugh: [],
     });
-
     const [selectedSticker, setSelectedSticker] = useState({});
     const [timelinesSticker, setTimelinesSticker] = useState([]);
     const [stickerFiles, setStickerFiles] = useState({
@@ -70,7 +65,6 @@ const HomePage = () => {
         gaming: [],
         emoji: [],
     });
-
     const [selectedEffect, setSelectedEffect] = useState({});
     const [timelinesEffect, setTimelinesEffect] = useState([]);
     const [effectFiles, setEffectFiles] = useState({
@@ -85,7 +79,6 @@ const HomePage = () => {
         mask_body: [],
         selfie_body: [],
     });
-
     const [selectedFilter, setSelectedFilter] = useState({});
     const [timelinesFilter, setTimelinesFilter] = useState([]);
     const [filterFiles, setFilterFiles] = useState({
@@ -96,21 +89,18 @@ const HomePage = () => {
         retro: [],
         style: [],
     });
-
     const [draggableText, setDraggableText] = useState({
         content: "Your draggable text here",
         position: {x: 0, y: 0},
     });
-
     const [widthTime, setWidthTime] = useState(0);
     const [textToAdd, setTextToAdd] = useState('');
     const videoWidth = 424;
     const videoHeight = 240;
-
     const token = localStorage.getItem('access_token');
     const refreshToken = localStorage.getItem("refresh_token");
+    const user = JSON.parse(localStorage.getItem('user'));
     const projectId = localStorage.getItem('current_project_id');
-
     const [isResizing, setIsResizing] = useState(false);
     const [resizingInfo, setResizingInfo] = useState({});
     const [scaleValue, setScaleValue] = useState(100);
@@ -131,7 +121,6 @@ const HomePage = () => {
     const [customRemovalValue, setCustomRemovalValue] = useState(94);
     const [voiceValue, setVoiceValue] = useState(0);
     const [speedValue, setSpeedValue] = useState(1);
-
     const [textContent, setTextContent] = useState("Default Text")
     const [fontText, setFontText] = useState("Arial");
     const [fontSizeText, setFontSizeText] = useState(10);
@@ -146,20 +135,16 @@ const HomePage = () => {
     const [underline, setUnderline] = useState(false);
     const [italic, setItalic] = useState(false);
     const [styleOfText, setStyleOfText] = useState("lettercase");
-
     const [voiceValueAudio, setVoiceValueAudio] = useState(0);
     const [speedValueAudio, setSpeedValueAudio] = useState(1);
-
     const [scaleValueSticker, setScaleValueSticker] = useState(100);
     const [scaleValueWidthSticker, setScaleValueWidthSticker] = useState(100);
     const [scaleValueHeightSticker, setScaleValueHeightSticker] = useState(100);
     const [positionXSticker, setPositionXSticker] = useState(0);
     const [positionYSticker, setPositionYSticker] = useState(0);
     const [rotateValueSticker, setRotateValueSticker] = useState(0);
-
     const [effectName, setEffectName] = useState("Default");
     const [filterName, setFilterName] = useState("Default");
-
     const [videoIndex, setVideoIndex] = useState(0);
     const [timelineVideoIndex, setTimelineVideoIndex] = useState(0);
     const [textIndex, setTextIndex] = useState(0);
@@ -168,7 +153,10 @@ const HomePage = () => {
     const [timelineAudioIndex, setTimelineAudioIndex] = useState(0);
     const [stickerIndex, setStickerIndex] = useState(0);
     const [timelineStickerIndex, setTimelineStickerIndex] = useState(0);
-
+    const [effectIndex, setEffectIndex] = useState(0);
+    const [timelineEffectIndex, setTimelineEffectIndex] = useState(0);
+    const [filterIndex, setFilterIndex] = useState(0);
+    const [timelineFilterIndex, setTimelineFilterIndex] = useState(0);
     const [isProcessing, setIsProcessing] = useState(false);
     const [gifFileUrl, setGifFileUrl] = useState("");
     const [stickerFrames, setStickerFrames] = useState({});
@@ -182,10 +170,7 @@ const HomePage = () => {
     const [element, setElement] = useState("")
     const [dialogOpen, setDialogOpen] = useState(false);
     const [dialogMessage, setDialogMessage] = useState('');
-
-
     const audioRefs = useRef({});
-
     const filterHandlers = {
         applyFilter: (config) => {
             const contrast = config.contrast?.default ?? 1;
@@ -195,7 +180,13 @@ const HomePage = () => {
             return `contrast(${contrast}) brightness(${brightness}) hue-rotate(${hueShift}deg) saturate(${saturation})`;
         },
     };
-
+    const [tempTimelineVideos, setTempTimelineVideos] = useState([]);
+    const [tempTimelinesText, setTempTimelinesText] = useState([]);
+    const [tempTimelinesAudio, setTempTimelinesAudio] = useState([]);
+    const [tempTimelinesSticker, setTempTimelinesSticker] = useState([]);
+    const [tempTimelinesEffect, setTempTimelinesEffect] = useState([]);
+    const [tempTimelinesFilter, setTempTimelinesFilter] = useState([]);
+    const resizingInfoRef = useRef();
     let isDragging = false;
 
     const allVideos = timelineVideos.flatMap(timeline => timeline.videos);
@@ -234,10 +225,10 @@ const HomePage = () => {
                     setData([]);
                 }
             } else {
-                console.error(`Lỗi server: ${response.status}`);
+                console.error(`Error server: ${response.status}`);
             }
         } catch (error) {
-            console.error(`Lỗi khi lấy video cho dự án ${project}:`, error);
+            console.error(`Error while getting video for project ${project}:`, error);
         }
     };
 
@@ -532,7 +523,7 @@ const HomePage = () => {
         return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
     };
 
-    const handleFileChange = async (e) => {
+    const handleFileChange = async (e) =>   {
         const file = e.target.files[0];
 
         try {
@@ -756,7 +747,6 @@ const HomePage = () => {
 
             if (timelineIndex !== null && updatedTimelineVideos[timelineIndex]) {
                 const timeline = updatedTimelineVideos[timelineIndex];
-
 
                 const overlappingVideo = timeline.videos.find(video =>
                     dropPositionPercentage >= video.position &&
@@ -1492,6 +1482,7 @@ const HomePage = () => {
             setIsProcessing(false);
         }
     };
+
     const handleMergeVideo = async (currentTotalDuration) => {
         setIsProcessing(true);
         const durationToSend = currentTotalDuration || totalDuration;
@@ -1527,7 +1518,6 @@ const HomePage = () => {
                 if (timelinesEffect.length > 0) {
                     handleApplyEffect(durationToSend, videoUrl);
                 }
-
                 const videoElement = document.createElement("video");
                 videoElement.src = videoUrl;
 
@@ -1543,6 +1533,7 @@ const HomePage = () => {
             setIsProcessing(false);
         }
     };
+
     const handleApplyAudio = async (currentTotalDuration) => {
         setIsProcessing(true);
         const durationToSend = currentTotalDuration || totalDuration;
@@ -1585,6 +1576,7 @@ const HomePage = () => {
             setIsProcessing(false);
         }
     };
+
     const handleApplyText = async (currentTotalDuration) => {
         setIsProcessing(true);
         const durationToSend = currentTotalDuration || totalDuration;
@@ -1626,6 +1618,7 @@ const HomePage = () => {
             setIsProcessing(false);
         }
     };
+
     const handleApplySticker = async (currentTotalDuration, videoUrl) => {
         setIsProcessing(true);
         const durationToSend = currentTotalDuration || totalDuration;
@@ -1669,6 +1662,7 @@ const HomePage = () => {
             setIsProcessing(false);
         }
     };
+
     const handleApplyFilter = async (currentTotalDuration, videoUrl) => {
         setIsProcessing(true);
         const durationToSend = currentTotalDuration || totalDuration;
@@ -1715,6 +1709,7 @@ const HomePage = () => {
             setIsProcessing(false);
         }
     };
+
     const handleApplyEffect = async (currentTotalDuration, videoUrl) => {
         setIsProcessing(true);
         const durationToSend = currentTotalDuration || totalDuration;
@@ -1889,7 +1884,6 @@ const HomePage = () => {
             timestamps.push(`${minutes}:${seconds}`);
         }
 
-
         if (duration % interval !== 0) {
             const roundedUpDuration = Math.ceil(duration / interval) * interval;
             const finalMinutes = Math.floor(roundedUpDuration / 60).toString().padStart(2, '0');
@@ -1901,7 +1895,6 @@ const HomePage = () => {
     };
 
     const calculateLeftValue = (index, totalSegments) => {
-
         return `${index * 16.3}%`;
     };
 
@@ -1955,7 +1948,6 @@ const HomePage = () => {
 
         const minStartTime = Math.min(...allTimelines.map(element => (element.position / 100) * 30));
 
-
         const maxEndTime = Math.max(...allTimelines.map(element => ((element.position / 100) * 30) + (element.durationSpeed || element.duration)));
 
         const totalDuration = maxEndTime - minStartTime;
@@ -1963,11 +1955,10 @@ const HomePage = () => {
 
         const calculatedWidthTime = (totalDuration / totalTimelineDuration) * 100;
 
-        console.log(`totalDuration: ${totalDuration}`);
-        console.log(`totalTimelineDuration: ${totalTimelineDuration}`);
-        console.log(`calculatedWidthTime: ${calculatedWidthTime}`);
-
         setWidthTime(calculatedWidthTime);
+
+
+        console.log("totalDuration:", totalDuration);
 
         return totalDuration;
     };
@@ -1982,6 +1973,7 @@ const HomePage = () => {
         isDragging = false;
         setIsResizing(true);
         setResizingInfo({timelineIndex, itemIndex, type, direction});
+        resizingInfoRef.current = {timelineIndex, itemIndex, type, direction};
 
         window.addEventListener('mousemove', handleMouseMove);
         window.addEventListener('mouseup', handleMouseUp);
@@ -1995,11 +1987,11 @@ const HomePage = () => {
 
             const dropX = e.clientX - e.target.getBoundingClientRect().left;
             const newPosition = Math.max(0, (dropX / timelineWidth) * 100);
-            const {timelineIndex, itemIndex, type, direction} = resizingInfo;
+            const {timelineIndex, itemIndex, type, direction} = resizingInfoRef.current || {};
 
             switch (type) {
                 case "video":
-                    setTimelineVideos((prevVideos) => {
+                    setTempTimelineVideos((prevVideos) => {
                         const updatedVideos = [...prevVideos];
                         const video = updatedVideos[timelineIndex].videos[itemIndex];
 
@@ -2008,6 +2000,10 @@ const HomePage = () => {
                             video.width = newWidth;
                             video.endTime = calculateTimeFromPosition(video.position + video.width, timelineWidth);
                             video.duration = video.endTime - video.startTime;
+                            video.durationSpeed = video.endTime - video.startTime;
+                            console.log("Start Time:", video.startTime);
+                            console.log("End Time:", video.endTime);
+                            console.log("Duration:", video.duration);
 
                         } else if (direction === "left") {
                             const delta = video.position - newPosition;
@@ -2023,13 +2019,15 @@ const HomePage = () => {
                             }
                             video.endTime = calculateTimeFromPosition(video.position + video.width, timelineWidth);
                             video.duration = video.endTime - video.startTime;
+                            video.durationSpeed = video.endTime - video.startTime;
+
                         }
                         return updatedVideos;
                     });
                     break;
 
                 case "text":
-                    setTimelinesText((prevText) => {
+                    setTempTimelinesText((prevText) => {
                         const updatedText = [...prevText];
                         const text = updatedText[timelineIndex].texts[itemIndex];
 
@@ -2054,7 +2052,7 @@ const HomePage = () => {
                     break;
 
                 case "audio":
-                    setTimelinesAudio((prevAudio) => {
+                    setTempTimelinesAudio((prevAudio) => {
                         const updatedAudio = [...prevAudio];
                         const audio = updatedAudio[timelineIndex].audios[itemIndex];
 
@@ -2063,6 +2061,7 @@ const HomePage = () => {
                             audio.width = newWidth;
                             audio.endTime = calculateTimeFromPosition(audio.position + audio.width, timelineWidth);
                             audio.duration = audio.endTime - audio.startTime;
+                            audio.durationSpeed = audio.endTime - audio.startTime;
                         } else if (direction === "left") {
                             const delta = audio.position - newPosition;
                             if (audio.width + delta > 0) {
@@ -2071,6 +2070,7 @@ const HomePage = () => {
                                 audio.startTime = calculateTimeFromPosition(audio.position, timelineWidth);
                                 audio.endTime = calculateTimeFromPosition(audio.position + audio.width, timelineWidth);
                                 audio.duration = audio.endTime - audio.startTime;
+                                audio.durationSpeed = audio.endTime - audio.startTime;
                             }
                         }
 
@@ -2079,7 +2079,7 @@ const HomePage = () => {
                     break;
 
                 case "sticker":
-                    setTimelinesSticker((prevSticker) => {
+                    setTempTimelinesSticker((prevSticker) => {
                         const updatedSticker = [...prevSticker];
                         const sticker = updatedSticker[timelineIndex].stickers[itemIndex];
 
@@ -2104,7 +2104,7 @@ const HomePage = () => {
                     break;
 
                 case "effect":
-                    setTimelinesEffect((prevEffect) => {
+                    setTempTimelinesEffect((prevEffect) => {
                         const updatedEffect = [...prevEffect];
                         const effect = updatedEffect[timelineIndex].effects[itemIndex];
 
@@ -2129,7 +2129,7 @@ const HomePage = () => {
                     break;
 
                 case "filter":
-                    setTimelinesFilter((prevFilter) => {
+                    setTempTimelinesFilter((prevFilter) => {
                         const updatedFilter = [...prevFilter];
                         const filter = updatedFilter[timelineIndex].filters[itemIndex];
 
@@ -2160,6 +2160,37 @@ const HomePage = () => {
     };
 
     const handleMouseUp = () => {
+        const {type} = resizingInfoRef.current || {};
+        console.log("type after update: ", type);
+        switch (type) {
+            case "video":
+                setTimelineVideos([...tempTimelineVideos]);
+                setTempTimelineVideos([]);
+                break
+            case "text":
+                setTempTimelinesText([...tempTimelinesText]);
+                setTempTimelinesText(
+                    []);
+                break;
+            case "audio":
+                setTimelinesAudio([...tempTimelinesAudio]);
+                setTempTimelinesAudio([]);
+                break;
+            case "sticker":
+                setTimelinesSticker([...tempTimelinesSticker]);
+                setTempTimelinesSticker([]);
+                break;
+            case "effect":
+                setTimelinesEffect([...tempTimelinesEffect]);
+                setTempTimelinesEffect([]);
+                break;
+            case "filter":
+                setTimelinesFilter([...tempTimelinesFilter]);
+                setTempTimelinesFilter([]);
+                break;
+            default:
+                break;
+        }
         setIsResizing(false);
         window.removeEventListener('mousemove', handleMouseMove);
         window.removeEventListener('mouseup', handleMouseUp);
@@ -2239,7 +2270,6 @@ const HomePage = () => {
         const newScaleValueWidth = parseFloat(e.target.value);
         setScaleValueWidthSticker(newScaleValueWidth);
     };
-
 
     const updateSliderHeightValue = (e) => {
         const newScaleValueHeight = parseFloat(e.target.value);
@@ -2359,7 +2389,6 @@ const HomePage = () => {
         setScaleValueWidthSticker(numericValue);
     };
 
-
     const updateSliderHeightSticker = (value) => {
         let numericValue = parseInt(value.replace("%", ""), 10);
         if (numericValue > 400) numericValue = 400;
@@ -2373,7 +2402,6 @@ const HomePage = () => {
         if (numericValue < 1) numericValue = 1;
         setScaleValueHeight(numericValue);
     };
-
 
     const updateVoice = (value) => {
         let numericValue = parseInt(value.replace("dB", ""), 10);
@@ -2766,6 +2794,30 @@ const HomePage = () => {
         setTextIndex(Index);
     };
 
+    const handleAudioSelect = (audio, timelineIndex, Index) => {
+        setSelectedAudio(audio);
+        setTimelineAudioIndex(timelineIndex);
+        setAudioIndex(Index);
+    };
+
+    const handleStickerSelect = (sticker, timelineIndex, Index) => {
+        setSelectedSticker(sticker);
+        setTimelineStickerIndex(timelineIndex);
+        setStickerIndex(Index);
+    };
+
+    const handleEffectSelect = (effect, timelineIndex, Index) => {
+        setSelectedEffect(effect);
+        setTimelineEffectIndex(timelineIndex);
+        setEffectIndex(Index);
+    };
+
+    const handleFilterSelect = (filter, timelineIndex, Index) => {
+        setSelectedFilter(filter);
+        setTimelineFilterIndex(timelineIndex);
+        setFilterIndex(Index);
+    };
+
     const handleFontTextChange = (e) => {
         setFontText(e.target.value);
     }
@@ -2810,22 +2862,26 @@ const HomePage = () => {
         const seekPercentage = parseFloat(e.target.value);
         const seekTime = (seekPercentage / 100) * totalDuration;
 
-
         if (videoElement && videoElement.seekable.length > 0) {
             const seekableStart = videoElement.seekable.start(0);
             const seekableEnd = videoElement.seekable.end(0);
 
-            if (seekTime >= seekableStart && seekTime <= seekableEnd) {
-                videoElement.currentTime = seekTime;
-                videoRef.current.play();
-                setPlayVideo(true);
+            if (seekTime >= 0 && seekTime <= totalDuration) {
+                if (seekTime >= seekableStart && seekTime <= seekableEnd) {
+                    videoElement.currentTime = seekTime;
+                }
+                if (playVideo){
+                videoRef.current.pause();
+                Object.values(audioRefs.current).forEach(audio => audio.pause());
+                setPlayVideo(false);
+                setIsTimerRunning(false);
+                }
             } else {
                 console.log(`Seek time (${seekTime}) is out of seekable range: ${seekableStart} - ${seekableEnd}`);
             }
         } else {
-            console.log('Không có video hoặc video không thể tua.');
+            console.log('No video or video cannot be rewind.');
         }
-
 
         setCurrentTime(seekTime);
 
@@ -2943,6 +2999,7 @@ const HomePage = () => {
                     console.log('Updated timelines (stickers) after delete:', updated);
                     return updated;
                 });
+                handleMergeVideo(totalDuration)
                 break;
 
             case 'effect':
@@ -2956,6 +3013,7 @@ const HomePage = () => {
                     console.log('Updated timelines (effects) after delete:', updated);
                     return updated;
                 });
+                handleMergeVideo(totalDuration)
                 break;
 
             case 'filter':
@@ -2969,6 +3027,7 @@ const HomePage = () => {
                     console.log('Updated timelines (filters) after delete:', updated);
                     return updated;
                 });
+                handleMergeVideo(totalDuration)
                 break;
 
             default:
@@ -3011,7 +3070,6 @@ const HomePage = () => {
     }
 
     const handleCut = (elementType, element) => {
-
         switch (elementType) {
             case "video":
                 splitVideo(element, currentTime);
@@ -3065,7 +3123,6 @@ const HomePage = () => {
 
             const part1_duration = currentTime - video.startTime
             const part2_duration = video.duration - part1_duration
-
 
             const segmentWidthFirst = (part1_duration / 30) * 100;
             const segmentWidthLast = (part2_duration / 30) * 100;
@@ -3667,13 +3724,13 @@ const HomePage = () => {
                             handleEffectClick();
                             clearInterval(interval);
                             setPlayVideo(false);
+                            setCurrentTime(0)
                         }
                         return updatedTime;
                     }
 
                     if (isTimerRunning) {
                         const newTime = prevTime + 0.1;
-
 
                         if (newTime >= totalDuration) {
                             clearInterval(interval);
@@ -3853,11 +3910,6 @@ const HomePage = () => {
     }, [textContent, fontText, fontSizeText, patternText, caseText, scaleText, positionXText, positionYText, rotateText, opacityText, bold, underline, italic, styleOfText]);
 
     useEffect(() => {
-        console.log(`Time line Text: ${JSON.stringify(timelinesText)}`)
-    }, [timelinesText])
-
-
-    useEffect(() => {
         setTimelinesSticker((prevStickers) => {
             return prevStickers.map((timelineSticker, index) => {
                 if (index !== timelineStickerIndex) return timelineSticker;
@@ -3933,49 +3985,6 @@ const HomePage = () => {
     }, [selectedElement]);
 
     useEffect(() => {
-        setTimelinesAudio((prevAudios) => {
-            return prevAudios.map((timelineAudio, index) => {
-                if (index !== timelineAudioIndex) return timelineAudio;
-
-                const updatedAudios = [...timelineAudio.audios];
-                const audio = updatedAudios[audioIndex];
-
-                const duration = audio.duration / speedValueAudio;
-
-                const totalTimelineDuration = Math.max(totalDuration, 30);
-                const segmentWidth = (duration / totalTimelineDuration) * 100;
-
-                if (!audio) return timelineAudio;
-
-                const updatedAudio = {
-                    ...audio,
-                    width: segmentWidth,
-                    voice: voiceValueAudio,
-                    speed: speedValueAudio
-                };
-
-                return {
-                    ...timelineAudio,
-                    audios: updatedAudios.map((v, i) => (i === audioIndex ? updatedAudio : v))
-                };
-            });
-        });
-    }, [voiceValueAudio, speedValueAudio]);
-
-    useEffect(() => {
-        const videoElement = videoRef.current;
-        if (videoElement) {
-            videoElement.addEventListener('seeked', () => {
-            });
-
-            return () => {
-                videoElement.removeEventListener('seeked', () => {
-                });
-            };
-        }
-    }, []);
-
-    useEffect(() => {
         const videoElement = videoRef.current;
         if (videoElement) {
             const handlePause = () => {
@@ -3991,38 +4000,28 @@ const HomePage = () => {
     }, [timelinesAudio]);
 
     useEffect(() => {
-        timelinesAudio.forEach((timeline) => {
-            timeline.audios.forEach((audioSegment) => {
-                if (!audioRefs.current[audioSegment.url]) {
-                    audioRefs.current[audioSegment.url] = new window.Audio(audioSegment.url);
-                }
-                const audioElement = audioRefs.current[audioSegment.url];
-                if (playVideo && currentTime >= audioSegment.startTime && currentTime <= audioSegment.endTime) {
-                    if (audioElement.paused) {
-                        audioElement.play().catch(err => console.error("Error playing audio:", err));
-                    }
-                } else {
-                    if (!audioElement.paused) {
-                        audioElement.pause();
-                        audioElement.currentTime = 0;
-                    }
-                }
-            });
-        });
-        return () => {
-            timelinesAudio.forEach((timeline) => {
-                timeline.audios.forEach((audioSegment) => {
-                    const audioElement = new window.Audio(audioSegment.url);
-                    audioElement.pause();
-                    audioElement.currentTime = 0;
-                });
-            });
-        };
-    }, [currentTime, timelinesAudio]);
+        setTempTimelineVideos(timelineVideos);
+    }, [timelineVideos]);
 
     useEffect(() => {
-        console.log(`timeline Video: ${JSON.stringify(timelineVideos)}`);
-    }, [timelineVideos]);
+        setTempTimelinesText(timelinesText);
+    }, [timelinesText]);
+
+    useEffect(() => {
+        setTempTimelinesAudio(timelinesAudio);
+    }, [timelinesAudio]);
+
+    useEffect(() => {
+        setTempTimelinesSticker(timelinesSticker);
+    }, [timelinesSticker]);
+
+    useEffect(() => {
+        setTempTimelinesEffect(timelinesEffect);
+    }, [timelinesEffect]);
+
+    useEffect(() => {
+        setTempTimelinesFilter(timelinesFilter);
+    }, [timelinesFilter]);
 
     return (
         <body>
@@ -4056,7 +4055,7 @@ const HomePage = () => {
                 </div>
                 {isLogin ? (
                     <div className="profile-user" onClick={handleSaveEditSession}>
-                        <img src={logo} alt="User image"/>
+                        <img src={user.image} alt="User image"/>
                     </div>
                 ) : (
                     <div className="login-btn">
@@ -6147,7 +6146,6 @@ const HomePage = () => {
                             </Layer>
                         </Stage>
 
-
                         <div className="player-actions">
                             <div className="time-play-player">
                                 <span>{currentTime ? formatTime(currentTime) : "0:00"}</span>
@@ -6601,7 +6599,6 @@ const HomePage = () => {
                                                     </SubMenu>
                                                     <SubMenu title="Canvas" label="Canvas" id="btn-dropdown"
                                                              className="btn-dropdown">
-                                                        {/* Canvas Option Dropdown */}
                                                         <MenuItem
                                                             className="type-video-basic-canvas video-basic-option-edit">
                                                             <select
@@ -6617,7 +6614,6 @@ const HomePage = () => {
                                                             </select>
                                                         </MenuItem>
 
-                                                        {/* Blur Option */}
                                                         {canvasOption === 'blur' && (
                                                             <MenuItem className="video-basic-blur-option">
                                                                 <div className="blur-option-wrap">
@@ -6635,7 +6631,6 @@ const HomePage = () => {
                                                             </MenuItem>
                                                         )}
 
-                                                        {/* Color Option */}
                                                         {canvasOption === 'color' && (
                                                             <MenuItem className="video-basic-color-option">
                                                                 <div className="color-option-wrap">
@@ -7208,7 +7203,6 @@ const HomePage = () => {
                                                             </MenuItem>
                                                         )}
 
-                                                        {/* Pattern Option */}
                                                         {canvasOption === 'pattern' && (
                                                             <MenuItem className="video-basic-pattern-option">
                                                                 <div className="pattern-option-wrap">
@@ -8324,7 +8318,7 @@ const HomePage = () => {
                                     onClick={() => {
                                         handleMenuEditType("audio");
                                         handleClick(audioSegment, "audio");
-                                        handleTextSelect(audioSegment, timelineIndex, index);
+                                        handleAudioSelect(audioSegment, timelineIndex, index);
                                         handleChooseFile("audio", audioSegment);
                                     }}
                                     onDoubleClick={() => handleDoubleClick(audioSegment, "audio")}>
@@ -8365,7 +8359,7 @@ const HomePage = () => {
                                     onClick={() => {
                                         handleMenuEditType("sticker");
                                         handleClick(stickerSegment, "sticker");
-                                        handleTextSelect(stickerSegment, timelineIndex, index);
+                                        handleStickerSelect(stickerSegment, timelineIndex, index);
                                         handleChooseFile("sticker", stickerSegment);
                                     }}
                                     onDoubleClick={() => handleDoubleClick(stickerSegment, "sticker")}>
@@ -8406,7 +8400,7 @@ const HomePage = () => {
                                     onClick={() => {
                                         handleMenuEditType("effect");
                                         handleClick(effectSegment, "effect");
-                                        handleTextSelect(effectSegment, timelineIndex, index);
+                                        handleEffectSelect(effectSegment, timelineIndex, index);
                                         handleChooseFile("effect", effectSegment);
                                     }}
                                     onDoubleClick={() => handleDoubleClick(effectSegment, "effect")}>
@@ -8447,7 +8441,7 @@ const HomePage = () => {
                                     onClick={() => {
                                         handleMenuEditType("filter");
                                         handleClick(filterSegment, "filter");
-                                        handleTextSelect(filterSegment, timelineIndex, index);
+                                        handleFilterSelect(filterSegment, timelineIndex, index);
                                         handleChooseFile("filter", filterSegment);
                                     }}
                                     onDoubleClick={() => handleDoubleClick(filterSegment, "filter")}>
@@ -8488,7 +8482,6 @@ const HomePage = () => {
                         </div>
                     )}
                 </div>
-
             </div>
         </div>
         </body>

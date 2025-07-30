@@ -576,14 +576,14 @@ const User = () => {
         sentTime: sentTime,
     };
 
-    const updatedMessageContents = [...messageContents, newMessage]; // Lấy dữ liệu mới nhất
+    const updatedMessageContents = [...messageContents, newMessage]; 
 
     try {
         const response = await axios.post(`http://localhost:8000/myapp/update_message/${user.id}/`, {
-            messageContents: updatedMessageContents, // Sử dụng messageContents đã cập nhật
+            messageContents: updatedMessageContents, 
         }, {
             headers: {
-                'Content-Type': 'application/json', // Sử dụng JSON thay vì multipart/form-data
+                'Content-Type': 'application/json', 
                 Authorization: `Bearer ${token}`,
             },
         });

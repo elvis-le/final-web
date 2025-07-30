@@ -37,7 +37,9 @@ import json
 import logging
 import tempfile
 import cv2
+import math
 from pydub import AudioSegment
+import requests
 
 os.environ['TMPDIR'] = '/home/khanh123/my_temp'
 
@@ -45,6 +47,7 @@ os.environ['TMPDIR'] = '/home/khanh123/my_temp'
 def home(request):
     return render(request, 'home.html')
 
+logger = logging.getLogger(__name__)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -83,9 +86,8 @@ def save_edit_session(request):
 
     edit_session, created = EditSession.objects.get_or_create(user=user, project_id=project_id)
 
-    if not created:
-        edit_session.actions = actions
-        edit_session.save()
+    edit_session.actions = actions
+    edit_session.save()
 
     return Response({'message': 'Edit session saved successfully'}, status=200)
 
@@ -113,82 +115,12 @@ def get_edit_session(request, project_id):
         logger.error(f"Error fetching edit session: {e}")
         return Response({'error': str(e)}, status=500)
 
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def validate_token(request):
     return Response({"message": "Token is valid"}, status=200)
 
-
-logger = logging.getLogger(__name__)
-
-
-@csrf_exempt
-def cut_video(request):
-    logger.info('Received a request to cut video.')
-    if request.method == 'POST':
-        try:
-            start_time = float(request.POST.get('start'))
-            end_time = float(request.POST.get('end'))
-            video_file = request.FILES.get('file')
-
-            if not video_file:
-                logger.error('No video file provided.')
-                return JsonResponse({'message': 'No video file provided'}, status=400)
-
-            if start_time >= end_time or start_time < 0:
-                logger.error('Invalid start or end time.')
-                return JsonResponse({'message': 'Invalid start or end time'}, status=400)
-
-            with NamedTemporaryFile(delete=False, suffix='.mp4') as temp_file:
-                for chunk in video_file.chunks():
-                    temp_file.write(chunk)
-                temp_file_path = temp_file.name
-
-            logger.info(f'Temporary file created at: {temp_file_path}')
-
-            with VideoFileClip(temp_file_path) as video:
-                new_clip = video.subclip(start_time, end_time)
-                output_path = os.path.join(settings.MEDIA_ROOT, 'cut_video.mp4')
-                new_clip.write_videofile(output_path, codec='libx264')
-
-            logger.info(f'Video cut successfully at: {output_path}')
-            return JsonResponse({'video_url': f'/media/cut_video.mp4'})
-        except Exception as e:
-            logger.error(f"Error while cutting video: {e}")
-            return JsonResponse({'message': f'Error while processing video: {str(e)}'}, status=500)
-    return JsonResponse({'message': 'Invalid request method'}, status=400)
-
-
 change_settings({"IMAGEMAGICK_BINARY": "/usr/bin/convert"})
-
-
-@csrf_exempt
-def add_text_to_video(request):
-    if request.method == 'POST':
-        try:
-            video_file = request.FILES['file']
-            text_to_add = request.POST['text']
-
-            output_filename = 'output_video.mp4'
-            output_file_path = os.path.join(settings.MEDIA_ROOT, output_filename)
-
-            video = VideoFileClip(video_file.temporary_file_path())
-
-            text_clip = TextClip(text_to_add, fontsize=70, color='white').set_position(
-                ('center', 'bottom')).set_duration(video.duration)
-
-            video_with_text = CompositeVideoClip([video, text_clip])
-
-            video_with_text.write_videofile(output_file_path)
-
-            return JsonResponse({'video_url': f'{settings.MEDIA_URL}{output_filename}'})
-
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-
-    return JsonResponse({'error': 'Invalid request method'}, status=400)
-
 
 def apply_effect_in_time_range(clip, config, startTime, endTime):
     effect_name = config.get('name', 'default')
@@ -235,7 +167,6 @@ def apply_effect_in_time_range(clip, config, startTime, endTime):
 
     return final_clip
 
-
 def apply_blur_effect(clip, config, startTime, endTime):
     blur_value = 61
     print(f"Applying blur with value: {blur_value} from {startTime} to {endTime}")
@@ -263,7 +194,6 @@ def apply_blur_effect(clip, config, startTime, endTime):
 
     return blur_clip.subclip(startTime, endTime)
 
-
 def apply_glitch_effect(clip, config, startTime, endTime):
     min_x = config.get('min_x', -20)
     max_x = config.get('max_x', 20)
@@ -282,8 +212,7 @@ def apply_glitch_effect(clip, config, startTime, endTime):
         return frame
 
     glitch_clip = clip.fl(glitch_frame)
-    return glitch_clip
-
+    return glitch_clip.subclip(startTime, endTime)
 
 def apply_tilt_shift_effect(clip, config, startTime, endTime):
     blur_value = config.get('blur', 10)
@@ -322,14 +251,12 @@ def apply_tilt_shift_effect(clip, config, startTime, endTime):
 
     return tilt_shift_clip.subclip(startTime, endTime)
 
-
 def apply_invert_colors_effect(clip, config, startTime, endTime):
     def invert_frame(frame):
         return 255 - frame
 
     inverted_clip = clip.fl_image(invert_frame)
     return inverted_clip.subclip(startTime, endTime)
-
 
 def apply_pixelate_effect(clip, config, startTime, endTime):
     def pixelate_frame(frame):
@@ -338,7 +265,6 @@ def apply_pixelate_effect(clip, config, startTime, endTime):
 
     pixelated_clip = clip.fl_image(pixelate_frame)
     return pixelated_clip.subclip(startTime, endTime)
-
 
 def apply_sepia_tone_effect(clip, config, startTime, endTime):
     def sepia_frame(frame):
@@ -350,7 +276,6 @@ def apply_sepia_tone_effect(clip, config, startTime, endTime):
     sepia_clip = clip.fl_image(sepia_frame)
     return sepia_clip.subclip(startTime, endTime)
 
-
 def apply_hue_rotate_effect(clip, config, startTime, endTime):
     hue_value = config.get('hue', 180)
 
@@ -361,7 +286,6 @@ def apply_hue_rotate_effect(clip, config, startTime, endTime):
 
     hue_rotated_clip = clip.fl_image(hue_rotate_frame)
     return hue_rotated_clip.subclip(startTime, endTime)
-
 
 def apply_ghost_effect(clip, config, startTime, endTime):
     blur_value = 61
@@ -398,7 +322,6 @@ def apply_ghost_effect(clip, config, startTime, endTime):
 
     return ghost_clip.subclip(startTime, endTime)
 
-
 def apply_lens_zoom_effect(clip, config, startTime, endTime):
     zoom_level = config.get('zoom_level', 1.5)
 
@@ -411,7 +334,6 @@ def apply_lens_zoom_effect(clip, config, startTime, endTime):
     zoom_clip = clip.fl(zoom_frame)
     return zoom_clip.subclip(startTime, endTime)
 
-
 def apply_shake_effect(clip, config, startTime, endTime):
     def shake_frame(get_frame, t):
         frame = get_frame(t)
@@ -422,7 +344,6 @@ def apply_shake_effect(clip, config, startTime, endTime):
     shake_clip = clip.fl(shake_frame)
     return shake_clip.subclip(startTime, endTime)
 
-
 def apply_old_film_effect(clip, config, startTime, endTime):
     def old_film_frame(get_frame, t):
         frame = get_frame(t)
@@ -432,7 +353,6 @@ def apply_old_film_effect(clip, config, startTime, endTime):
 
     old_film_clip = clip.fl_image(old_film_frame)
     return old_film_clip.subclip(startTime, endTime)
-
 
 def apply_zoom_in_out_effect(clip, config, startTime, endTime):
     zoom_level = config.get('zoom_level', 1.5)
@@ -446,7 +366,6 @@ def apply_zoom_in_out_effect(clip, config, startTime, endTime):
     zoom_clip = clip.fl(zoom_frame)
     return zoom_clip.subclip(startTime, endTime)
 
-
 def apply_zoom_blur_effect(clip, config, startTime, endTime):
     blur_value = config.get('blur', 10)
 
@@ -456,7 +375,6 @@ def apply_zoom_blur_effect(clip, config, startTime, endTime):
 
     zoom_blur_clip = clip.fl_image(zoom_blur_frame)
     return zoom_blur_clip.subclip(startTime, endTime)
-
 
 def apply_color_shift_effect(clip, config, startTime, endTime):
     hue_shift_value = 60
@@ -469,7 +387,6 @@ def apply_color_shift_effect(clip, config, startTime, endTime):
     color_shift_clip = clip.fl_image(color_shift_frame)
     return color_shift_clip.subclip(startTime, endTime)
 
-
 def apply_echo_effect(clip, config, startTime, endTime):
     def echo_frame(get_frame, t):
         frame = get_frame(t)
@@ -477,7 +394,6 @@ def apply_echo_effect(clip, config, startTime, endTime):
 
     echo_clip = clip.fl_image(echo_frame)
     return echo_clip.subclip(startTime, endTime)
-
 
 def apply_ripple_effect(clip, config, startTime, endTime):
     def ripple_frame(get_frame, t):
@@ -494,7 +410,6 @@ def apply_ripple_effect(clip, config, startTime, endTime):
     ripple_clip = clip.fl(ripple_frame)
     return ripple_clip.subclip(startTime, endTime)
 
-
 def apply_radial_zoom_effect(clip, config, startTime, endTime):
     def radial_zoom_frame(get_frame, t):
         frame = get_frame(t)
@@ -504,7 +419,6 @@ def apply_radial_zoom_effect(clip, config, startTime, endTime):
 
     radial_zoom_clip = clip.fl(radial_zoom_frame)
     return radial_zoom_clip.subclip(startTime, endTime)
-
 
 def apply_filter_in_time_range(clip, config, startTime, endTime):
     filter_name = config.get('name', 'default')
@@ -565,7 +479,6 @@ def apply_filter_in_time_range(clip, config, startTime, endTime):
 
     return final_clip
 
-
 def crisp_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
     brightness = params.get("brightness", 1.15)
@@ -576,7 +489,6 @@ def crisp_filter(clip, config, startTime, endTime):
     clip = lum_contrast(clip, contrast)
 
     return clip.subclip(startTime, endTime)
-
 
 def blue_sky_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
@@ -598,10 +510,8 @@ def blue_sky_filter(clip, config, startTime, endTime):
 
     return clip.fl_image(enhance_blue_sky).subclip(startTime, endTime)
 
-
 def adjust_brightness(clip, factor):
     return colorx(clip, factor)
-
 
 def adjust_hue(clip, hue_shift):
     def hue_transform(frame):
@@ -611,7 +521,6 @@ def adjust_hue(clip, hue_shift):
 
     return clip.fl_image(hue_transform)
 
-
 def add_grain(clip, intensity=0.3):
     def grain_effect(frame):
         noise = np.random.normal(0, intensity * 255, frame.shape).astype(np.uint8)
@@ -619,18 +528,14 @@ def add_grain(clip, intensity=0.3):
 
     return clip.fl_image(grain_effect)
 
+def blur(clip, blur_strength):
+    def apply_blur(frame):
+        img = Image.fromarray(frame)
+        img = img.filter(ImageFilter.GaussianBlur(blur_strength))
+        return np.array(img)
+    return clip.fl_image(apply_blur)
 
-def apply_blur(image_array, blur_strength=10):
-    img = Image.fromarray(image_array)
-    img = img.filter(ImageFilter.GaussianBlur(blur_strength))
-    return np.array(img)
-
-
-def blur(clip, blur_strength=10):
-    return clip.fl_image(lambda frame: apply_blur(frame, blur_strength))
-
-
-def lum_contrast(clip, contrast=1.0):
+def lum_contrast(clip, contrast):
     def adjust_contrast(image_array):
         factor = (259 * (contrast + 255)) / (255 * (259 - contrast))
 
@@ -641,13 +546,11 @@ def lum_contrast(clip, contrast=1.0):
 
     return clip.fl_image(adjust_contrast)
 
-
 def enhance_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
     color_factor = params.get("color_factor", 1.5)
     clip = colorx(clip, factor=color_factor)
     return clip.subclip(startTime, endTime)
-
 
 def vintage_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
@@ -655,22 +558,24 @@ def vintage_filter(clip, config, startTime, endTime):
     clip = colorx(clip, factor=color_factor)
     return clip.subclip(startTime, endTime)
 
-
 def pastel_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
     color_factor = params.get("color_factor", 0.9)
     clip = colorx(clip, factor=color_factor)
     return clip.subclip(startTime, endTime)
 
-
 def highlight_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
     brightness = params.get("brightness", 1.3)
     saturation = params.get("saturation", 1.4)
-    clip = colorx(clip, factor=brightness)
-    clip = colorx(clip, factor=saturation)
-    return clip.subclip(startTime, endTime)
+    def enhance_frame(frame):
+        hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
+        hsv[:, :, 1] = np.clip(hsv[:, :, 1] * saturation, 0, 255)
+        hsv[:, :, 2] = np.clip(hsv[:, :, 2] * brightness, 0, 255)
+        return cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
 
+    clip = clip.fl_image(enhance_frame)
+    return clip.subclip(startTime, endTime)
 
 def dramatic_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
@@ -680,15 +585,19 @@ def dramatic_filter(clip, config, startTime, endTime):
     clip = colorx(clip, factor=color_factor)
     return clip.subclip(startTime, endTime)
 
-
 def sepia_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
     color_factor = params.get("color_factor", 0.8)
     saturation = params.get("saturation", 0.6)
     clip = colorx(clip, factor=color_factor)
-    clip = colorx(clip, factor=saturation)
-    return clip.subclip(startTime, endTime)
 
+    def enhance_frame(frame):
+        hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
+        hsv[:, :, 1] = np.clip(hsv[:, :, 1] * saturation, 0, 255)
+        return cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+
+    clip = clip.fl_image(enhance_frame)
+    return clip.subclip(startTime, endTime)
 
 def vintage_glow_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
@@ -713,7 +622,6 @@ def vintage_glow_filter(clip, config, startTime, endTime):
 
     return clip.fl_image(add_vintage_glow).subclip(startTime, endTime)
 
-
 def soft_focus_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
     blur_strength = params.get("blur_strength", 15)
@@ -731,24 +639,31 @@ def soft_focus_filter(clip, config, startTime, endTime):
 
     return clip.fl_image(add_soft_focus).subclip(startTime, endTime)
 
-
 def film_noir_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
     contrast = params.get("contrast", 1.8)
     saturation = params.get("saturation", 0.2)
     clip = lum_contrast(clip, contrast)
-    clip = colorx(clip, factor=saturation)
-    return clip.subclip(startTime, endTime)
+    def enhance_frame(frame):
+        hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
+        hsv[:, :, 1] = np.clip(hsv[:, :, 1] * saturation, 0, 255)
+        return cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
 
+    clip = clip.fl_image(enhance_frame)
+    return clip.subclip(startTime, endTime)
 
 def faded_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
     saturation = params.get("saturation", 0.6)
     brightness = params.get("brightness", 0.9)
-    clip = colorx(clip, factor=saturation)
+    def enhance_frame(frame):
+        hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
+        hsv[:, :, 1] = np.clip(hsv[:, :, 1] * saturation, 0, 255)
+        return cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+
+    clip = clip.fl_image(enhance_frame)
     clip = colorx(clip, factor=brightness)
     return clip.subclip(startTime, endTime)
-
 
 def dreamy_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
@@ -757,7 +672,6 @@ def dreamy_filter(clip, config, startTime, endTime):
     clip = blur(clip, blur_strength)
     clip = colorx(clip, factor=brightness)
     return clip.subclip(startTime, endTime)
-
 
 def bright_life_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
@@ -769,7 +683,6 @@ def bright_life_filter(clip, config, startTime, endTime):
     clip = lum_contrast(clip, contrast)
     return clip.fl_image(lambda img: cv2.addWeighted(img, 1, img, warmth - 1, 0)).subclip(startTime, endTime)
 
-
 def vibrant_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
     brightness = params.get("brightness", 1.1)
@@ -780,7 +693,6 @@ def vibrant_filter(clip, config, startTime, endTime):
     return lum_contrast(clip, contrast).fl_image(
         lambda img: cv2.cvtColor(cv2.convertScaleAbs(img, alpha=saturation), cv2.COLOR_BGR2HSV)).subclip(startTime,
                                                                                                          endTime)
-
 
 def fresh_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
@@ -794,7 +706,6 @@ def fresh_filter(clip, config, startTime, endTime):
     clip = colorx(clip, cool_tone)
     return clip.subclip(startTime, endTime)
 
-
 def sunny_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
     brightness = params.get("brightness", 1.2)
@@ -804,8 +715,8 @@ def sunny_filter(clip, config, startTime, endTime):
     clip = colorx(clip, brightness)
     clip = colorx(clip, warmth)
     clip = colorx(clip, color_factor)
-    return clip.subclip(startTime, endTime)
 
+    return clip.subclip(startTime, endTime)
 
 def sunrise_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
@@ -821,7 +732,6 @@ def sunrise_filter(clip, config, startTime, endTime):
     clip = colorx(clip, brightness)
     return clip.fl_image(apply_warm_tone).subclip(startTime, endTime)
 
-
 def green_boost_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
     saturation = params.get("saturation", 1.3)
@@ -829,24 +739,25 @@ def green_boost_filter(clip, config, startTime, endTime):
     green_intensity = params.get("green_intensity", 1.4)
 
     clip = colorx(clip, color_factor)
-    clip = colorx(clip, saturation)
-    clip = colorx(clip, green_intensity)
-    return clip.subclip(startTime, endTime)
-
+    def apply_green_boost(img):
+        hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+        hsv[:, :, 1] = np.clip(hsv[:, :, 1] * saturation, 0, 255)
+        hsv[:, :, 0] = np.clip(hsv[:, :, 0] * green_intensity, 0, 255)
+        return cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+    return clip.fl_image(apply_green_boost).subclip(startTime, endTime)
 
 def nature_boost_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
     saturation = params.get("saturation", 1.4)
     green_intensity = params.get("green_intensity", 1.5)
 
-    def apply_green_boost(img):
+    def apply_nature_boost(img):
         hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
         hsv[:, :, 1] = np.clip(hsv[:, :, 1] * saturation, 0, 255)
         hsv[:, :, 0] = np.clip(hsv[:, :, 0] * green_intensity, 0, 255)
         return cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
 
-    return clip.fl_image(apply_green_boost).subclip(startTime, endTime)
-
+    return clip.fl_image(apply_nature_boost).subclip(startTime, endTime)
 
 def muted_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
@@ -860,7 +771,6 @@ def muted_filter(clip, config, startTime, endTime):
     clip = adjust_brightness(clip, brightness)
 
     return clip.subclip(startTime, endTime)
-
 
 def cinematic_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
@@ -892,7 +802,6 @@ def cinematic_filter(clip, config, startTime, endTime):
 
     return clip.subclip(startTime, endTime)
 
-
 def gritty_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
     contrast = params.get("contrast", 1.8)
@@ -903,7 +812,6 @@ def gritty_filter(clip, config, startTime, endTime):
     clip = adjust_brightness(clip, brightness)
     clip = add_grain(clip, grain_intensity)
     return clip.subclip(startTime, endTime)
-
 
 def neon_filter(clip, config, startTime, endTime):
     params = config.get('params', {})
@@ -968,10 +876,8 @@ def split_video(request):
         video_url = video.video_url
         logger.info(f"Video URL: {video_url}")
 
-
         local_video_path = download_video(video_url)
         logger.info(f"Downloaded video to {local_video_path}")
-
 
         with VideoFileClip(local_video_path) as clip:
             logger.info(f"Video duration: {clip.duration}")
@@ -1016,8 +922,6 @@ def split_video(request):
     except Exception as e:
         logger.error(f"Error during video splitting: {e}", exc_info=True)
         return JsonResponse({"error": str(e)}, status=500)
-
-import requests
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -1162,9 +1066,6 @@ def merge_video(request):
                 new_width, new_height = video_clip.size
                 print(f"New video size after rotation: {new_width}, {new_height}")
 
-                new_width, new_height = video_clip.size
-                print(f"Video size after resize: {new_width}, {new_height}")
-
                 centerX = (video_width - new_width) / 2 + positionX
 
                 centerY = (video_height - new_height) / 2 + positionY
@@ -1173,7 +1074,7 @@ def merge_video(request):
 
                 if opacity < 1.0:
                     video_clip = video_clip.set_opacity(opacity)
-                #
+
 
                 if speed != 1.0:
                     video_clip = video_clip.fx(vfx.speedx, speed)
@@ -1208,8 +1109,6 @@ def merge_video(request):
 
                     new_width, new_height = image_clip.size
 
-                    new_width, new_height = image_clip.size
-
                     centerX = (video_width - new_width) / 2 + positionX
 
                     centerY = (video_height - new_height) / 2 + positionY
@@ -1218,7 +1117,6 @@ def merge_video(request):
 
                     if opacity < 1.0:
                         image_clip = image_clip.set_opacity(opacity)
-                    #
 
                     if speed != 1.0:
                         image_clip = image_clip.fx(vfx.speedx, speed)
@@ -1352,16 +1250,6 @@ def apply_audio(request):
         traceback.print_exc()
 
         return JsonResponse({'error': f'Internal server error: {str(e)}'}, status=500)
-
-def resize_gif(gif_path, scale):
-    gif = VideoFileClip(gif_path)
-    frames = []
-    for frame in gif.iter_frames(fps=gif.fps, dtype="uint8"):
-        image = Image.fromarray(frame)
-        image = image.resize((int(image.width * scale), int(image.height * scale)))
-        frames.append(np.array(image))
-    new_gif = ImageSequenceClip(frames, fps=gif.fps)
-    return new_gif
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -1724,11 +1612,6 @@ def export_video(request):
         print(f"Received audios: {audios}")
         print(f"Received texts: {texts}")
 
-        try:
-            texts = json.loads(texts) if isinstance(texts, str) else texts
-        except json.JSONDecodeError as e:
-            return JsonResponse({'error': f'Error decoding JSON: {str(e)}'}, status=400)
-
         video_clips = []
         if edited_video_url:
             response = requests.get(edited_video_url)
@@ -1846,13 +1729,11 @@ def export_video(request):
                 content,
                 fontsize=fontSize,
                 color=color,
-                font= fontStyle,
-                stroke_color = stroke_color,
-                stroke_width = strokeWidth,
+                font=fontStyle,
+                stroke_color=stroke_color,
+                stroke_width=strokeWidth,
             ).set_position((positionX, positionY)).set_start(startTime).set_duration(duration)
 
-            if rotate_angle != 0:
-                text_clip = text_clip.rotate(-rotate_angle, resample="bilinear")
 
             if opacity < 1.0:
                 text_clip = text_clip.set_opacity(opacity)
@@ -1860,7 +1741,7 @@ def export_video(request):
             if speed != 1.0:
                 text_clip = text_clip.fx(vfx.speedx, speed)
 
-            clips = [text_clip]
+            clips = []
 
             def hex_to_rgb(hex_color):
                 hex_color = hex_color.lstrip('#')
@@ -1870,12 +1751,27 @@ def export_video(request):
 
             if underline:
                 text_width, text_height = text_clip.size
-                underline_clip = ColorClip(
-                    size=(text_width, 5),
-                    color=rgb_color
-                ).set_position((positionX, positionY + text_height + 5))
-                underline_clip = underline_clip.set_start(startTime).set_duration(duration)
+                underline_image = np.zeros((int(fontSize/10), int(text_width), 4), dtype=np.uint8)
+                underline_image[:, :, :3] = rgb_color
+                underline_image[:, :, 3] = 255
+
+                underline_clip = ImageClip(underline_image, ismask=False)
+
+                underline_clip = underline_clip.set_position((
+                    positionX,
+                    positionY + text_height
+                )).set_start(startTime).set_duration(duration)
+
+                if rotate_angle != 0:
+                    underline_clip = underline_clip.rotate(-rotate_angle, resample="bilinear")
+
                 clips.append(underline_clip)
+
+
+            if rotate_angle != 0:
+                text_clip = text_clip.rotate(-rotate_angle, resample="bilinear")
+
+            clips.append(text_clip)
 
             final_clip = CompositeVideoClip([final_clip] + clips)
 
@@ -1896,6 +1792,7 @@ def export_video(request):
         traceback.print_exc()
 
         return JsonResponse({'error': f'Internal server error: {str(e)}'}, status=500)
+
 def serve_video(request, filename):
     try:
         print(f"Serving video file: {filename}")
@@ -1913,81 +1810,6 @@ def serve_video(request, filename):
         print(f"File not found: {filename}")
         return JsonResponse({'error': 'File not found'}, status=404)
 
-@csrf_exempt
-def add_audio_to_video(request):
-    if request.method == 'POST':
-        video_file = request.FILES['video']
-        audio_file = request.FILES['audio']
-
-        with NamedTemporaryFile(delete=False, suffix='.mp4') as temp_video:
-            for chunk in video_file.chunks():
-                temp_video.write(chunk)
-            video_path = temp_video.name
-
-        with NamedTemporaryFile(delete=False, suffix='.mp3') as temp_audio:
-            for chunk in audio_file.chunks():
-                temp_audio.write(chunk)
-            audio_path = temp_audio.name
-
-        output_path = os.path.join(settings.MEDIA_ROOT, 'video_with_audio.mp4')
-
-        try:
-            video_clip = VideoFileClip(video_path)
-            audio_clip = AudioFileClip(audio_path)
-
-            video_with_audio = video_clip.set_audio(audio_clip)
-
-            video_with_audio.write_videofile(output_path, codec='libx264', audio_codec='aac')
-
-            return JsonResponse({'video_url': f'/media/video_with_audio.mp4'})
-
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-
-    return JsonResponse({'error': 'Invalid request method'}, status=400)
-
-@csrf_exempt
-def add_sticker_to_video(request):
-    if request.method == 'POST':
-        try:
-            video_file = request.FILES['file']
-            sticker_file = request.FILES['sticker_url']
-            position_x = int(request.POST['position_x'])
-            position_y = int(request.POST['position_y'])
-
-            video_temp_path = '/tmp/uploaded_video.mp4'
-            sticker_temp_path = '/tmp/uploaded_sticker.gif'
-
-            with open(video_temp_path, 'wb+') as destination:
-                for chunk in video_file.chunks():
-                    destination.write(chunk)
-
-            with open(sticker_temp_path, 'wb+') as destination:
-                for chunk in sticker_file.chunks():
-                    destination.write(chunk)
-
-            video = VideoFileClip(video_temp_path)
-
-            sticker = VideoFileClip(sticker_temp_path)
-
-            sticker = sticker.loop(duration=video.duration)
-
-            sticker = sticker.set_position((position_x, position_y))
-
-            video_with_sticker = CompositeVideoClip([video, sticker])
-
-            output_filename = 'video_with_sticker.mp4'
-            output_file_path = os.path.join(settings.MEDIA_ROOT, output_filename)
-
-            video_with_sticker.write_videofile(output_file_path, codec='libx264', audio_codec='aac')
-
-            return JsonResponse({'video_url': f'{settings.MEDIA_URL}{output_filename}'})
-
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-
-    return JsonResponse({'error': 'Invalid request method'}, status=400)
-
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
     return {
@@ -1998,7 +1820,7 @@ def get_tokens_for_user(user):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def google_auth_init(request):
-    page = request.GET.get('page', 'login')  
+    page = request.GET.get('page', 'login')
     print("Page parameter:", page)
     url = (
         f"https://accounts.google.com/o/oauth2/auth?"
@@ -2009,7 +1831,6 @@ def google_auth_init(request):
         f"state={page}"
     )
     return JsonResponse({"url": url})
-
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -2035,7 +1856,7 @@ def google_auth_callback(request):
     if "access_token" not in token_response_data:
         return JsonResponse({"error": "Authentication failed"}, status=400)
 
-    
+
     user_info_url = "https://www.googleapis.com/oauth2/v1/userinfo"
     headers = {"Authorization": f"Bearer {token_response_data['access_token']}"}
     user_info_response = requests.get(user_info_url, headers=headers)
@@ -2048,13 +1869,13 @@ def google_auth_callback(request):
     name = user_info.get("name", "")
     username = email.split('@')[0]
 
-    
+
     user = User.objects.filter(email=email).first()
 
     if page == "register":
-        
+
         if not user:
-            
+
             user = User.objects.create(
                 email=email,
                 fullname=name,
@@ -2080,14 +1901,14 @@ def google_auth_callback(request):
                 user.delete()
                 return JsonResponse({"error": "Failed to send verification email"}, status=500)
 
-            
+
             return redirect("http://localhost:3000/login")
         else:
-            
+
             return redirect("http://localhost:3000/login")
 
     elif page == "login":
-        
+
         if not user:
             return JsonResponse({"error": "User not found, please register first"}, status=400)
 
@@ -2254,8 +2075,6 @@ def new_message_notification():
         print(f"Error sending notification: {e}")
         logger.error(f"Error sending notification: {e}")
 
-
-
 def send_verification_email(user):
     token = default_token_generator.make_token(user)
     uid = urlsafe_base64_encode(force_bytes(user.pk))
@@ -2323,7 +2142,7 @@ def logout_user(request):
         token = RefreshToken(refresh_token)
         token.blacklist()
 
-        return Response({"message": "Đăng xuất thành công."}, status=200)
+        return Response({"message": "Logout successful."}, status=200)
     except Exception as e:
         return Response({"error": str(e)}, status=400)
 
@@ -2349,13 +2168,13 @@ def update_user(request, userId):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def update_message(request, userId):
-    # Nhận dữ liệu JSON từ request
+
     message_contents = request.data.get('messageContents')
 
     if not message_contents:
         return Response({'error': 'messageContents is required'}, status=400)
 
-    # Cập nhật hoặc tạo mới message
+
     message, created = Message.objects.get_or_create(user_id=userId, defaults={'content': message_contents})
 
     if not created:
@@ -2363,7 +2182,7 @@ def update_message(request, userId):
         message.save()
         new_message_notification()
 
-    # Sử dụng serializer để trả về dữ liệu
+
     serializer = MessageSerializer(message)
     return Response(serializer.data, status=200)
 

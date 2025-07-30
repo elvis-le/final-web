@@ -19,11 +19,13 @@ class AdminNotificationConsumer(AsyncWebsocketConsumer):
     async def new_user_notification(self, event):
         message = event['message']
         await self.send(text_data=json.dumps({
+            'type': 'new_user',
             'message': message
         }))
 
     async def new_message_notification(self, event):
         message = event['message']
         await self.send(text_data=json.dumps({
+            'type': 'new_message',
             'message': message
         }))

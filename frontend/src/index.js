@@ -34,7 +34,7 @@ import FilterEdit from "./components/Admin/FilterEdit";
 import Profile from "./components/Admin/Profile";
 import PrivateRoute from './components/PrivateRoute';
 import SetPassword from "./components/SetPassword";
-import Verified from "./components/Verified"; // Import component kiểm tra đăng nhập
+import Verified from "./components/Verified";
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

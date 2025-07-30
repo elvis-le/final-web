@@ -98,12 +98,11 @@ const Profile = ({onOptionSelect}) => {
                 setDialogMessage('File updated successfully!');
                 setDialogOpen(true);
             } else {
-
                 setDialogMessage('Can not update file!');
                 setDialogOpen(true);
             }
         } catch (error) {
-            console.error('Lỗi khi cập nhật file:', error.message);
+            console.error('Error while updating file:', error.message);
 
             setDialogMessage('Error to update file!');
             setDialogOpen(true);
@@ -117,7 +116,6 @@ const Profile = ({onOptionSelect}) => {
     const handlePasswordSubmit = async (e) => {
         e.preventDefault();
         if (newPassword !== confirmPassword) {
-
             setDialogMessage('Password does not match!');
             setDialogOpen(true);
             setCurrentPassword("");

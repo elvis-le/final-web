@@ -68,7 +68,6 @@ const Header = () => {
         }
     }
 
-
     useEffect(() => {
         fetchUserData();
         const ws = new WebSocket('ws://localhost:8000/ws/admin/');
@@ -103,9 +102,15 @@ const Header = () => {
     };
 
     ws.onmessage = (event) => {
-        console.log('Received WebSocket message:', event.data);
-        if (userId) {  
-            fetchMessage(userId); 
+        const data = JSON.parse(event.data);
+        console.log('Received WebSocket message:', data);
+
+        if (data.type === 'new_user') {
+            fetchUserData();
+        }
+
+        if (data.type === 'new_message' && userId) {
+            fetchMessage(userId);
         }
     };
 
@@ -120,8 +125,6 @@ const Header = () => {
         ws.close();
     };
 }, [userId]);  
-
-
 
     const handleShowNotification = async () => {
         if (showNotification) {
@@ -150,7 +153,7 @@ const Header = () => {
         if (showNotification) {
             setShowListMessage(false);
         } else {
-            setUserId(userId);
+            setUserId(userId)
         setMessageContents([])
     fetchMessage(userId);
     setShowListMessage(true);
@@ -211,7 +214,6 @@ const Header = () => {
                 <FaBell className="icon" onClick={handleShowNotification}/>
                 <span className="notification-number new-account-notification">{numberUser}</span>
                 <FaEnvelope className="icon" onClick={handleShowListMessage}/>
-                <span className="notification-number new-message-notification">{numberUser}</span>
                 <FaUser className="icon"/>
                 {showListMessage ?
                     <div className="list-user-list-message">

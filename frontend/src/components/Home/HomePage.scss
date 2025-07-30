@@ -1352,7 +1352,7 @@
   border-radius: 10px;
   background-color: var(--background-color);
   overflow-x: scroll;
-  overflow-y: hidden;
+  overflow-y: auto;
 
   .edit-video-funtion{
     display: inline-flex;

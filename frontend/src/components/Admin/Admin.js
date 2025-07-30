@@ -48,7 +48,6 @@ const AdminLayout = () => {
         localStorage.setItem('selectedOption', option);
     };
 
-
     return (
         <div className="admin-layout">
             <Sidebar onOptionSelect={handleOptionSelect}/>
