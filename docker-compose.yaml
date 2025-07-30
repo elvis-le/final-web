@@ -1,17 +1,21 @@
-version: '3'
-
 services:
   web:
     build:
       context: .
       dockerfile: ./final_web/Dockerfile
-    command: python manage.py runserver 0.0.0.0:8000
+    command: daphne -b 0.0.0.0 -p 8000 final_web.asgi:application
     volumes:
       - .:/app
     ports:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql://postgres.btfptkpngrtnnqweftvx:LNQKhanh1509@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
+
+  redis:
+    image: redis:6.2
+    container_name: redis
+    ports:
+      - "6379:6379"
 
   frontend:
     build:

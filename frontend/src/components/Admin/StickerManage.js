@@ -1,35 +1,16 @@
 import React, {useEffect, useState} from 'react';
-import {
-    TableContainer,
-    Paper,
-    Table,
-    TableHead,
-    TableRow,
-    TableBody,
-    TableCell,
-    TextField,
-    Button,
-    MenuItem
-} from '@mui/material'
 import axios from 'axios';
-import {supabase} from '../../supabaseClient';
+import {FiEdit, FiPlusCircle, FiTrash2} from "react-icons/fi";
+import {confirmAlert} from "react-confirm-alert";
+import {Link} from "react-router-dom";
+import {Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle} from "@mui/material";
 
-const StickerManage = () => {
-    const [stickerFile, setStickerFile] = useState(null);
-    const [name, setName] = useState('');
-    const [category, setCategory] = useState('');
-    const [isCreate, setIsCreate] = useState(false);
+const StickerManage = ({onOptionSelect}) => {
     const [stickerData, setStickerData] = useState([]);
     const token = localStorage.getItem('access_token');
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [dialogMessage, setDialogMessage] = useState('');
 
-    const categories = [
-        { value: 'trending', label: 'Trending' },
-{ value: 'easter_holiday', label: 'Easter Holiday' },
-{ value: 'fun', label: 'Fun' },
-{ value: 'troll_face', label: 'Troll Face' },
-{ value: 'gaming', label: 'Gaming' },
-{ value: 'emoji', label: 'Emoji' }
-    ];
 
     useEffect(() => {
         async function fetchStickerData() {
@@ -48,144 +29,133 @@ const StickerManage = () => {
         fetchStickerData();
     }, []);
 
-    const handleSwitch = () => {
-        setIsCreate(!isCreate);
-    };
-    const handleFileChange = (e) => {
-        setStickerFile(e.target.files[0]);
-    };
+    const handleDelete = async (stickerId) => {
+        confirmAlert({
+            title: 'Confirm to delete',
+            message: 'Are you sure you want to delete this audio?',
+            buttons: [
+                {
+                    label: 'Yes',
+                    onClick: async () => {
+                        try {
+                            const response = await axios.post(`http://localhost:8000/myapp/delete_sticker/`, {
+                                stickerId: stickerId,
+                            }, {
+                                headers: {
+                                    Authorization: `Bearer ${token}`,
+                                },
+                            });
+                            if (response.status === 201) {
+                                setStickerData(stickerData.filter(sticker => sticker.id !== stickerId));
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!stickerFile) {
-            alert("Please upload an sticker file");
-            return;
-        }
+                                setDialogMessage('File deleted successfully!');
+                                setDialogOpen(true);
+                            } else {
 
-        try {
-            const {data, error} = await supabase
-                .storage
-                .from('sticker_files')
-                .upload(`${category}/${stickerFile.name}`, stickerFile);
-
-            if (error) {
-                throw error;
-            }
-
-            const {data: publicURL} = supabase
-                .storage
-                .from('sticker_files')
-                .getPublicUrl(`${category}/${stickerFile.name}`);
-
-            if (!publicURL) {
-                alert('Failed to get public URL');
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('sticker_file', publicURL.publicUrl);
-            formData.append('name', name);
-            formData.append('category', category);
-
-
-
-            const response = await axios.post('http://localhost:8000/myapp/upload_sticker/', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                    Authorization: `Bearer ${token}`,
+                                setDialogMessage('Can not delete file!');
+                                setDialogOpen(true);
+                            }
+                        } catch (error) {
+                            console.error('Error deleting audio:', error);
+                        }
+                    }
                 },
-            });
-
-            if (response.status === 201) {
-                alert('File uploaded and saved successfully!');
-            } else {
-                alert('Failed to save sticker details to database');
-            }
-
-        } catch (error) {
-            console.error('Error uploading file:', error.message);
-            alert('Error uploading file');
-        }
+                {
+                    label: 'No',
+                    onClick: () => console.log('Delete canceled')
+                }
+            ]
+        });
     };
 
     return (
         <>
-            {isCreate ? (
-                <>
-                    <form onSubmit={handleSubmit} style={{maxWidth: '400px', margin: '0 auto'}}>
-                        <TextField
-                            label="Sticker Name"
-                            variant="outlined"
-                            fullWidth
-                            margin="normal"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            required
-                        />
-                        <TextField
-                            select
-                            label="Category"
-                            variant="outlined"
-                            fullWidth
-                            margin="normal"
-                            value={category}
-                            onChange={(e) => setCategory(e.target.value)}
-                            required
-                        >
-                            {categories.map((option) => (
-                                <MenuItem key={option.value} value={option.value}>
-                                    {option.label}
-                                </MenuItem>
-                            ))}
-                        </TextField>
-                        <Button variant="contained" component="label" fullWidth style={{marginTop: '15px'}}>
-                            Upload Sticker File
-                            <input type="file" hidden onChange={handleFileChange} accept="sticker/*"/>
-                        </Button>
-                        {stickerFile && <p>File: {stickerFile.name}</p>}
-                        <Button type="submit" variant="contained" color="primary" fullWidth style={{marginTop: '20px'}}>
-                            Add Sticker
-                        </Button>
-                    </form>
-                    <button onClick={handleSwitch}>Cancle</button>
-                </>
-            ) : (
-                <>
-                    <h1>Sticker manage</h1>
-                    <button onClick={handleSwitch}>new</button>
-                    <TableContainer component={Paper}>
-                        <Table>
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>Name</TableCell>
-                                    <TableCell>Artist</TableCell>
-                                    <TableCell>Category</TableCell>
-                                    <TableCell>Sticker File</TableCell>
-                                    <TableCell>Created At</TableCell>
-                                    <TableCell>Updated At</TableCell>
-                                    <TableCell>Action</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {stickerData.map((sticker) => (
-                                    <TableRow key={sticker.id}>
-                                        <TableCell>{sticker.name}</TableCell>
-                                        <TableCell>{sticker.artist}</TableCell>
-                                        <TableCell>{sticker.category}</TableCell>
-                                        <TableCell><a href={sticker.sticker_file}>File link</a></TableCell>
-                                        <TableCell>{new Date(sticker.created_at).toLocaleString()}</TableCell>
-                                        <TableCell>{new Date(sticker.updated_at).toLocaleString()}</TableCell>
-                                        <TableCell>
-                                            <button>Edit</button>
-                                            <button>Delete</button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-                </>
-            )}
+            <Dialog
+                open={dialogOpen}
+                onClose={() => setDialogOpen(false)}
+                className="custom-dialog"
+            >
+                <DialogTitle>
+                    Notification
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        {dialogMessage}
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDialogOpen(false)}>OK</Button>
+                </DialogActions>
+            </Dialog>
+
+            <h1 className="content-heading">Sticker manage</h1>
+            <button className="create-new active-btn"><Link className="link link-create"
+                                                            to="/admin/sticker/create-sticker"
+                                                            onClick={() => onOptionSelect('createSticker')}><FiPlusCircle
+                className="icon"/>
+                <span>New</span></Link></button>
+            <table className="table-sticker-wrap table-display-data-wrap">
+                <thead className="table-sticker-head table-display-data-head">
+                <tr className="table-sticker-head-row table-display-data-head-row">
+                    <th className="table-sticker-head-cell table-display-data-head-cell" style={{width: "15%"}}>Image
+                    </th>
+                    <th className="table-sticker-head-cell table-display-data-head-cell" style={{width: "15%"}}>Name
+                    </th>
+                    <th className="table-sticker-head-cell table-display-data-head-cell"
+                        style={{width: "15%"}}>Category
+                    </th>
+                    <th className="table-sticker-head-cell table-display-data-head-cell" style={{width: "20%"}}>Created
+                        At
+                    </th>
+                    <th className="table-sticker-head-cell table-display-data-head-cell" style={{width: "20%"}}>Updated
+                        At
+                    </th>
+                    <th className="table-sticker-head-cell table-display-data-head-cell" style={{width: "20%"}}>Action
+                    </th>
+                </tr>
+                </thead>
+                <tbody className="table-sticker-body table-display-data-wrap-body">
+                {stickerData.map((sticker) => (
+                    <tr key={sticker.id} className="table-sticker-body-row table-display-data-body-row">
+                        <td className="table-sticker-body-cell table-display-data-body-cell"
+                            style={{width: "15%", textAlign: "center"}}>
+                            <img src={sticker.sticker_file} alt={sticker.name}/>
+                        </td>
+                        <td className="table-sticker-body-cell table-display-data-body-cell"
+                            style={{width: "15%"}}>{sticker.name}</td>
+                        <td className="table-sticker-body-cell table-display-data-body-cell"
+                            style={{width: "15%"}}>{sticker.category}</td>
+                        <td className="table-sticker-body-cell table-display-data-body-cell" style={{
+                            width: "20%",
+                            textAlign: "center"
+                        }}>{new Date(sticker.created_at).toLocaleString()}</td>
+                        <td className="table-sticker-body-cell table-display-data-body-cell" style={{
+                            width: "20%",
+                            textAlign: "center"
+                        }}>{new Date(sticker.updated_at).toLocaleString()}</td>
+                        <td className="table-sticker-body-cell table-display-data-body-cell" style={{width: "20%"}}>
+                            <div className="action-btn-wrap">
+                                <button className="pushable edit-btn">
+                                    <span className="shadow"></span>
+                                    <span className="edge"></span>
+                                    <Link className="link" to={`/admin/sticker/edit/${sticker.id}`}
+                                          onClick={() => onOptionSelect('editSticker')}>
+                                        <span className="front"><FiEdit className="icon"/> Edit</span>
+                                    </Link>
+                                </button>
+                                <button className="pushable delete-btn" onClick={() => handleDelete(sticker.id)}>
+                                    <span className="shadow"></span>
+                                    <span className="edge"></span>
+                                    <span className="front"><FiTrash2 className="icon"/> Delete</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                ))}
+                </tbody>
+            </table>
+
+
         </>
     )
         ;

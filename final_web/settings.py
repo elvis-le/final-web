@@ -16,6 +16,7 @@ from django.contrib import staticfiles
 from dotenv import load_dotenv
 from supabase import create_client
 
+
 import dj_database_url
 import os
 
@@ -23,7 +24,6 @@ load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 
 # Quick-start development settings - unsuitable for production
@@ -53,7 +53,11 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
+    'django.contrib.sites',
+    "channels",
 ]
+
+SITE_ID = 1
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -109,15 +113,28 @@ SIMPLE_JWT = {
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
     'handlers': {
         'console': {
+            'level': 'DEBUG',  # Ensure DEBUG level logging is enabled
             'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
         },
     },
     'loggers': {
         'django': {
             'handlers': ['console'],
             'level': 'DEBUG',
+            'propagate': True,
         },
         'myapp': {
             'handlers': ['console'],
@@ -128,9 +145,25 @@ LOGGING = {
 }
 
 
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://frontend:3000",
+]
+
+ASGI_APPLICATION = "final_web.asgi.application"
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("redis", 6379)],
+        },
+    },
+}
+
 ROOT_URLCONF = 'final_web.urls'
 
 STATIC_URL = '/static/'
+DOMAIN = 'http://localhost:8000'
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
@@ -169,6 +202,18 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'khanh321zx@gmail.com'
+EMAIL_HOST_PASSWORD = 'akixqsdsktlivgle'
+
+
+GOOGLE_CLIENT_ID = '1000637994410-5vgf553g93i3j4ipf3medobe0ct1d8e0.apps.googleusercontent.com'
+GOOGLE_CLIENT_SECRET = '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'
+GOOGLE_REDIRECT_URI = 'http://localhost:8000/myapp/auth/google/callback/'
+FRONTEND_URL = "http://localhost:3000"
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases

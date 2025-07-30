@@ -64,6 +64,8 @@
     --primary-color: #308df8;
 --background-color: #1f1f27;
 --form-background: #2b2b34;
+    --cancle-color: rgba(213, 9, 9, 0.8);
+    --save-color: rgba(12, 184, 53, 0.88);
     /*Z-index*/
     --z-fixed: 100;
     /*Font-style*/
@@ -74,6 +76,12 @@
     --font-weight-nomal: 400;
     --font-weight-medium: 500;
     --font-weight-big: 600;
+    /*Dialog color*/
+    --dialog-background: #f4f4f9;
+    --dialog-border-radius: 16px;
+    --dialog-box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.2);
+    --button-background: #4caf50;
+    --button-hover: #45a049;
 }
 
 * {
@@ -96,6 +104,34 @@ li{
     width: 100%;
     height: 100vh;
     background-color: var(--black-color);
+}
+
+.custom-dialog {
+  .MuiDialog-paper {
+    border-radius: var(--dialog-border-radius);
+    background-color: var(--dialog-background);
+    box-shadow: var(--dialog-box-shadow);
+  }
+
+  .MuiDialogTitle-root {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #333;
+  }
+
+  .MuiDialogContentText-root {
+    font-size: 1rem;
+    color: #666;
+  }
+
+  .MuiButton-root {
+    background-color: var(--button-background);
+    color: #fff;
+
+    &:hover {
+      background-color: var(--button-hover);
+    }
+  }
 }
 
 

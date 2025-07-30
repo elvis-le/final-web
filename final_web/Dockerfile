@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     libpq-dev gcc
 
 RUN apt-get update && apt-get install -y imagemagick
+RUN apt-get update && apt-get install -y ffmpeg
 
 COPY ../requirements.txt /app/
 
@@ -23,4 +24,4 @@ RUN python manage.py collectstatic --noinput
 
 EXPOSE 8000
 
-CMD ["gunicorn", "myproject.wsgi:application", "--bind", "0.0.0.0:8000"]
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "final_web.asgi:application"]

@@ -12,12 +12,22 @@ gunicorn==23.0.0
 djangorestframework==3.14.0
 psycopg2-binary>=2.9
 psycopg>=3.0
-moviepy
+moviepy==1.0.3
+ffmpeg
 supabase
 dj-database-url
 python-dotenv
 djangorestframework-simplejwt
-
+opencv-python
+google-auth
+google-auth-oauthlib
+google
+pydub
+channels
+channels==4.0
+channels-redis==4.0
+redis==4.5
+daphne>=4.0.0
 
 
 
